@@ -95,7 +95,7 @@ const SEC=[
   D('tol','multi','Tolerates','Tål',{o:TOL}),
   D('usda','text','USDA zone','USDA-zon',{zone:'usda'}),
   D('szone','text','Swedish zone','Växtzon',{zone:'se'}),
-  D('rhs','single','British hardiness (RHS)','Brittisk härdighet (RHS)',{o:RHS})]},
+  D('rhs','text','British hardiness (RHS)','Brittisk härdighet (RHS)',{zone:'rhs'})]},
  {id:'cal',en:'Calendar & care',sv:'Kalender & skötsel',f:[
   D('cal1','cal','','',{lab:CAL_LAB.cal1}),D('cal2','cal','','',{lab:CAL_LAB.cal2}),
   D('cal3','cal','','',{lab:CAL_LAB.cal3}),D('cal4','cal','','',{lab:CAL_LAB.cal4}),
@@ -170,7 +170,9 @@ async function fetchAll(t,cols){let out=[],from=0;for(;;){const r=await SB.from(
 async function loadAll(){
   if(!SB)return;
   try{
-    const r=await Promise.all([fetchAll('entries'),fetchAll('obs'),SB.from('profiles').select('user_id,display_name'),fetchAll('plantings').catch(()=>[]),fetchAll('lists').catch(()=>[]),fetchAll('comments').catch(()=>[])]);
+    const adm=isAdmin(),soft=q=>Promise.resolve(q).then(x=>x,e=>({error:e}));
+    const r=await Promise.all([fetchAll('entries'),fetchAll('obs'),SB.from('profiles').select('user_id,display_name'),fetchAll('plantings').catch(()=>[]),fetchAll('lists').catch(()=>[]),fetchAll('comments').catch(()=>[]),
+      adm?soft(SB.rpc('review_state')):null,adm?soft(SB.from('autofill_requests').select('sid,latin,n,status,first_requested_at,last_requested_at,sent_at').order('first_requested_at')):null]);
     META.clear();PROFILES.clear();
     (r[2].data||[]).forEach(p=>PROFILES.set(p.user_id,p.display_name));
     const keep=(rows,kind)=>rows.map(x=>{META.set(x.id,{kind,author:x.author,updatedBy:x.updated_by,updatedAt:x.updated_at,deletedAt:x.deleted_at,deletedBy:x.deleted_by,createdAt:x.created_at});return Object.assign({id:x.id},x.data)});
@@ -178,6 +180,7 @@ async function loadAll(){
     state.entries=E.filter(live);state.obs=O.filter(live);state.trashE=E.filter(x=>!live(x));state.trashO=O.filter(x=>!live(x));
     const Pl=keep(r[3],'planting'),Li=keep(r[4],'list');state.plantings=Pl.filter(live);state.lists=Li.filter(live);state.trashP=Pl.filter(x=>!live(x));state.trashL=Li.filter(x=>!live(x));
     const Cm=keep(r[5],'comment');state.comments=Cm.filter(live);state.trashC=Cm.filter(x=>!live(x));
+    revSet(adm&&r[6]&&!r[6].error?r[6].data:null);if(adm&&r[7]&&!r[7].error)afRows=r[7].data||[];
     $('#banner').hidden=true;loaded=true;lastLoad=Date.now();renderAcct();refresh();
   }catch(e){
     loaded=true;const b=$('#banner');b.hidden=false;b.textContent='Could not read the species data ('+((e&&(e.code||e.message))||'error')+'). Check your connection and reload.';refresh();
@@ -402,8 +405,8 @@ const commonName=s=>state.lang==='en'?s.m.en:state.lang==='sv'?s.m.sv:state.lang
 const dispName=s=>(commonName(s)||s.latin)+(s.isCv?' '+cvQ(s.cv):'');
 function names(s){
   const m=s.m,cn=commonName(s),others=[m.en,m.sv,m.nl].filter(x=>x&&x!==cn),cvh=s.isCv?' <span class="cvn">'+esc(cvQ(s.cv))+'</span>':'';
-  if(cn)return{main:'<span class="cn">'+esc(cn)+'</span>'+cvh,sub:'<i>'+esc(s.latin)+'</i>'+(others.length?' · '+others.map(esc).join(' · '):'')};
-  return{main:esc(s.latin)+cvh,sub:others.map(esc).join(' · ')};
+  if(cn)return{main:'<span class="cn">'+esc(cn)+'</span>'+cvh+vmark(s.sid),sub:'<i>'+esc(s.latin)+'</i>'+(others.length?' · '+others.map(esc).join(' · '):'')};
+  return{main:esc(s.latin)+cvh+vmark(s.sid),sub:others.map(esc).join(' · ')};
 }
 const LOC=()=>state.lang==='sv'?'sv':state.lang==='nl'?'nl':'en';
 const byName=(a,b)=>dispName(a).localeCompare(dispName(b),LOC());
@@ -931,6 +934,7 @@ function updateSheet(){
   $('#cvBar').innerHTML=cvBarHTML(s);
   $$('[data-act=cv-rename]').forEach(b=>b.style.display=p.isCv?'':'none');if(!p.isCv)$('#cvRenBox').hidden=true;
   $('#cardArea').innerHTML=cardHTML(p);
+  $('#revBox').innerHTML=revBoxHTML(s);$$('[data-act=flag-open]').forEach(b=>b.hidden=!SB||!meUid());if(!SB||!meUid())$('#flagBox').hidden=true;
   $('#cvSec').hidden=!s.cvs.length;{const j=$('.spjump [data-jump=cvSec]');if(j)j.hidden=!s.cvs.length}$('#cvTable').innerHTML=cvTableHTML(s);
   $('#cvCount').textContent=s.cvs.length?' ('+s.cvs.length+')':'';
   $$('#layoutSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.layout===state.layout));
@@ -948,6 +952,82 @@ function updateSheet(){
   const ents=p.isCv?p.entries:s.entries;
   $('#entList').innerHTML=(p.isCv?'<p class="muted" style="margin:0;font-size:13px">'+esc(tr('Entries for this cultivar only. Entries for the whole species are listed when you show the species.','Endast poster för den här sorten. Poster för hela arten visas när du visar arten.','Alleen invoeren voor deze cultivar. Invoeren voor de hele soort staan bij de soort.'))+'</p>':'')+
     ents.slice().reverse().map(e=>'<div class="ent"><span><b>'+esc(e.date||'')+'</b> · '+(e.snapshot?'<span class="pill">'+tr('Sheet edit','Bladredigering')+'</span> · ':'')+(isSrcEnt(e)?srcPill(e)+' · ':'')+(p.isCv?'':cvPill({cultivar:entCv(e)}))+' '+Object.keys(e.fields||{}).filter(k=>k!=='cultivar').length+' '+(Object.keys(e.fields||{}).filter(k=>k!=='cultivar').length===1?tr('field','fält'):tr('fields','fält'))+(e.ex?' · <em>'+tr('example','exempel')+'</em>':'')+rowStamp(e.id)+'</span>'+(canEdit(e.id)?'<span class="acts w-only"><button class="btn sm" data-act="edit-entry" data-id="'+esc(e.id)+'">'+tr('Edit','Redigera')+'</button><button class="btn sm danger" data-act="del-entry" data-id="'+esc(e.id)+'">'+tr('Delete','Radera')+'</button></span>':'')+'</div>').join('');
+}
+
+/* ---------- verified marks and review flags (setup/v4_review.sql). Marks, flags and the dashboard are for admins only. ---------- */
+const REV={on:false,marks:new Map(),flags:[],admins:new Set(),st:new Map()};
+const SVG_VMK='<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.2"/><path d="M4.7 8.3l2.2 2.2 4.5-4.7"/></svg>';
+function revSet(d){
+  if(!d){REV.on=false;REV.marks=new Map();REV.flags=[];REV.admins=new Set()}
+  else{REV.on=true;REV.marks=new Map((d.reviews||[]).map(x=>[x.sid,{at:x.at,by:x.by}]));REV.flags=d.flags||[];REV.admins=new Set(d.admins||[])}
+  revCompute();
+}
+// A mark turns grey when someone who is not an admin (a contributor, or Artie) adds, changes or deletes an entry of the species after it.
+function revCompute(){
+  REV.st=new Map();if(!REV.on)return;
+  const late=new Map();
+  (state.entries||[]).concat(state.trashE||[]).forEach(e=>{const r=REV.marks.get(e.sid);if(!r)return;const m=META.get(e.id)||{},t=m.updatedAt||m.createdAt;
+    if(!t||new Date(t)<=new Date(r.at)||(m.updatedBy&&REV.admins.has(m.updatedBy)))return;
+    const p=late.get(e.sid);if(!p||new Date(t)>new Date(p.at))late.set(e.sid,{at:t,by:m.updatedBy})});
+  REV.marks.forEach((r,sid)=>REV.st.set(sid,Object.assign({},r,late.has(sid)?{stale:1,chg:late.get(sid)}:{})));
+}
+async function loadReview(){if(!SB||!isAdmin()){revSet(null);return}try{const r=await SB.rpc('review_state');if(r.error)throw r.error;revSet(r.data)}catch(e){revSet(null)}}
+const revTitle=r=>tr('Verified ','Verifierad ','Geverifieerd ')+fmtDate(r.at)+(r.stale?' · '+tr('changed since by ','ändrad sedan dess av ','sindsdien gewijzigd door ')+who(r.chg.by):'');
+function vmark(sid){const r=REV.st.get(sid);if(!r)return '';const t=revTitle(r);return ' <span class="vmk'+(r.stale?' stale':'')+'" role="img" title="'+esc(t)+'" aria-label="'+esc(t)+'">'+SVG_VMK+'</span>'}
+const flagsFor=sid=>REV.flags.filter(f=>f.sid===sid);
+function flagRow(f,withSp){
+  const sp=withSp&&bySid.get(f.sid);
+  return '<div class="ent flagrow"><span>'+(withSp?(sp?'<button type="button" class="lnk" data-open="'+esc(f.sid)+'">'+esc(dispName(sp))+'</button>':'<i>'+esc(f.latin)+'</i>')+' · ':'')+(f.reason?'“'+esc(f.reason)+'” · ':'')+esc(who(f.by))+' · '+esc(fmtDate(f.at))+'</span>'+
+    '<button type="button" class="btn sm" data-act="flag-resolve" data-fid="'+esc(f.id)+'">'+esc(tr('Close flag','Stäng flaggan','Melding sluiten'))+'</button></div>';
+}
+function revBoxHTML(s){
+  if(!isAdmin()||!SB)return '';
+  if(!REV.on)return '<div class="revbox"><span class="muted">'+esc(tr('Verified marks need the database update v4_review.sql.','Verifieringsmarkeringar kräver databasuppdateringen v4_review.sql.','Verificatiemarkeringen vereisen de database-update v4_review.sql.'))+'</span></div>';
+  const r=REV.st.get(s.sid),fl=flagsFor(s.sid);
+  return '<div class="revbox'+(r?(r.stale?' stale':' ok'):'')+'"><span class="revst">'+
+    (r?vmark(s.sid)+' '+esc(tr('Verified ','Verifierad ','Geverifieerd '))+esc(fmtDate(r.at))+' '+esc(tr('by ','av ','door '))+esc(who(r.by))+(r.stale?'. '+esc(tr('Changed since by ','Ändrad sedan dess av ','Sindsdien gewijzigd door '))+esc(who(r.chg.by))+' ('+esc(fmtDate(r.chg.at))+').':'.')
+      :esc(tr('Not verified yet.','Inte verifierad än.','Nog niet geverifieerd.')))+
+    ' <small class="muted">'+esc(tr('Only admins see this.','Bara admin ser detta.','Alleen beheerders zien dit.'))+'</small></span>'+
+    '<span class="acts"><button type="button" class="btn sm primary" data-act="rev-mark">'+esc(r?tr('Verify again','Verifiera igen','Opnieuw verifiëren'):tr('Mark as verified','Markera som verifierad','Als geverifieerd markeren'))+'</button>'+
+    (r?'<button type="button" class="btn sm" data-act="rev-unmark">'+esc(tr('Remove mark','Ta bort markeringen','Markering verwijderen'))+'</button>':'')+'</span>'+
+    (fl.length?'<div class="revflags"><b>'+esc(tr('Flagged for review','Flaggad för granskning','Gemeld voor controle'))+' ('+fl.length+')</b>'+fl.map(f=>flagRow(f,false)).join('')+'<small class="muted">'+esc(tr('Marking the species as verified closes its flags.','Att markera arten som verifierad stänger flaggorna.','Als je de soort als geverifieerd markeert, worden de meldingen gesloten.'))+'</small></div>':'')+
+    '</div>';
+}
+async function revCall(name,args,msg){try{const r=await SB.rpc(name,args);if(r.error)throw r.error;if(msg)toast(msg);await loadReview();refresh()}catch(e){toast(errMsg(e),'err')}}
+async function flagSend(s){
+  const reason=String($('#flagReason').value||'').trim().slice(0,500);
+  try{const r=await SB.rpc('flag_species',{p_sid:s.sid,p_latin:s.latin,p_reason:reason});if(r.error)throw r.error;
+    toast(r.data==='duplicate'?tr('Your earlier flag was updated. The admins will have a look.','Din tidigare flagga uppdaterades. Admin tittar på den.','Je eerdere melding is bijgewerkt. De beheerders kijken ernaar.'):tr('Thanks: the species is flagged for review.','Tack: arten är flaggad för granskning.','Bedankt: de soort is gemeld voor controle.'));
+    $('#flagBox').hidden=true;$('#flagReason').value='';if(isAdmin()){await loadReview();refresh()}}
+  catch(e){toast(errMsg(e),'err')}
+}
+/* admin dashboard */
+const admState={tab:'never',n:40};
+function admCounts(){let ok=0,st=0;species.forEach(s=>{const r=REV.st.get(s.sid);if(r){if(r.stale)st++;else ok++}});return{tot:species.length,ok,st,none:species.length-ok-st}}
+function updateAdminBadge(){const n=isAdmin()?REV.flags.length+afRows.filter(r=>r.status==='open').length:0;$$('.admbadge').forEach(b=>{b.hidden=!n;b.textContent=n})}
+function updateAdmin(){
+  const box=$('#admBody');if(!box)return;
+  if(!isAdmin()){box.innerHTML='<p class="muted">'+esc(tr('Only admins can see this page.','Bara admin kan se den här sidan.','Alleen beheerders kunnen deze pagina zien.'))+'</p>';return}
+  const c=admCounts(),pc=x=>c.tot?Math.round(1000*x/c.tot)/10:0,open=afRows.filter(r=>r.status==='open');
+  const sec=(h,body)=>'<section class="admsec"><h2 class="hsec">'+h+'</h2>'+body+'</section>';
+  const note=REV.on?'':'<p class="admwarn">'+esc(tr('Verified marks and flags need the database update v4_review.sql. Until it has been run, this page shows only the Artie requests.','Verifieringar och flaggor kräver databasuppdateringen v4_review.sql. Tills den har körts visar sidan bara Artie-förfrågningarna.','Verificaties en meldingen vereisen de database-update v4_review.sql. Tot die is uitgevoerd, toont deze pagina alleen de Artie-aanvragen.'))+'</p>';
+  const bar='<div class="vbar" role="img" aria-label="'+esc(pc(c.ok)+' % '+tr('verified','verifierade','geverifieerd'))+'"><span class="ok" style="width:'+pc(c.ok)+'%"></span><span class="st" style="width:'+pc(c.st)+'%"></span></div>'+
+    '<p class="vleg"><span><i class="sw ok"></i>'+esc(tr('Verified','Verifierade','Geverifieerd'))+': <b>'+c.ok+'</b> '+esc(tr('of','av','van'))+' '+c.tot+' ('+pc(c.ok)+' %)</span><span><i class="sw st"></i>'+esc(tr('Changed since verification','Ändrade sedan verifieringen','Gewijzigd sinds verificatie'))+': <b>'+c.st+'</b></span><span><i class="sw no"></i>'+esc(tr('Not verified','Inte verifierade','Niet geverifieerd'))+': <b>'+c.none+'</b></span></p>';
+  const artie=(open.length?'<p class="admnew">'+esc(open.length+' '+(open.length===1?tr('new species requested for Artie','ny art begärd till Artie','nieuwe soort aangevraagd voor Artie'):tr('new species requested for Artie','nya arter begärda till Artie','nieuwe soorten aangevraagd voor Artie')))+'</p><p class="muted" style="margin:4px 0 8px">'+open.slice(0,12).map(r=>'<i>'+esc(r.latin)+'</i>'+(r.n>1?' ('+r.n+'×)':'')).join(', ')+(open.length>12?' …':'')+'</p>':'<p class="muted">'+esc(tr('No new requests.','Inga nya förfrågningar.','Geen nieuwe aanvragen.'))+'</p>')+
+    '<div class="acts"><button type="button" class="btn sm primary" data-act="af-download"'+(open.length?'':' disabled')+'>'+esc(tr('Download the list for Artie (.txt)','Ladda ner listan till Artie (.txt)','Lijst voor Artie downloaden (.txt)'))+'</button><button type="button" class="btn sm" data-act="af-sent"'+(open.length?'':' disabled')+'>'+esc(tr('Mark as sent','Markera som skickade','Als verstuurd markeren'))+'</button><a class="btn sm" href="#autofill">'+esc(tr('All requests','Alla förfrågningar','Alle aanvragen'))+'</a></div>';
+  const flags=REV.flags.length?'<div class="stack">'+REV.flags.map(f=>flagRow(f,true)).join('')+'</div>':'<p class="muted">'+esc(tr('No open flags.','Inga öppna flaggor.','Geen open meldingen.'))+'</p>';
+  const tabs=[['never',tr('Not verified','Inte verifierade','Niet geverifieerd'),c.none],['stale',tr('Changed since verification','Ändrade sedan verifieringen','Gewijzigd sinds verificatie'),c.st],['oldest',tr('Verified longest ago','Verifierade längst sedan','Langst geleden geverifieerd'),c.ok+c.st]];
+  let list=species.filter(s=>{const r=REV.st.get(s.sid);return admState.tab==='never'?!r:admState.tab==='stale'?r&&r.stale:!!r});
+  if(admState.tab==='never')list.sort(byName);else list.sort((a,b)=>new Date(REV.st.get(a.sid).at)-new Date(REV.st.get(b.sid).at));
+  const rows=list.slice(0,admState.n).map(s=>{const r=REV.st.get(s.sid),nm=names(s),m=META.get((s.entries[s.entries.length-1]||{}).id)||{};
+    return '<div class="gaprow"><button type="button" class="gapmain" data-open="'+esc(s.sid)+'"><span class="ph" style="--c:'+FCOL[s.form]+'">'+phInner(s,1)+'</span><span style="min-width:0"><span class="lat">'+nm.main+'</span><span class="nm">'+nm.sub+'</span></span></button>'+
+      '<span class="muted" style="font-size:13.5px">'+(r?esc(revTitle(r)):esc(tr('Last change ','Senast ändrad ','Laatst gewijzigd ')+(fmtDate(m.updatedAt||m.createdAt)||'–')))+(flagsFor(s.sid).length?' · <b>'+esc(tr('flagged','flaggad','gemeld'))+'</b>':'')+'</span>'+
+      '<button type="button" class="btn sm" data-open="'+esc(s.sid)+'">'+esc(tr('Open','Öppna','Openen'))+'</button></div>'}).join('');
+  const reg='<div class="seg admtabs" role="group">'+tabs.map(t=>'<button type="button" data-act="adm-tab" data-tab="'+t[0]+'" aria-pressed="'+(admState.tab===t[0])+'">'+esc(t[1])+' ('+t[2]+')</button>').join('')+'</div>'+
+    '<div class="stack">'+(rows||'<p class="muted">'+esc(tr('Nothing here.','Inget här.','Niets hier.'))+'</p>')+'</div>'+(list.length>admState.n?'<div class="acts"><button type="button" class="btn sm" data-act="adm-more">'+esc(tr('Show more','Visa fler','Meer tonen'))+' ('+(list.length-admState.n)+')</button></div>':'');
+  box.innerHTML=note+(REV.on?sec(esc(tr('Verified species','Verifierade arter','Geverifieerde soorten')),bar):'')+
+    sec(esc(tr('Artie requests','Artie-förfrågningar','Artie-aanvragen'))+(open.length?' <span class="admcount">'+open.length+'</span>':''),artie)+
+    (REV.on?sec(esc(tr('Flagged for review','Flaggade för granskning','Gemeld voor controle'))+(REV.flags.length?' <span class="admcount">'+REV.flags.length+'</span>':''),flags)+sec(esc(tr('Review register','Granskningsregister','Controleregister')),reg):'');
 }
 
 /* ---------- exports ---------- */
@@ -1174,7 +1254,7 @@ async function artieRequest(lines,btn){
 async function loadAfRows(){
   if(!SB||!isAdmin())return;
   try{const r=await SB.from('autofill_requests').select('sid,latin,n,status,first_requested_at,last_requested_at,sent_at').order('first_requested_at');if(r.error)throw r.error;afRows=r.data||[]}catch(e){afRows=[];toast(errMsg(e),'err')}
-  renderAfAdmin();
+  renderAfAdmin();if(!$('#v-admin').hidden)updateAdmin();updateAdminBadge();
 }
 function renderAfAdmin(){
   const box=$('#afAdmin');if(!box)return;
@@ -1348,7 +1428,7 @@ function updateCalendar(){
   const subs=x=>calState.cv&&!x.isCv&&x.cvs?x.cvs.filter(c=>acts.some(a=>!isEmpty(c.own[a[0]])&&JSON.stringify(c.m[a[0]])!==JSON.stringify(x.m[a[0]]))):[];
   const pc=$('#calCv');if(pc)pc.checked=calState.cv;
   $('#calGrid').innerHTML='<div class="calg"><span class="cname"></span>'+mh+list.map(x=>
-    '<button type="button" class="cname" data-open="'+esc(x.ref)+'">'+(commonName(x)?esc(dispName(x)):'<i>'+esc(x.latin)+'</i>'+(x.isCv?' '+esc(cvQ(x.cv)):''))+'</button>'+cells(x)+
+    '<button type="button" class="cname" data-open="'+esc(x.ref)+'">'+(commonName(x)?esc(dispName(x)):'<i>'+esc(x.latin)+'</i>'+(x.isCv?' '+esc(cvQ(x.cv)):''))+vmark(x.sid)+'</button>'+cells(x)+
     subs(x).map(c=>'<button type="button" class="cname cvsubn" data-open="'+esc(c.ref)+'" title="'+esc(dispName(c))+'">'+esc(cvQ(c.cv))+'</button>'+cells(c)).join('')).join('')+'</div>';
 }
 
@@ -1411,19 +1491,28 @@ const zoneMax=z=>{const n=String(z||'').match(/\d+/g);return n?Math.max.apply(nu
 const usdaLo=(n,h)=>Math.round(((-60+10*(n-1)+(h==='b'?5:0))-32)/1.8*10)/10;   // lower edge in °C
 const usdaTok=z=>[...String(z||'').toLowerCase().matchAll(/(\d{1,2})\s*([ab])?/g)].map(m=>({n:+m[1],h:m[2]||''})).filter(t=>t.n>=1&&t.n<=13);
 const seTok=z=>(String(z||'').match(/\d+/g)||[]).map(Number).filter(n=>n>=1&&n<=8);
+const RHS_K=RHS.map(r=>r.k);
+// RHS ratings with or without the H: "H5", "5", "h1b", "H4-H6", "4-6". A plain 1 is read as H1c.
+const rhsTok=z=>[...String(z||'').toLowerCase().matchAll(/h?\s*([1-7])\s*([abc])?/g)].map(m=>m[1]==='1'?'H1'+(m[2]||'c'):'H'+m[1]).filter(k=>RHS_K.indexOf(k)>=0);
 const SE_T=z=>({lo:z>=8?-50:-10-5*z,hi:z>=8?-45:-5-5*z});   // approximate winter minimum band per Swedish zone
 // The coldest temperature a plant is rated for, from its Swedish zone, USDA zone or RHS rating (in that order).
 function hardOf(m){
   const se=seTok(m.szone);if(se.length){const z=Math.max.apply(null,se);return{t:SE_T(z).lo,by:'se',label:tr('zone ','zon ','zone ')+z}}
   const us=usdaTok(m.usda);if(us.length){const c=us.slice().sort((a,b)=>a.n-b.n||(a.h>b.h?1:-1))[0];return{t:usdaLo(c.n,c.h||'a'),by:'usda',label:'USDA '+c.n+c.h,approx:1}}
-  const r=RHS.find(o=>o.k===m.rhs);if(r)return{t:r.hi==null?r.lo:r.lo==null?r.hi:r.lo,by:'rhs',label:'RHS '+r.k,approx:1,open:r.lo==null};
+  const rh=rhsTok(m.rhs);if(rh.length){const k=rh.slice().sort((a,b)=>RHS_K.indexOf(b)-RHS_K.indexOf(a))[0],r=RHS.find(o=>o.k===k);return{t:r.hi==null?r.lo:r.lo==null?r.hi:r.lo,by:'rhs',label:'RHS '+r.k,approx:1,open:r.lo==null}}
   return null;
 }
 function zoneNorm(v,kind){
+  if(kind==='rhs'){const t=rhsTok(v);if(!t.length)return String(v).trim();t.sort((a,b)=>RHS_K.indexOf(a)-RHS_K.indexOf(b));const a=t[0],b=t[t.length-1];return a===b?a:a+'-'+b}
   if(kind==='se'){const t=seTok(v);if(!t.length)return String(v).trim();const a=Math.min.apply(null,t),b=Math.max.apply(null,t);return a===b?String(a):a+'-'+b}
   const t=usdaTok(v);if(!t.length)return String(v).trim();const k=x=>x.n*2+(x.h==='b'?1:0);t.sort((a,b)=>k(a)-k(b));const a=t[0],b=t[t.length-1];return k(a)===k(b)?a.n+a.h:a.n+a.h+'-'+b.n+b.h;
 }
 function zoneHint(d,v){
+  if(d.zone==='rhs'){
+    if(!String(v||'').trim())return tr('E.g. H5, 5 or H4-H6, with or without the H. The hardiest rating counts.','T.ex. H5, 5 eller H4-H6, med eller utan H. Den härdigaste klassen räknas.','Bijv. H5, 5 of H4-H6, met of zonder H. De winterhardste klasse telt.');
+    const h=hardOf({rhs:v});if(!h)return tr('Not understood: use ratings H1a to H7, e.g. H5 or 4-6.','Förstås inte: använd klasserna H1a till H7, t.ex. H5 eller 4-6.','Niet begrepen: gebruik de klassen H1a tot H7, bijv. H5 of 4-6.');
+    return (h.open?tr('Hardy below ','Härdig under ','Winterhard onder '):tr('Hardy to ','Härdig till ','Winterhard tot '))+fmtC(h.t)+' ('+h.label+')';
+  }
   if(!String(v||'').trim())return d.zone==='se'?tr('E.g. 1-4: grows in zones 1 to 4. The highest number counts.','T.ex. 1-4: växer i zon 1 till 4. Den högsta siffran räknas.','Bijv. 1-4: groeit in zone 1 tot 4. Het hoogste getal telt.'):tr('E.g. 5, 5b or 2-7: grows in zones 2 to 7. The lowest number counts.','T.ex. 5, 5b eller 2-7: växer i zon 2 till 7. Den lägsta siffran räknas.','Bijv. 5, 5b of 2-7: groeit in zone 2 tot 7. Het laagste getal telt.');
   const h=hardOf(d.zone==='se'?{szone:v}:{usda:v});
   if(!h)return tr('Not understood: use zone numbers like 5, 5b or 2-7.','Förstås inte: använd zonnummer som 5, 5b eller 2-7.','Niet begrepen: gebruik zonenummers zoals 5, 5b of 2-7.');
@@ -1464,10 +1553,25 @@ function pickTip(r,x){
 const PICK_LAB={light:['Light','Ljus'],moist:['Moisture','Fukt'],soil:['Soil','Jord'],zone:['Zone','Zon']};
 const pkBadges=ev=>['light','moist','soil','zone'].map(k=>{const r=ev.find(z=>z.k===k);if(!r)return '';const cls=r.st==='ok'?'ok':r.st==='?'?'unk':r.st==='edge'?'edge':'no';return '<span class="pk '+cls+'"'+(r.approx&&r.h?' title="'+esc(r.h.label+' ≈ '+fmtC(r.h.t))+'"':'')+'>'+esc(tr(PICK_LAB[k][0],PICK_LAB[k][1]))+(r.approx?' ≈':'')+(r.st==='?'?' ?':'')+'</span>'}).join('')+
   ev.filter(r=>r.lab).map(r=>'<span class="pk unk" title="'+esc(tr('No data for this filter yet','Inga uppgifter för detta filter ännu','Nog geen gegevens voor dit filter'))+'">'+esc(tr(r.lab[1],r.lab[2],r.lab[3]))+' ?</span>').join('');
+// Small signs at the top right of a Pick a plant result: sources recorded, invasive risk, toxic, very edible.
+const PKI={
+  seed:'<svg viewBox="0 0 16 16"><path d="M8 2.3c3 1.8 4.3 5.2 3.3 8.1-.6 1.9-2 3.2-3.3 3.2s-2.7-1.3-3.3-3.2C3.7 7.5 5 4.1 8 2.3z" fill="#d7b27a" stroke="#8a6332" stroke-width="1"/><path d="M8 5.2c-.9 2.3-.9 4.9 0 7.4" fill="none" stroke="#8a6332" stroke-width="1" stroke-linecap="round"/></svg>',
+  inv:'<svg viewBox="0 0 16 16"><path d="M8 1.6l6.8 12H1.2z" fill="#f4c430" stroke="#a07c00" stroke-width="1" stroke-linejoin="round"/><path d="M8 5.8v3.9" stroke="#3b2f00" stroke-width="1.7" stroke-linecap="round"/><circle cx="8" cy="11.7" r=".95" fill="#3b2f00"/></svg>',
+  tox:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.3" fill="#b8322a"/><path d="M8 3.4c-2.4 0-4 1.6-4 3.8 0 1.3.6 2.2 1.5 2.8v1.7h5V10c.9-.6 1.5-1.5 1.5-2.8 0-2.2-1.6-3.8-4-3.8z" fill="#fff"/><circle cx="6.4" cy="7.3" r="1.05" fill="#b8322a"/><circle cx="9.6" cy="7.3" r="1.05" fill="#b8322a"/><path d="M7 11.7v-1.2M9 11.7v-1.2" stroke="#b8322a" stroke-width=".8"/></svg>',
+  edib:'<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.3" fill="#2f7d3a"/><path d="M5.3 3.6v2.8a1.25 1.25 0 0 0 2.5 0V3.6M6.55 3.6v8.8M10.6 12.4V3.6c-1.2.6-1.9 2-1.9 3.6v1.7h1.9" fill="none" stroke="#fff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+function pkIcons(x){
+  const s=bySid.get(x.sid)||x,m=x.m||{},out=[];
+  if((s.src&&s.src.length)||(x.src&&x.src.length))out.push(['seed',tr('Where to get it: sources recorded','Var finns den: källor finns','Waar te krijgen: bronnen vastgelegd')]);
+  if(m.invasive==='low'||m.invasive==='high')out.push(['inv',tr('Possibly invasive','Möjligen invasiv','Mogelijk invasief')+' ('+tr('risk ','risk ','risico ')+(m.invasive==='high'?tr('high','hög','hoog'):tr('low','låg','laag'))+')']);
+  if((m.caut||[]).indexOf('toxic')>=0)out.push(['tox',tr('Toxic','Giftig','Giftig')]);
+  if(Number(m.edibility)>=4)out.push(['edib',tr('Very edible','Mycket ätlig','Zeer eetbaar')+' ('+m.edibility+'/5)']);
+  return{n:out.length,html:out.length?'<span class="pkicons">'+out.map(o=>'<span class="pki '+o[0]+'" role="img" title="'+esc(o[1])+'" aria-label="'+esc(o[1])+'">'+PKI[o[0]]+'</span>').join('')+'</span>':''};
+}
 const cmpChk=(x,small)=>'<label class="cmpchk'+(small?'':' pkchk')+'" title="'+esc(tr('Tick to compare this with others','Kryssa för att jämföra med andra','Aanvinken om te vergelijken'))+'"><input type="checkbox" data-cmpsel="'+esc(x.ref)+'"'+(cmp.indexOf(x.ref)>=0?' checked':'')+' aria-label="'+esc(tr('Compare','Jämför')+' '+dispName(x))+'">'+(small?'':'<span>'+esc(tr('Compare','Jämför'))+'</span>')+'</label>';
 function pickRow(x,ev,tips,extra){
-  const nm=names(x);
-  return '<div class="pickrow">'+cmpChk(x)+'<button type="button" class="gapmain" data-open="'+esc(x.ref)+'"><span class="ph" style="--c:'+FCOL[x.form]+'">'+phInner(x,1)+'</span><span style="min-width:0"><span class="lat">'+nm.main+'</span><span class="nm">'+nm.sub+'</span></span></button>'+
+  const nm=names(x),ic=pkIcons(x);
+  return '<div class="pickrow'+(ic.n?' hasic" style="--ni:'+ic.n:'')+'">'+ic.html+cmpChk(x)+'<button type="button" class="gapmain" data-open="'+esc(x.ref)+'"><span class="ph" style="--c:'+FCOL[x.form]+'">'+phInner(x,1)+'</span><span style="min-width:0"><span class="lat">'+nm.main+'</span><span class="nm">'+nm.sub+'</span></span></button>'+
     '<div style="min-width:0"><div class="pks">'+pkBadges(ev)+(Fav.has(x.sid)?'<span class="pk fav">★ '+tr('Favourite','Favorit')+'</span>':'')+'</div>'+(extra||'')+(tips&&tips.length?'<ul class="tips">'+tips.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>':'')+'</div></div>';
 }
 // Score one species or cultivar for the spot: fits (ok), could work with help (close), no data (unk) or does not fit (no).
@@ -1495,8 +1599,8 @@ function pickGroup(g){
   const sum='<span class="pksum">'+esc(cvSummary(g))+'</span>';
   if(!pickState.cv){const fit=g.cands.filter(r=>r.cls==='ok'&&r.x.isCv);const sr=g.cands[0];
     return pickRow(s,sr.ev,null,sum+(fit.length?'<span class="pksum">'+esc(tr('Fits: ','Passar: ','Past: '))+fit.map(r=>cvQ(r.x.cv)).join(', ')+'</span>':''))}
-  const nm=names(s);
-  return '<div class="pkgrp"><div class="pickrow"><span></span><button type="button" class="gapmain" data-open="'+esc(s.sid)+'"><span class="ph" style="--c:'+FCOL[s.form]+'">'+phInner(s,1)+'</span><span style="min-width:0"><span class="lat">'+nm.main+'</span><span class="nm">'+nm.sub+'</span></span></button>'+
+  const nm=names(s),ic=pkIcons(s);
+  return '<div class="pkgrp"><div class="pickrow'+(ic.n?' hasic" style="--ni:'+ic.n:'')+'">'+ic.html+'<span></span><button type="button" class="gapmain" data-open="'+esc(s.sid)+'"><span class="ph" style="--c:'+FCOL[s.form]+'">'+phInner(s,1)+'</span><span style="min-width:0"><span class="lat">'+nm.main+'</span><span class="nm">'+nm.sub+'</span></span></button>'+
     '<div style="min-width:0">'+(Fav.has(s.sid)?'<div class="pks"><span class="pk fav">★ '+tr('Favourite','Favorit')+'</span></div>':'')+sum+'</div></div>'+
     '<div class="cvsub">'+shown.map(cvRow).join('')+
     (no.length?'<div class="cvno"><span class="vd no" aria-hidden="true">✕</span>'+esc(tr(no.length+' do not fit: ',no.length+' passar inte: ',no.length+' passen niet: '))+no.map(r=>cvLabel(r.x)+' <small>('+esc(failed(r))+')</small>').join(', ')+'</div>':'')+
@@ -1746,7 +1850,7 @@ function speciesOfDay(d){
   const day=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5);
   return list[(day*2654435761>>>0)%list.length];
 }
-const chipList=(arr)=>arr.length?'<div class="tchips">'+arr.slice().sort(byName).map(s=>'<button type="button" class="tchip'+(commonName(s)?' cn':'')+'" data-open="'+esc(s.sid)+'">'+esc(dispName(s))+'</button>').join('')+'</div>':'';
+const chipList=(arr)=>arr.length?'<div class="tchips">'+arr.slice().sort(byName).map(s=>'<button type="button" class="tchip'+(commonName(s)?' cn':'')+'" data-open="'+esc(s.sid)+'">'+esc(dispName(s))+vmark(s.sid)+'</button>').join('')+'</div>':'';
 function updateHome(){
   $('#homeStats').textContent=!loaded?tr('Loading…','Laddar…'):[species.length+' '+trs('species','arter'),state.entries.length+' '+trs('entries','poster'),state.obs.length+' '+trs('observations','observationer')].join(' · ');
   const now=new Date(),mo=now.getMonth()+1,s=speciesOfDay(now);
@@ -1784,8 +1888,8 @@ function show(v){
   mmenu(false);$$('.acts.mcol.open').forEach(c=>c.classList.remove('open'));
   $$('.view').forEach(x=>{x.hidden=x.id!=='v-'+v});
   document.body.classList.toggle('onadd',v==='add');dockSize();
-  $$('#dock [data-dk]').forEach(t=>t.setAttribute('aria-current',t.dataset.dk===(v==='trash'||v==='lists'?'overview':v==='help'||v==='autofill'?'home':v)?'page':'false'));
-  $$('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===(['gaps','trash','compare','lists'].indexOf(v)>=0?'overview':v==='help'||v==='autofill'?'home':v)?'page':'false'));
+  $$('#dock [data-dk]').forEach(t=>t.setAttribute('aria-current',t.dataset.dk===(v==='trash'||v==='lists'?'overview':v==='help'||v==='autofill'||v==='admin'?'home':v)?'page':'false'));
+  $$('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===(['gaps','trash','compare','lists'].indexOf(v)>=0?'overview':v==='help'||v==='autofill'||v==='admin'?'home':v)?'page':'false'));
   if(v==='add'&&!formBuilt)buildForm();
   if(v==='add')draftOffer();
   if(v==='sheet')updateSheet();
@@ -1800,6 +1904,7 @@ function show(v){
   if(v==='lists')updateLists();
   if(v==='help')updateHelp();
   if(v==='autofill')updateAutofill();
+  if(v==='admin')updateAdmin();
   if(v==='add'&&document.body.classList.contains('ro')){location.hash='home';return}
   if(v!=='sheet'&&$('#renBox'))$('#renBox').hidden=true;
   window.scrollTo(0,0);
@@ -1808,9 +1913,9 @@ function route(){const h=(location.hash||'#home').slice(1);
   if(h.indexOf('s-')===0){setSel(h.slice(2));show('sheet');return}
   if(h.indexOf('l-')===0){openList=h.slice(2);show('lists');return}
   if(h==='lists')openList='';
- show(['home','overview','add','sheet','gaps','trash','me','compare','calendar','pick','plantings','lists','help','autofill'].indexOf(h)>=0?h:'home')}
+ show(['home','overview','add','sheet','gaps','trash','me','compare','calendar','pick','plantings','lists','help','autofill','admin'].indexOf(h)>=0?h:'home')}
 function go(v){if(location.hash==='#'+v)show(v);else location.hash=v}
-function refresh(){derive();updateOverview();if(!$('#v-home').hidden)updateHome();if(!$('#v-gaps').hidden)updateGaps();if(!$('#v-me').hidden)updateMe();if(!$('#v-compare').hidden)updateCompare();if(!$('#v-calendar').hidden)updateCalendar();if(!$('#v-pick').hidden)updatePick();if(!$('#v-plantings').hidden)updatePlantings();if(!$('#v-lists').hidden)updateLists();if(!$('#v-help').hidden)updateHelp();updateTrash();if(!$('#v-sheet').hidden)updateSheet();
+function refresh(){derive();revCompute();updateAdminBadge();if(!$('#v-admin').hidden)updateAdmin();updateOverview();if(!$('#v-home').hidden)updateHome();if(!$('#v-gaps').hidden)updateGaps();if(!$('#v-me').hidden)updateMe();if(!$('#v-compare').hidden)updateCompare();if(!$('#v-calendar').hidden)updateCalendar();if(!$('#v-pick').hidden)updatePick();if(!$('#v-plantings').hidden)updatePlantings();if(!$('#v-lists').hidden)updateLists();if(!$('#v-help').hidden)updateHelp();updateTrash();if(!$('#v-sheet').hidden)updateSheet();
   $('#spNames').innerHTML=species.map(s=>'<option value="'+esc(s.latin)+'"></option>').join('');updateHint()}
 function arm(btn,run){
   if(btn.dataset.armed){clearTimeout(btn._t);delete btn.dataset.armed;btn.textContent=btn.dataset.label;run();return}
@@ -1864,6 +1969,14 @@ document.addEventListener('click',async e=>{
   else if(act==='artie-req')artieRequest([a.dataset.latin],a);
   else if(act==='af-send')artieRequest(String($('#afNames').value||'').split(/\n/),a);
   else if(act==='af-download')afDownload();
+  else if(act==='rev-mark'&&s&&SB&&isAdmin())revCall('mark_reviewed',{p_sid:s.sid},tr('Marked as verified: ','Markerad som verifierad: ','Als geverifieerd gemarkeerd: ')+s.latin);
+  else if(act==='rev-unmark'&&s&&SB&&isAdmin())arm(a,()=>revCall('unmark_reviewed',{p_sid:s.sid},tr('Mark removed','Markering borttagen','Markering verwijderd')));
+  else if(act==='flag-resolve'&&SB&&isAdmin())revCall('resolve_flag',{p_id:Number(a.dataset.fid)},tr('Flag closed','Flagga stängd','Melding gesloten'));
+  else if(act==='flag-open'&&s){const b=$('#flagBox');b.hidden=!b.hidden;if(!b.hidden)$('#flagReason').focus()}
+  else if(act==='flag-cancel')$('#flagBox').hidden=true;
+  else if(act==='flag-send'&&s&&SB)flagSend(s);
+  else if(act==='adm-tab'){admState.tab=a.dataset.tab;admState.n=40;updateAdmin()}
+  else if(act==='adm-more'){admState.n+=40;updateAdmin()}
   else if(act==='af-sent')arm(a,afMarkSent);
   else if(act==='af-del')arm(a,()=>afDelete(a.dataset.sid));
   else if(act==='signin'){$('#auth').hidden=false;$('#authEmail').focus()}
@@ -2042,7 +2155,7 @@ async function applySession(s){
   const gated=!cfg.PUBLIC_READ&&!uid;
   $('#auth').hidden=!gated;$('#authCancel').hidden=gated;
   if(gated){
-    stopRealtime();state.entries=[];state.obs=[];state.plantings=[];state.lists=[];state.comments=[];state.trashC=[];state.trashE=[];state.trashO=[];META.clear();PROFILES.clear();MYROLE='viewer';document.body.classList.remove('admin');CANW=false;ASSETS=null;Fav.ref=null;Fav.loadLocal();loaded=true;
+    stopRealtime();state.entries=[];state.obs=[];state.plantings=[];state.lists=[];state.comments=[];state.trashC=[];state.trashE=[];state.trashO=[];META.clear();PROFILES.clear();MYROLE='viewer';revSet(null);afRows=[];$('#admBody').innerHTML='';$('#revBox').innerHTML='';document.body.classList.remove('admin');CANW=false;ASSETS=null;Fav.ref=null;Fav.loadLocal();loaded=true;
     namePrompted=false;$('#nameBox').hidden=true;document.body.classList.add('ro','nophoto');renderAcct();refresh();splashEnd();return;
   }
   CANW=false;MYROLE='viewer';

@@ -1,5 +1,24 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%231f3a2c%22/%3E%3Cpath d=%22M30 12 L42 34 H36 L47 56 H39 L50 78 H10 L21 56 H13 L24 34 H18 Z%22 fill=%22%23e9efe4%22/%3E%3Crect x=%2265%22 y=%2222%22 width=%227%22 height=%2260%22 fill=%22%23ffffff%22/%3E%3Crect x=%2265%22 y=%2240%22 width=%223.5%22 height=%222.5%22 fill=%22%231f3a2c%22/%3E%3Crect x=%2268.5%22 y=%2256%22 width=%223.5%22 height=%222.5%22 fill=%22%231f3a2c%22/%3E%3Ccircle cx=%2284%22 cy=%2274%22 r=%225%22 fill=%22%23d23a3f%22/%3E%3C/svg%3E"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style><title>Skogsträdgårdens artblad</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%231f3a2c%22/%3E%3Cpath d=%22M30 12 L42 34 H36 L47 56 H39 L50 78 H10 L21 56 H13 L24 34 H18 Z%22 fill=%22%23e9efe4%22/%3E%3Crect x=%2265%22 y=%2222%22 width=%227%22 height=%2260%22 fill=%22%23ffffff%22/%3E%3Crect x=%2265%22 y=%2240%22 width=%223.5%22 height=%222.5%22 fill=%22%231f3a2c%22/%3E%3Crect x=%2268.5%22 y=%2256%22 width=%223.5%22 height=%222.5%22 fill=%22%231f3a2c%22/%3E%3Ccircle cx=%2284%22 cy=%2274%22 r=%225%22 fill=%22%23d23a3f%22/%3E%3C/svg%3E"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}
+/* verified marks, review flags, admin dashboard, Pick a plant signs */
+.vmk{display:inline-flex;vertical-align:-2px;margin-left:2px}.vmk svg{width:15px;height:15px;display:block}.vmk circle{fill:#2f8a43}.vmk path{fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.vmk.stale circle{fill:#9aa19c}
+.revbox{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px dashed var(--line);border-radius:12px;margin:8px 0;font-size:14px}
+.revbox.ok{border-style:solid;border-color:color-mix(in srgb,#2f8a43 45%,var(--line))}.revbox.stale{border-style:solid}.revbox .acts{margin:0}
+.revflags{flex-basis:100%;display:grid;gap:6px}.flagrow{align-items:center}
+.admsec{margin:0 0 22px}.admsec h2{display:flex;align-items:center;gap:8px}
+.admcount,.htile .admbadge{display:inline-block;min-width:22px;padding:1px 7px;border-radius:99px;background:var(--falu);color:#fff;font-size:12.5px;font-weight:600;text-align:center}
+.htile .admbadge[hidden]{display:none}
+.admwarn{padding:12px 14px;border:1px solid color-mix(in srgb,var(--berry) 40%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--berry) 6%,var(--surface));margin:0 0 14px}
+.admnew{margin:0;font-weight:600;color:var(--falu)}
+.vbar{display:flex;height:16px;border-radius:99px;background:var(--soft);overflow:hidden;border:1px solid var(--line)}.vbar .ok{background:#2f8a43}.vbar .st{background:#9aa19c}
+.vleg{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:14px;margin:8px 0 0}.vleg .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--soft);border:1px solid var(--line)}.vleg .sw.ok{background:#2f8a43;border-color:#2f8a43}.vleg .sw.st{background:#9aa19c;border-color:#9aa19c}
+.admtabs{margin:0 0 10px;flex-wrap:wrap}
+#admBody .gaprow{grid-template-columns:minmax(0,15rem) minmax(0,1fr) auto}
+.pickrow{position:relative}.pickrow.hasic{padding-right:calc(14px + var(--ni)*22px)}
+.pkicons{position:absolute;top:8px;right:8px;display:flex;gap:4px}.pki svg{width:18px;height:18px;display:block}
+@media (max-width:720px){#admBody .gaprow{grid-template-columns:minmax(0,1fr)}}
+@media print{.vmk,.revbox,.pkicons{display:none!important}}
+</style><title>Skogsträdgårdens artblad</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
@@ -540,6 +559,7 @@ body.ro .dock .w-only{display:none}
     <a class="htile" href="#plantings"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span><b data-th="Planting records|Planteringar">Planting records <em>Planteringar</em></b><span data-t="Where and when each species was planted, and how it is doing.|Var och när varje art planterades, och hur den mår.">Where and when each species was planted, and how it is doing.</span></a>
     <a class="htile" href="#lists"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></span><b data-th="Shared lists|Delade listor">Shared lists <em>Delade listor</em></b><span data-t="Named lists everyone can see, for a bed, a project or a wish list.|Namngivna listor som alla kan se, för en bädd, ett projekt eller en önskelista.">Named lists everyone can see.</span></a>
     <a class="htile w-only" href="#autofill"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M10 16h4M3 13v2M21 13v2"/></svg></span><b data-th="Ask Artie to pre-fill|Be Artie förifylla|Vraag Artie om in te vullen">Ask Artie to pre-fill <em>Be Artie förifylla</em></b><span data-t="Request species for the auto-fill bot. Its values never replace yours.|Begär arter till förifyllningsboten. Dess värden ersätter aldrig dina.|Vraag soorten aan voor de invulbot. De waarden ervan vervangen nooit die van jou.">Request species for the auto-fill bot.</span></a>
+    <a class="htile a-only" href="#admin"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M8.8 12.2l2.2 2.2 4.3-4.6"/></svg></span><b data-th="Admin dashboard|Adminpanel|Beheerdersdashboard">Admin dashboard</b><span data-t="Verified species, review flags and Artie requests. Only admins see this.|Verifierade arter, granskningsflaggor och Artie-förfrågningar. Bara admin ser detta.|Geverifieerde soorten, meldingen en Artie-aanvragen. Alleen beheerders zien dit.">Verified species, review flags and Artie requests.</span><span class="pill admbadge" hidden></span></a>
   </div>
 </section>
 
@@ -677,6 +697,11 @@ body.ro .dock .w-only{display:none}
   <div id="afAdmin" class="a-only"></div>
 </section>
 
+<section id="v-admin" class="view" hidden>
+  <div class="ovhead"><div><h1 data-th="Admin dashboard|Adminpanel|Beheerdersdashboard">Admin dashboard</h1><p class="muted" style="margin:4px 0 0" data-t="Only admins see this page, the verified marks and the review flags.|Bara admin ser den här sidan, verifieringarna och granskningsflaggorna.|Alleen beheerders zien deze pagina, de verificaties en de meldingen.">Only admins see this page, the verified marks and the review flags.</p></div><a class="btn sm" href="#overview" data-t="All species|Alla arter|Alle soorten">All species</a></div>
+  <div id="admBody"></div>
+</section>
+
 <section id="v-trash" class="view" hidden>
   <div class="ovhead"><div><h1 data-th="Trash|Papperskorg">Trash <em>Papperskorg</em></h1><p class="muted" style="margin:4px 0 0" data-t="Deleted entries and observations stay here for 30 days and can be restored.|Raderade poster och observationer ligger kvar här i 30 dagar och kan återställas.">Deleted entries and observations stay here for 30 days and can be restored.</p></div><a class="btn sm" href="#overview" data-t="All species|Alla arter">All species</a></div>
   <div id="trashList" class="stack"></div>
@@ -704,6 +729,7 @@ body.ro .dock .w-only{display:none}
       <span id="sheetAddList"></span>
       <button class="btn keep" data-act="compare-add" data-t="Compare|Jämför">Compare</button>
       <button class="btn" data-act="print-one" data-t="Print|Skriv ut">Print</button>
+      <button class="btn" data-act="flag-open" data-t="Flag for review|Flagga för granskning|Melden voor controle">Flag for review</button>
       <button class="btn" data-act="export-one" data-t="Download sheet|Ladda ner blad">Download sheet</button>
       <button type="button" class="btn mmore" data-act="mmore" aria-expanded="false" data-t="⋯ More|⋯ Mer|⋯ Meer">⋯ More</button>
     </div>
@@ -714,6 +740,12 @@ body.ro .dock .w-only{display:none}
     <p id="renHint" class="hint" style="margin:0"></p>
     <div class="acts"><button type="button" class="btn primary" id="renGo" data-act="ren-go" data-t="Rename|Byt namn">Rename · Byt namn</button><button type="button" class="btn" data-act="ren-cancel" data-t="Cancel|Avbryt">Cancel · Avbryt</button></div>
   </div>
+  <div id="flagBox" class="renbox" hidden>
+    <label class="fl" for="flagReason" data-t="What should the admins look at? (optional)|Vad ska admin titta på? (valfritt)|Waar moeten de beheerders naar kijken? (optioneel)">What should the admins look at? (optional)</label>
+    <textarea id="flagReason" rows="2" maxlength="500"></textarea>
+    <p class="hint" style="margin:0" data-t="Only admins see flags. They check the species and mark it as verified.|Bara admin ser flaggor. De granskar arten och markerar den som verifierad.|Alleen beheerders zien meldingen. Zij controleren de soort en markeren hem als geverifieerd.">Only admins see flags.</p>
+    <div class="acts"><button type="button" class="btn primary" data-act="flag-send" data-t="Send flag|Skicka flagga|Melding versturen">Send flag</button><button type="button" class="btn" data-act="flag-cancel" data-t="Cancel|Avbryt|Annuleren">Cancel</button></div>
+  </div>
   <div id="cvRenBox" class="renbox a-only" hidden>
     <label class="fl" for="cvRenInput" data-t="New cultivar name|Nytt sortnamn|Nieuwe cultivarnaam">New cultivar name</label>
     <input id="cvRenInput" type="text" autocomplete="off" spellcheck="false" maxlength="80">
@@ -721,6 +753,7 @@ body.ro .dock .w-only{display:none}
     <div class="acts"><button type="button" class="btn primary" id="cvRenGo" data-act="cv-ren-go" data-t="Rename|Byt namn|Hernoemen">Rename</button><button type="button" class="btn" data-act="cv-ren-cancel" data-t="Cancel|Avbryt|Annuleren">Cancel</button></div>
   </div>
   <nav class="spjump" aria-label="On this page"><span class="fl" data-t="Jump to|Gå till|Ga naar">Jump to</span><a href="#" data-jump="cvSec" data-t="Cultivars|Sorter|Cultivars">Cultivars</a><a href="#" data-jump="hPrint" data-t="Print sheet|Utskriftsblad|Afdrukblad">Print sheet</a><a href="#" data-jump="hObs" data-t="Observations|Observationer|Waarnemingen">Observations</a><a href="#" data-jump="hPl" data-t="Plantings|Planteringar|Aanplant">Plantings</a><a href="#" data-jump="hCmt" data-t="Comments|Kommentarer|Opmerkingen">Comments</a><a href="#" data-jump="hSrc" data-t="Where to get it|Var finns den|Waar te krijgen">Where to get it</a><a href="#" data-jump="hEnt" data-t="Entries|Poster|Invoeren">Entries</a></nav>
+  <div id="revBox" class="a-only"></div>
   <div id="cvBar"></div>
   <div id="cardArea"></div>
   <section id="cvSec" class="cvsec" hidden>
@@ -799,4 +832,4 @@ body.ro .dock .w-only{display:none}
 <circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
 </svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script><script src="nl.js?v=2026-11-11b"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2026-11-11b"></script></body></html>
+<script src="config.js"></script><script src="nl.js?v=2026-11-11c"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2026-11-11c"></script></body></html>
