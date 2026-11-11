@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%231f3a2c%22/%3E%3Cpath d=%22M30 12 L42 34 H36 L47 56 H39 L50 78 H10 L21 56 H13 L24 34 H18 Z%22 fill=%22%23e9efe4%22/%3E%3Crect x=%2265%22 y=%2222%22 width=%227%22 height=%2260%22 fill=%22%23ffffff%22/%3E%3Crect x=%2265%22 y=%2240%22 width=%223.5%22 height=%222.5%22 fill=%22%231f3a2c%22/%3E%3Crect x=%2268.5%22 y=%2256%22 width=%223.5%22 height=%222.5%22 fill=%22%231f3a2c%22/%3E%3Ccircle cx=%2284%22 cy=%2274%22 r=%225%22 fill=%22%23d23a3f%22/%3E%3C/svg%3E"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style><title>Skogsträdgårdens artblad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<style>
+/* Layout: sticky top bar with three persistent views (Overview list, Add form, Sheet card + print sheet + photo log). Paper-green neutrals, forest for woody plants, amber for herbaceous. */
+:root{
+  --bg:#f1f4ef; --surface:#ffffff; --ink:#18221c; --muted:#5d695f; --line:#d5dcd3; --soft:#e7ece4;
+  --woody:#2f5d3a; --herb:#a85a0c; --accent:#2f5d3a; --on-accent:#ffffff; --warn:#a04a12; --ok:#2f6b3f; --falu:#b3262e; --berry:#b3262e; --leaf:#4f7d3a; --paper:#f7f6f2;
+  --display:'Newsreader',Georgia,'Times New Roman',serif;
+  --brand:'Familjen Grotesk','Instrument Sans',system-ui,sans-serif;
+  --ui:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101512; --surface:#181f1a; --ink:#e5ebe4; --muted:#97a49b; --line:#2b352e; --soft:#212b24;
+  --woody:#7ec28f; --herb:#e39a52; --accent:#7ec28f; --on-accent:#0f1a12; --warn:#e8a06a; --ok:#8fd09f; --falu:#f0948f; --berry:#f0948f; --leaf:#9cc77f; --paper:#1d2620; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101512; --surface:#181f1a; --ink:#e5ebe4; --muted:#97a49b; --line:#2b352e; --soft:#212b24;
+  --woody:#7ec28f; --herb:#e39a52; --accent:#7ec28f; --on-accent:#0f1a12; --warn:#e8a06a; --ok:#8fd09f; --falu:#f0948f; --berry:#f0948f; --leaf:#9cc77f; --paper:#1d2620; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 var(--ui)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--surface);z-index:30}
+h1,h2,h3{font-family:var(--display);font-weight:500;margin:0;text-wrap:balance}
+em{font-style:normal;color:var(--muted);font-weight:400}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.muted{color:var(--muted)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1040px;margin:0 auto;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{text-decoration:none;color:var(--ink);display:flex;align-items:center;gap:10px;line-height:1.05}.bm{width:40px;height:40px;flex:none}.bt{display:flex;flex-direction:column;min-width:0}
+.bn{font:700 22px/1.1 var(--brand);letter-spacing:-.01em}.bn .bs2{font-size:.82em}.bt{gap:5px}.bn b{display:inline-block;margin-left:.1em;font-size:.58em;letter-spacing:.3em;text-transform:uppercase;vertical-align:.14em;color:var(--berry)!important}
+.bs{font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.tabs{display:flex;gap:2px;background:var(--soft);padding:3px;border-radius:10px}
+.tab{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:var(--muted);padding:5px 14px;border-radius:8px;font-weight:600;font-size:13px;line-height:1.15}
+.tab small{font-size:10px;font-weight:400;opacity:.85}
+.tab[aria-current=page]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.page{max-width:1040px;margin:0 auto;padding-block:18px 90px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.banner{max-width:1040px;margin:10px auto 0;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));background:color-mix(in srgb,var(--warn) 14%,var(--surface));color:var(--ink);font-size:13px}
+.view>*+*{margin-top:14px}
+.ovhead,.bar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+h1{font-size:30px}
+h2{font-size:22px}
+h3{font-size:17px}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.btn{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 13px;min-height:40px;font-weight:600;font-size:14px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn.sm{min-height:32px;padding:4px 10px;font-size:13px}
+.btn.danger{color:var(--warn)}
+.btn[disabled]{opacity:.55;cursor:default}
+.tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,10.5rem);gap:8px}
+.tools select{width:100%}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
+textarea{resize:vertical}
+select{width:auto}
+.flt{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 14px}
+.flt>summary,.sec>summary{cursor:pointer;padding:12px 0;font-weight:600;list-style:none;display:flex;align-items:center;gap:8px}
+.flt>summary::-webkit-details-marker,.sec>summary::-webkit-details-marker{display:none}
+.flt>summary::before,.sec>summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+.flt[open]>summary::before,.sec[open]>summary::before{transform:rotate(45deg)}
+.badge{background:var(--accent);color:var(--on-accent);border-radius:99px;font-size:11px;padding:1px 8px;font-weight:700}
+.fgrp{padding:2px 0 12px}
+.fgrp>.fl{margin-bottom:6px}
+.fl{font-size:12px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);display:block}
+.fl b{color:var(--ink);text-transform:none;letter-spacing:0}
+.fl em{text-transform:none;letter-spacing:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{appearance:none;display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:5px 12px 5px 9px;border:1px solid var(--line);background:var(--surface);border-radius:99px;font-size:14px;font-weight:500;cursor:pointer;text-align:left}
+.chip i{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--muted);flex:none}
+.chip em{margin-left:3px}
+.chip.sm{min-height:32px;font-size:13px;padding:3px 10px 3px 8px}
+.chip[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,var(--surface))}
+.chip[aria-pressed=true] i{background:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 2.5px var(--surface)}
+.splist{display:grid;gap:8px}
+.sp{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;text-align:left;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;cursor:pointer}
+.sp:hover{border-color:var(--accent)}
+.ph{width:64px;height:64px;border-radius:9px;overflow:hidden;background:color-mix(in srgb,var(--c,var(--woody)) 16%,var(--surface));color:var(--c,var(--woody));display:flex;align-items:center;justify-content:center;font:500 28px var(--display);flex:none}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.lat{font:italic 500 19px/1.15 var(--display)}
+.nm{font-size:13px;color:var(--muted)}
+.meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12.5px;color:var(--muted);margin-top:4px;align-items:center}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:1px 9px;font-size:12.5px;line-height:1.5;background:var(--surface)}
+.pill.t{border-color:var(--c);color:var(--c);font-weight:600}
+.pill.ex{border-style:dashed;color:var(--muted)}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.side{text-align:right;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.dots{display:inline-flex;gap:3px}
+.dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--muted)}
+.dots i.on{background:var(--accent);border-color:var(--accent)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:28px 20px;text-align:center}
+.empty p{max-width:46ch;margin:8px auto 14px;color:var(--muted)}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 14px}
+.sec>summary{font:500 18px var(--display)}
+.sec>summary .n{margin-left:auto;font:600 12px var(--ui);color:var(--accent)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px;padding:2px 0 16px}
+.fields .fg,.fields .wide{grid-column:1/-1}
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fg>.fl{margin-bottom:6px}
+.idbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.hint{font-size:13px;color:var(--muted);margin-top:4px}
+.hint.ok{color:var(--ok)}
+.lnk{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:inherit}
+.scale{display:flex;gap:6px}
+.sc{appearance:none;width:44px;height:40px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-weight:600;cursor:pointer}
+.sc[aria-pressed=true]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.scap{display:flex;justify-content:space-between;max-width:260px;font-size:12px;color:var(--muted);margin-top:3px}
+.months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px}
+.mc{appearance:none;height:38px;border:1px solid var(--line);background:var(--surface);border-radius:6px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;padding:0}
+.mc[aria-pressed=true]{background:var(--c,var(--accent));border-color:var(--c,var(--accent));color:#fff}
+
+.edit{background:color-mix(in srgb,var(--herb) 14%,var(--surface));border:1px solid var(--herb);border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.chead{display:grid;grid-template-columns:104px minmax(0,1fr);gap:14px;padding:14px;border-bottom:3px solid var(--c)}
+.chead .ph{width:104px;height:104px;font-size:44px}
+.chead .lat{font-size:26px}
+.cbody{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:0}
+.blk{padding:12px 14px;border-top:1px solid var(--line);min-width:0}
+.blk h3{font-size:16px;margin-bottom:6px;color:var(--c)}
+.blk h3 em{font-family:var(--ui);font-size:12px}
+.kv{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px;padding:3px 0;font-size:14px}
+.kv .k{font-size:12px;color:var(--muted);padding-top:2px}
+.kv .v{min-width:0;overflow-wrap:anywhere}
+.cal{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px;margin:2px 0 6px}
+.cal span{height:18px;border-radius:3px;background:var(--soft);font-size:9px;text-align:center;line-height:18px;color:var(--muted)}
+.cal span.on{background:var(--c);color:#fff}
+.note{margin:0;padding:10px 14px;background:color-mix(in srgb,var(--warn) 10%,var(--surface));border-top:1px solid var(--line);font-size:13px}
+.missing{padding:10px 14px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line)}
+.seg{display:inline-flex;background:var(--soft);padding:3px;border-radius:9px;gap:2px}
+.seg button{appearance:none;border:0;background:transparent;padding:5px 11px;border-radius:7px;font-weight:600;font-size:13px;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.sheetwrap{overflow-x:auto;background:var(--soft);border-radius:12px;padding:12px}
+.sheetfit{transform-origin:top left}
+.row2{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.obsform{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px}
+.obsform .wide{grid-column:1/-1}
+.obs{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;align-items:start}
+.obs .ph{width:72px;height:72px;font-size:12px;cursor:zoom-in}
+.obs .d{font-weight:600;font-size:13px}
+.obs p{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.ent{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;font-size:13.5px}
+.stack{display:grid;gap:8px}
+#lb{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.86);display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+#lb img{max-width:100%;max-height:100%;border-radius:8px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:90vw}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.err{background:var(--warn);color:#fff}
+/* Home */
+.hero{display:grid;gap:14px;padding:22px;background:var(--surface);border:1px solid var(--line);border-radius:16px}
+.hero h1{font-size:34px;line-height:1.1}
+.hsearch{position:relative}
+.hsearch svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--muted);pointer-events:none}
+.hsearch input{width:100%;min-height:52px;padding:12px 14px 12px 44px;font:inherit;font-size:17px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px}
+.hsearch input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.hres{display:grid;gap:4px}
+.hres button{display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;min-height:44px}
+.hres button:hover{border-color:var(--accent)}
+.hres .lat{font-family:var(--display);font-style:italic;font-size:17px}
+.hres small{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hres .more{color:var(--accent);font-weight:600}
+.eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--falu)}
+.today{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:0;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.today>div{padding:18px 20px;display:grid;gap:12px;align-content:start;min-width:0}
+.today>div+div{border-left:1px solid var(--line)}
+.sotd{display:grid;grid-template-columns:84px minmax(0,1fr);gap:14px;align-items:center;width:100%;text-align:left;padding:0;border:0;background:none;cursor:pointer}
+.sotd .ph{width:84px;height:84px;font-size:36px}
+.sotd .lat{font:italic 500 21px/1.15 var(--display)}
+.sotd:hover .lat{color:var(--accent)}
+.sotd p{margin:4px 0 0;font-size:13.5px;color:var(--muted)}
+.trow{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:10px;align-items:start}
+.trow>span{font-weight:600;font-size:14px;padding-top:5px}
+.trow>span em{display:block;font-size:12px}
+.tchips{display:flex;flex-wrap:wrap;gap:6px}
+.tchip{border:1px solid var(--line);background:var(--bg);border-radius:99px;padding:5px 11px;font-size:13.5px;font-style:italic;cursor:pointer;min-height:32px}
+.tchip:hover{border-color:var(--accent);color:var(--accent)}
+.tnone{font-size:13.5px;color:var(--muted);padding-top:5px}
+.hsec{font-size:22px;margin-top:6px}
+.hgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.htile{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 14px;align-items:start;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;text-decoration:none;color:var(--ink);min-height:96px}
+a.htile:hover{border-color:var(--accent)}
+.htile .hi{grid-row:span 3;width:44px;height:44px;border-radius:11px;background:color-mix(in srgb,var(--accent) 13%,var(--surface));color:var(--accent);display:flex;align-items:center;justify-content:center}
+.htile .hi svg{width:24px;height:24px}
+.htile b{font-size:16.5px}
+.htile b em{font-weight:400;font-size:14px}
+.htile span{font-size:13.5px;color:var(--muted)}
+.htile.soon{background:transparent;border-style:dashed}
+.htile.soon .hi{background:var(--soft);color:var(--muted)}
+.htile .pill{justify-self:start;margin-top:4px;color:var(--falu);border-color:color-mix(in srgb,var(--falu) 35%,var(--line))}
+#v-home{display:grid;gap:16px}
+#v-home[hidden]{display:none!important}
+@media (max-width:720px){.today{grid-template-columns:minmax(0,1fr)}.today>div+div{border-left:0;border-top:1px solid var(--line)}.hgrid{grid-template-columns:minmax(0,1fr)}.hero h1{font-size:28px}.trow{grid-template-columns:minmax(0,1fr);gap:4px}}
+/* Batch A */
+.ph .phi{width:58%;height:58%}
+.cline{display:inline-flex;align-items:center;gap:6px}
+.cbar{display:inline-block;width:52px;height:5px;border-radius:9px;background:var(--soft);overflow:hidden}
+.cbar.wide{width:110px}
+.cbar i{display:block;height:100%;background:var(--accent);border-radius:9px}
+.cpct{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:2.6em}
+.gaprow{display:grid;grid-template-columns:minmax(0,15rem) minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.gapmain{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;align-items:center;text-align:left;background:none;border:0;padding:0;cursor:pointer;min-width:0}
+.gapmain .ph{width:52px;height:52px;font-size:22px}
+.gapmain .lat,.gapmain .nm{display:block}
+.gapmain:hover .lat{color:var(--accent)}
+.gapmiss{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+.pill.miss{color:var(--berry);border-color:color-mix(in srgb,var(--berry) 30%,var(--line))}
+#gapChips{margin:2px 0}#gapSel{display:none;font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);min-height:44px;width:100%}a.btn{text-decoration:none;color:var(--ink);display:inline-flex;align-items:center}
+.gn{font-weight:700;margin-left:2px}
+.xlinks{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 16px;border-top:1px solid var(--line);font-size:13.5px}
+.xlinks span{color:var(--muted)}
+.xlinks a{color:var(--accent);font-weight:600}
+.nearbox,.renbox{display:grid;gap:10px;padding:14px 16px;border:1px solid color-mix(in srgb,var(--berry) 40%,var(--line));background:color-mix(in srgb,var(--berry) 6%,var(--surface));border-radius:12px;margin:10px 0}
+.nearbox p{margin:0}
+.renbox{border-color:var(--line);background:var(--surface)}
+.renbox input{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);min-height:42px}
+.hint.warn{color:var(--berry)}
+@media (max-width:720px){#gapChips{display:none}#gapSel{display:block}.gaprow{grid-template-columns:minmax(0,1fr)}.gaprow .btn{justify-self:start}}
+/* plantings and lists */
+.pill.pst.alive{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,var(--line))}.pill.pst.struggling{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,var(--line))}.pill.pst.dead{color:var(--berry);border-color:color-mix(in srgb,var(--berry) 40%,var(--line))}.pill.pst.removed,.pill.pst.unknown{color:var(--muted)}
+.plrow .acts select,.addlist,#plPlaceSel{font:inherit;font-size:13.5px;padding:6px 8px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);min-height:36px;max-width:100%}
+.plform{grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))}
+.plform select,.plform input,.plform textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);min-height:40px;width:100%}
+.listflt{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.listhead{display:grid;gap:8px;max-width:560px}.listhead .lname{font:500 28px var(--display);padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+.listhead textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+#listSp .gaprow{grid-template-columns:minmax(0,1fr) auto auto}
+#v-plantings .stack .ent{align-items:flex-start}
+/* compare selection */
+.spw.sel{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:stretch}
+.cmpchk{display:flex;align-items:center;justify-content:center;cursor:pointer}
+.cmpchk input{width:22px;height:22px;accent-color:var(--accent);cursor:pointer}
+.pkchk{flex-direction:column;gap:2px;font-size:11px;font-weight:600;color:var(--accent);align-self:center;padding:4px 2px;border-radius:8px}
+.pkchk:hover{background:var(--soft)}
+.pkchk span{line-height:1}
+.cmphint{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--muted);margin:10px 0 0}
+.cmpbox{flex:none;width:16px;height:16px;border:2px solid var(--accent);border-radius:4px}
+.cmpbar{position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border:1px solid var(--accent);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.08)}
+[data-act=cmp-mode][aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+.cmpacts{display:flex;align-items:center;gap:4px}.cmpacts .star{position:static}
+/* planning */
+.plan{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}.plan[hidden]{display:none!important}
+.tbl{overflow-x:auto;max-width:100%}
+.cmpt{border-collapse:separate;border-spacing:0;min-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;font-size:14px}
+.cmpt th,.cmpt td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;min-width:9rem}
+.cmpt thead th{vertical-align:bottom}.cmpt tbody th{color:var(--muted);font-weight:600;font-size:13px;min-width:7rem;white-space:nowrap}
+.cmpt tr.diff th{color:var(--berry)}.cmpt tr:last-child>*{border-bottom:0}
+.cmph{display:grid;gap:4px;justify-items:start}.cmph .ph{width:52px;height:52px;font-size:22px}.cmph .lnk{padding:0;text-align:left}
+.cmo{display:grid;grid-template-columns:repeat(12,9px);gap:2px}.cmo i{height:12px;border-radius:2px;background:var(--soft)}.cmo i.on{background:var(--accent)}
+.calg{display:grid;grid-template-columns:minmax(9rem,14rem) repeat(12,minmax(2.2rem,1fr));gap:2px;min-width:44rem;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px}
+.cmh{text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding:4px 0}.cmh.now{color:var(--berry)}
+.cname{text-align:left;background:none;border:0;padding:4px 6px;font-size:13.5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}.cname:hover{color:var(--accent)}
+.ccell{display:flex;flex-direction:column;gap:2px;justify-content:center;padding:2px;border-radius:4px;background:color-mix(in srgb,var(--soft) 60%,transparent);min-height:26px}.ccell.now{outline:1.5px solid color-mix(in srgb,var(--berry) 55%,transparent)}
+.ca{display:block;height:5px;border-radius:3px}.ca.cal1{background:#6b8f3a}.ca.cal2{background:#d98bb0}.ca.cal3{background:#c06a1f}.ca.cal4{background:#7d8a93}
+#calActs .chip i.ca{width:16px;height:8px;border:0!important;border-radius:3px;box-shadow:none!important}#calActs .chip i.ca.cal1{background:#6b8f3a!important}#calActs .chip i.ca.cal2{background:#d98bb0!important}#calActs .chip i.ca.cal3{background:#c06a1f!important}#calActs .chip i.ca.cal4{background:#7d8a93!important}#calActs .chip[aria-pressed=false]{opacity:.55}
+.plan .ovhead .acts{flex-wrap:wrap;min-width:0;max-width:100%}.plan .ovhead>div{min-width:0;max-width:100%}#cmpPick{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);min-height:40px;max-width:100%;min-width:0;flex:1 1 12rem}.cmpt tbody th{position:sticky;left:0;background:var(--surface);z-index:1}.cmpt thead th:first-child{position:sticky;left:0;background:var(--surface);z-index:1}
+.pickform{display:grid;gap:10px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.pickform select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);min-height:40px;width:8rem}
+.pickrow{display:grid;grid-template-columns:58px minmax(0,15rem) minmax(0,1fr);gap:12px;align-items:start;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.pks{display:flex;flex-wrap:wrap;gap:4px}.pk{font-size:12.5px;border-radius:99px;padding:2px 9px;border:1px solid var(--line)}
+.pk.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,var(--line))}.pk.no{color:var(--berry);border-color:color-mix(in srgb,var(--berry) 40%,var(--line))}.pk.edge{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,var(--line))}.pk.unk{color:var(--muted);border-style:dashed}.pk.fav{color:var(--warn)}
+.tips{margin:6px 0 0;padding-left:18px;font-size:13.5px}
+@media (max-width:720px){.pickrow{grid-template-columns:58px minmax(0,1fr)}.pickrow>div:last-child{grid-column:2}}
+/* pick a plant: advanced filters */
+.pkadv{border-top:1px solid var(--line);padding-top:4px}.pkadv>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:8px 0;font-weight:600}
+.pkadv>summary::-webkit-details-marker{display:none}.pkadv>summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}.pkadv[open]>summary::before{transform:rotate(45deg)}
+.pkadv .advb{display:grid;gap:4px;padding:4px 0 6px}.pkadv .fgrp{padding:2px 0 8px}.pkadv .hint{margin:0 0 6px}
+.pkadv select{width:auto!important;min-width:12rem}.pkadv .chip.ex[aria-pressed=true]{border-color:var(--berry);background:color-mix(in srgb,var(--berry) 10%,var(--surface))}.pkadv .chip.ex[aria-pressed=true] i{background:var(--berry);border-color:var(--berry)}
+.advacts{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.scnone{margin-left:6px}.pickform>*{min-width:0}
+.hardtab{font-size:14px}.hardtab td,.hardtab th{min-width:6rem;white-space:nowrap}.hardtab tbody th{color:var(--ink)}
+.pkzone{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 12px}.pkzone label{display:grid;gap:6px}.pkor{color:var(--muted);font-size:13px;padding-bottom:10px}
+.pkjump{display:none}
+@media (max-width:1099px){.pkjump:not([hidden]){display:block;position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:6;justify-self:center;box-shadow:0 4px 14px rgba(0,0,0,.18)}}
+@media (min-width:1100px){
+  #v-pick:not([hidden]){grid-template-columns:minmax(330px,390px) minmax(0,1fr);align-items:start;column-gap:18px}
+  #v-pick>.ovhead,#v-pick>.cmpbar{grid-column:1/-1}
+  #v-pick>.pickform{grid-column:1;position:sticky;top:calc(var(--hh,62px) + 64px);max-height:calc(100vh - var(--hh,62px) - 84px);overflow:auto}
+  #v-pick>.pickres{grid-column:2;min-width:0}
+  #v-pick .pickrow{grid-template-columns:58px minmax(0,1fr)}#v-pick .pickrow>div:last-child{grid-column:2}
+  #v-pick .cvsub{padding-left:10px}
+}
+.cvmatch b{color:var(--accent)}
+.spjump{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:13.5px}.spjump .fl{margin:0}.spjump a{color:var(--accent)}
+#v-sheet h2[id],#cvSec{scroll-margin-top:calc(var(--hh,62px) + 70px)}
+/* in-app manual */
+.helplink{display:inline-flex;align-items:center;gap:8px;justify-self:start;color:var(--accent);font-weight:600;text-decoration:none;font-size:15px;padding:4px 0}.helplink:hover span{text-decoration:underline}.helplink svg{width:22px;height:22px}
+.htoc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}.htoc p{margin:0 0 6px;font-weight:600}
+.htoc ol{margin:0;padding-left:20px;columns:2 16rem;column-gap:24px}.htoc li{margin:2px 0;break-inside:avoid}.htoc button{background:none;border:0;padding:2px 0;color:var(--accent);cursor:pointer;text-align:left;font-size:14px}.htoc button:hover{text-decoration:underline}
+.man{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 20px 18px;line-height:1.55;max-width:860px}
+.man h3{font-size:21px;margin:22px 0 6px;scroll-margin-top:calc(var(--hh,60px) + 70px)}.man p{margin:8px 0}.man ul,.man ol{padding-left:22px;margin:6px 0}.man li{margin:4px 0}.man li>p{margin:0}
+.man em{color:inherit;font-style:italic}.man strong{font-weight:650}
+/* cultivars */
+.sponly{display:none;margin-left:8px;font:500 12px var(--ui);color:var(--warn)}#form.hascv .sponly{display:inline}
+.cvbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.cvbar .fl{margin:0 2px 0 0}
+.cvn{font-style:normal;font-weight:600;white-space:nowrap}
+.pill.cvp{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));color:var(--accent)}
+.card .kv.inh .v,.card .pills.inh .pill{color:var(--muted)}.card .kv.inh .v{opacity:.75;font-style:italic}.card .pills.inh .pill{border-style:dashed}
+.card .cal.inh span{opacity:.55}
+.cvnote{font-size:13.5px;color:var(--muted);margin:0;padding:8px 14px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
+.cvsec{display:grid;gap:8px;grid-template-columns:minmax(0,1fr);min-width:0}.cvsec>*{min-width:0}.cvsec[hidden]{display:none}.cvsec h2{margin:0}
+.cvt td,.cvt th{min-width:7.5rem}.cvt td.inh{color:var(--muted);font-size:13px}.cvt td.inh .cmo i.on{opacity:.45}
+.cvt td.own{font-weight:600}.cvt td.dif{background:color-mix(in srgb,var(--accent) 11%,var(--surface))}
+.cvt tbody th{position:sticky;left:0;z-index:1;background:var(--surface);color:var(--ink)}
+.cvt tr.sel th{box-shadow:inset 3px 0 0 var(--accent)}
+[data-cvnew]+input{margin-top:6px}
+.pkgrp{display:grid;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.pkgrp>.pickrow{border:0;border-radius:0;background:none}.pkgrp>.pickrow>span:first-child{display:none}.pkgrp>.pickrow>.gapmain{grid-column:1/3}
+.pksum{display:block;font-size:13px;color:var(--muted);margin-top:3px}
+.cvsub{display:grid;gap:5px;padding:0 10px 10px 80px}
+.cvrow{display:grid;grid-template-columns:auto minmax(0,14rem) minmax(0,1fr);gap:4px 10px;align-items:start;padding:6px 8px;border-left:3px solid var(--line);background:color-mix(in srgb,var(--soft) 50%,transparent);border-radius:0 8px 8px 0}
+.cvrow.ok{border-left-color:var(--ok)}.cvrow.close{border-left-color:var(--warn)}.cvrow.no{border-left-color:var(--berry)}
+.cvrow .cvname{background:none;border:0;padding:2px 0;text-align:left;cursor:pointer;color:var(--ink);font-size:14px;min-width:0}.cvrow .cvname:hover{color:var(--accent)}
+.vd{display:inline-block;width:1.2em;font-weight:700}.vd.close{width:.8em;height:.8em;margin:0 .4em 0 .1em;border-radius:50%;border:2px solid var(--warn);background:linear-gradient(90deg,var(--warn) 50%,transparent 50%);vertical-align:-1px}.cvt td.dif .cmo i:not(.on){background:var(--surface)}.vd.ok{color:var(--ok)}.vd.close{color:var(--warn)}.vd.no{color:var(--berry)}
+.cvrow .cmpchk input{width:18px;height:18px}
+.cvno{font-size:13px;color:var(--muted);padding:2px 8px 0 11px}
+.cname.cvsubn{padding-left:20px;font-size:12.5px;color:var(--muted)}
+.pkopt{display:flex;align-items:center;gap:8px;font-size:14px}.pkopt input{width:18px;height:18px;accent-color:var(--accent)}
+@media (max-width:720px){.pkgrp>.pickrow>div:last-child{grid-column:1/-1}.cvsub{padding-left:10px}.cvrow{grid-template-columns:auto minmax(0,1fr)}.cvrow>div:last-child{grid-column:1/-1}}
+/* contributions, sources, view-only */
+#srcList a{color:var(--accent);font-weight:600}
+.ro .tab[data-v=add]{display:none}
+.rank{font-size:17px;margin:0}
+.meName{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:2px}
+.stat b{font:600 28px/1 var(--brand);color:var(--accent);font-variant-numeric:tabular-nums}.stat span{font-size:13px;color:var(--muted)}
+.ladders{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:10px}
+.lad{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:8px;min-width:0}
+.ladh{display:flex;align-items:center;gap:8px}.lic{width:20px;height:20px;color:var(--accent);flex:none}.ladt{flex:1;display:grid;line-height:1.2;min-width:0}.ladt b{font-size:15px}.ladt small{font-size:12px;color:var(--muted)}.ladn{font:600 20px/1 var(--brand);color:var(--accent);font-variant-numeric:tabular-nums}
+.ladrow{display:grid;grid-template-columns:auto auto auto minmax(0,1fr);align-items:center;gap:6px 8px}
+.sh1{display:grid;justify-items:center;gap:2px;text-align:center;min-width:62px}.sh1 small{font-size:12px;color:var(--muted);line-height:1.2}.sh1 b{color:var(--ink);font-size:12.5px}
+svg.shd{width:46px;height:54px}.shd .sh-bg{fill:var(--soft)}.shd .sh-rim{stroke:var(--line);stroke-width:2;stroke-dasharray:4 3}.shd .sh-ic{stroke:var(--muted)}
+.shd.on .sh-bg{fill:var(--sc)}.shd.on .sh-rim{stroke:var(--sr);stroke-width:2.6;stroke-dasharray:none}.shd.on .sh-ic{stroke:#fff}
+.ladarr{color:var(--muted);font-size:18px}.ladp{display:grid;gap:3px;min-width:0}.ladp .prog{width:100%}.ladp small{font-size:12px;color:var(--muted)}
+.pips{display:flex;gap:4px}.pips i{width:20px;height:5px;border-radius:3px;background:var(--soft)}
+.grands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:560px}
+.grand{display:grid;justify-items:center;gap:2px;text-align:center;padding:12px 8px;background:var(--surface);border:1px solid var(--line);border-radius:14px}.grand svg.shd{width:56px;height:66px}.grand b{font-size:14px}.grand small{font-size:12px;color:var(--muted)}.grand:not(.on) b{color:var(--muted)}
+.got{color:var(--berry)!important;font-weight:700}.gtodo{margin:4px 0 0;padding-left:20px;font-size:14px}
+@media (max-width:420px){.ladrow{grid-template-columns:auto auto auto}.ladp{grid-column:1/-1}}
+.prog{width:70%;height:5px;border-radius:9px;background:var(--soft);overflow:hidden;margin-top:2px}.prog i{display:block;height:100%;background:var(--accent)}
+.board{display:grid;gap:4px;max-width:560px}
+.brow{display:grid;grid-template-columns:2em 7.5em minmax(0,1fr) 3.5em;gap:8px;align-items:center;padding:6px 10px;border-radius:9px;background:var(--surface);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.brow.me{border-color:var(--accent);font-weight:600}
+.bb{height:8px;background:var(--soft);border-radius:9px;overflow:hidden}.bb i{display:block;height:100%;background:var(--accent)}
+.bp{text-align:right}.bn2{color:var(--muted)}
+#v-me{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}#v-me[hidden]{display:none!important}
+/* Batch C */
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;min-height:40px;cursor:pointer;white-space:nowrap}.chk input{width:18px;height:18px;accent-color:var(--accent)}
+.ro-note{display:none;padding:12px 14px;border:1px solid color-mix(in srgb,var(--berry) 40%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--berry) 6%,var(--surface));margin:0 0 10px}
+.ro .ro-note{display:block}
+.row2 .acts{flex-wrap:wrap}
+/* Batch B */
+body:not(.admin) .a-only{display:none!important}
+.stamp{margin:0;padding:8px 16px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.stamp b{color:var(--ink);font-weight:600}
+.namebox{max-width:1040px;margin:12px auto 0;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+.namein{display:grid;gap:8px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:460px}
+.namein input{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);min-height:42px}
+.who.lnk{background:none;border:0;padding:0;cursor:pointer;color:var(--ink);font:inherit;font-size:12px;text-decoration:underline dotted;text-underline-offset:3px}
+.trow2{align-items:center}
+.ro .w-only,.nophoto .ph-only{display:none!important}
+.srct{display:inline-block;margin-left:6px;padding:0 6px;border:1px dashed var(--line,#bbb);border-radius:999px;font:500 11px/18px var(--ui,system-ui);color:var(--muted,#666);vertical-align:middle;white-space:nowrap}
+.pill.srcp{border-style:dashed}.pill.srcp a{color:inherit}
+.srcnote{border-left-style:dashed}details.srcnote summary{cursor:pointer;font-weight:600;list-style-position:inside}details.srcnote ul{margin:6px 0 4px;padding-left:20px}details.srcnote li{margin:2px 0}
+.artie{margin:10px 0 0}.artie-hint{margin:0 0 10px;font-size:14px}.artie-hint a{color:var(--accent)}
+.afintro{max-width:72ch}.afform{max-width:640px;margin-top:12px}.afform textarea{width:100%}
+.afres ul{margin:10px 0 0;padding-left:20px}.afres .af-added{color:var(--ok,#2e6b3a)}.afres .af-invalid,.afres .af-error{color:var(--falu)}
+#afAdmin{margin-top:22px}#afAdmin .stack{margin-top:10px}
+@media (max-width:520px){.chead{grid-template-columns:76px minmax(0,1fr)}.chead .ph{width:76px;height:76px;font-size:32px}.sp{grid-template-columns:52px minmax(0,1fr)}.sp .ph{width:52px;height:52px;font-size:22px}.sp .side{grid-column:2;flex-direction:row;align-items:center;justify-content:flex-start}.kv{grid-template-columns:80px minmax(0,1fr)}.obs{grid-template-columns:60px minmax(0,1fr)}.obs .ph{width:60px;height:60px}.obs>.w-only{grid-column:2}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.spw{position:relative}
+.spw .sp{padding-right:56px}
+.star{appearance:none;position:absolute;top:6px;right:6px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;border-radius:10px;color:var(--muted);cursor:pointer;z-index:1;padding:0}
+.star:hover{color:var(--herb);background:var(--soft)}
+.star svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
+.star[aria-pressed=true]{color:var(--herb)}
+.star[aria-pressed=true] svg{fill:currentColor}
+.card{position:relative}
+.chead>div:last-child{padding-right:44px}
+.cmtform{display:grid;gap:6px;margin:0 0 10px}
+.cmtform textarea{width:100%;box-sizing:border-box}
+.cmt{padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.cmt .ch{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;justify-content:space-between;font-size:13px;color:var(--muted)}
+.cmt .ch b{color:var(--ink)}
+.cmt p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.cmt textarea{width:100%;box-sizing:border-box;margin-top:6px}
+.mbar{display:none;gap:6px;margin-left:auto;flex:none;align-items:center}
+.mb{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--soft);display:flex;align-items:center;justify-content:center;font:600 13px var(--ui);color:var(--ink);text-decoration:none;cursor:pointer;padding:0}
+.mb svg{width:20px;height:20px}
+.mb.add{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.mb[aria-expanded=true]{outline:2px solid var(--accent);outline-offset:1px}
+.mmore{display:none}
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:center;gap:2px;padding:4px max(6px,env(safe-area-inset-right,0px)) calc(4px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-top:1px solid var(--line)}
+.dock{flex-direction:column;align-items:stretch}
+.dkrow{display:flex;justify-content:center;align-items:stretch;gap:2px}
+@media (max-width:520px){.dkrow{gap:0}}
+.dk-form{display:none;flex:none;margin:-5px 0 -4px 6px}
+body.onadd .dk-form{display:flex}
+.dk-form .notch{display:flex;gap:6px;align-items:center;padding:4px 10px 8px;background:var(--bg);border:1px solid var(--line);border-top:0;border-radius:0 0 16px 16px;box-shadow:inset 0 -3px 6px -4px rgba(0,0,0,.12)}
+.dk-form .btn{min-height:40px;padding-left:14px;padding-right:14px}
+.dk-form #saveMsg{display:none}
+.dock a{flex:0 1 96px;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px 3px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:10.5px;line-height:1.1}
+.dock a svg{width:22px;height:22px}
+.dock a svg.dlogo{border-radius:6px}
+.dock a span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dock a:hover{color:var(--ink);background:var(--soft)}
+.dock a[aria-current=page]{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.dock a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+body{padding-bottom:var(--dockh,64px)}
+body.ro .dock .w-only{display:none}
+.cmpbar{bottom:calc(var(--dockh,64px) + 8px)!important}
+.toast{bottom:calc(var(--dockh,64px) + 12px)!important}
+@media (max-width:520px){.dock{gap:0}.dock a{font-size:10px}}
+.dk-form .bi{display:none;width:20px;height:20px}
+/* Netlify puts a "Powered by Netlify" badge in the bottom-right corner that the page cannot move.
+   Wide screens: keep that corner free. Phones and tablets: the shortcuts become a rail on the left. */
+@media (min-width:901px){
+  /* Laptops and desktops: the shortcuts sit in a strip under the header, as on phones; Save and Clear at the bottom left on the Add page. */
+  .dock{position:sticky!important;top:calc(env(safe-area-inset-top,0px) + var(--hh,62px) - 1px)!important;bottom:auto!important;left:auto!important;right:auto!important;z-index:19;flex-direction:row!important;padding:2px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))!important;border-top:0!important;border-bottom:1px solid var(--line);background:var(--surface)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  .dkrow{flex:1 1 auto;max-width:1040px;margin:0 auto;gap:4px!important;justify-content:space-between}
+  .dock a{flex:1 1 0!important;max-width:150px;padding:6px 4px!important;border-radius:0!important;border-bottom:2.5px solid transparent;font-size:12px!important}
+  .dock a span{max-width:none!important;overflow:visible!important}
+  .dock a[aria-current=page]{background:transparent!important;color:var(--accent);border-bottom-color:var(--accent)}
+  .dock a:hover{background:transparent!important;color:var(--accent)}
+  .dk-form{position:fixed;left:0;bottom:0;z-index:41;margin:0!important}
+  .dk-form .notch{flex-direction:row;gap:8px!important;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))!important;background:var(--bg);border:1px solid var(--line);border-left:0;border-bottom:0;border-radius:0 18px 0 0;box-shadow:0 -4px 14px rgba(0,0,0,.08)}
+  .dk-form .btn{display:inline-flex!important;align-items:center;gap:6px;min-height:44px!important;padding:0 18px!important;font-size:15px}
+  .dk-form .bi{display:block;width:18px;height:18px}
+  body{padding-bottom:24px!important}
+  body.onadd{padding-bottom:90px!important}
+  .cmpbar{bottom:calc(env(safe-area-inset-bottom,0px) + 16px)!important}
+  .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 24px)!important}
+  body.onadd .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 90px)!important}
+}
+@media (max-width:900px){
+  /* Phones and tablets: one-line header (+ new species, language, account), the shortcuts as a strip under it,
+     Save and Clear in a cut-out at the bottom left on the Add page. The bottom-right corner stays free for Netlify's badge. */
+  .top-in{position:relative;flex-wrap:nowrap!important;gap:8px!important;padding-top:8px!important;padding-bottom:8px!important}
+  .top .bs{display:none!important}.top .bm{width:34px!important;height:34px!important}.top .bn{font-size:18px!important}
+  .top .brand{min-width:0;flex:0 1 auto}
+  .top .tabs{display:none!important}
+  .mbar{display:flex!important}
+  .hdr-r{display:none!important}
+  body.mmenu .hdr-r{display:flex!important;position:absolute;top:calc(100% + 6px);right:max(12px,env(safe-area-inset-right,0px));z-index:30;flex-direction:column;align-items:stretch;gap:10px;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:min(260px,calc(100vw - 32px))}
+  body.mmenu .hdr-r .acct{flex-wrap:wrap}
+  .dock{position:sticky!important;top:calc(env(safe-area-inset-top,0px) + var(--hh,54px) - 1px)!important;bottom:auto!important;left:auto!important;right:auto!important;z-index:19;flex-direction:row!important;padding:2px max(4px,env(safe-area-inset-right,0px)) 0 max(4px,env(safe-area-inset-left,0px))!important;border-top:0!important;border-bottom:1px solid var(--line);background:var(--surface)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  .dkrow{flex:1 1 auto;width:100%;flex-direction:row;gap:0!important;justify-content:space-around}
+  .dock a span{max-width:none!important;overflow:visible!important}
+  .dock a{flex:1 1 0!important;padding:6px 2px 6px!important;margin:0!important;border-radius:0!important;border-bottom:2.5px solid transparent;font-size:10.5px!important}
+  .dock a span{display:block!important}
+  .dock a svg{width:21px!important;height:21px!important}
+  .dock a[aria-current=page]{background:transparent!important;color:var(--accent);border-bottom-color:var(--accent)}
+  .dk-form{position:fixed;left:0;bottom:0;z-index:41;margin:0!important}
+  .dk-form .notch{flex-direction:row;gap:8px!important;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))!important;background:var(--bg);border:1px solid var(--line);border-left:0;border-bottom:0;border-radius:0 18px 0 0;box-shadow:0 -4px 14px rgba(0,0,0,.08)}
+  .dk-form .btn{display:inline-flex!important;align-items:center;gap:6px;min-height:46px!important;padding:0 16px!important;font-size:15px}
+  .dk-form .bi{display:block;width:18px;height:18px}
+  body{padding-bottom:16px!important}
+  body.onadd{padding-bottom:84px!important}
+  .cmpbar{bottom:calc(env(safe-area-inset-bottom,0px) + 72px)!important}
+  .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 80px)!important}
+  /* fewer buttons on top of the species list and the species page; the rest under "More" */
+  .mmore{display:inline-flex!important}
+  .acts.mcol:not(.open)>*:not(.keep):not(.mmore){display:none!important}
+}
+@media print{.dock{display:none!important}body{padding-bottom:0!important}}
+#splash{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:var(--bg);pointer-events:none;transition:background-color .5s ease}
+#splash.out{background:transparent}
+#splash .spin{display:flex;flex-direction:column;align-items:center;gap:22px;padding:16px;text-align:center}
+#splash .splogo{width:min(62vw,280px);height:min(62vw,280px);transform-origin:0 0;overflow:visible}
+#splash .splogo *{transform-box:fill-box}
+#splash .spname{display:flex;flex-direction:column;align-items:center;gap:8px;opacity:0}
+#splash .spname .bn{font-size:clamp(26px,7vw,40px)}
+#splash .sptag{font-size:clamp(14px,3.6vw,17px);color:var(--muted)}
+#splash:not(.go) .splogo *{opacity:0}
+#splash.go .sp-bg{transform-origin:center;animation:spPop .45s ease-out both}
+#splash.go .sp-ground{transform-origin:50% 100%;animation:spGrowY .5s ease-out .35s both}
+#splash.go .sp-trunk{transform-origin:50% 100%;animation:spGrowY .3s ease-out .7s both}
+#splash.go .sp-spruce{transform-origin:50% 100%;animation:spGrow .9s cubic-bezier(.2,.9,.3,1.12) .85s both}
+#splash.go .sp-birch{transform-origin:50% 100%;animation:spGrowY .8s cubic-bezier(.2,.9,.3,1.05) 1.1s both}
+#splash.go .sp-crown{transform-origin:50% 100%;animation:spGrow .6s cubic-bezier(.3,1.4,.5,1) 1.7s both}
+#splash.go .sp-mark{animation:spFade .3s ease 1.8s both}
+#splash.go .sp-bush{transform-origin:50% 100%;animation:spGrow .55s cubic-bezier(.3,1.4,.5,1) 1.95s both}
+#splash.go .sp-berry{transform-origin:center;animation:spBerry .35s cubic-bezier(.3,1.7,.5,1) both}
+#splash.go .b1{animation-delay:2.35s}#splash.go .b2{animation-delay:2.5s}#splash.go .b3{animation-delay:2.65s}
+#splash.go .spname{animation:spRise .8s ease-out 2.2s both}
+#splash.out .spname{animation:none;opacity:0;transition:opacity .25s}
+#splash.out .splogo{transition:transform .6s cubic-bezier(.5,0,.2,1),opacity .6s ease;opacity:0}
+@keyframes spPop{from{transform:scale(.5);opacity:0}to{transform:none;opacity:1}}
+@keyframes spGrow{from{transform:scale(.2,0)}to{transform:none}}
+@keyframes spGrowY{from{transform:scaleY(0)}to{transform:none}}
+@keyframes spBerry{from{transform:scale(0)}to{transform:none}}
+@keyframes spFade{from{opacity:0}to{opacity:1}}
+@keyframes spRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#splash.go *{animation-duration:.01s!important;animation-delay:0s!important}#splash.out *{transition:none!important}}
+@media print{#splash{display:none!important}}
+#auth{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:auto;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.authbox{width:min(100%,380px);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:12px}
+.acct{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.hdr-r{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.hdr-r .seg button{min-height:32px;padding:4px 9px;font-size:12.5px}.lat .cn{font-style:normal}
+.tab small[hidden]{display:none!important}.tchip.cn{font-style:normal}
+.who{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+</head><body><header class="top"><div class="top-in">
+  <a class="brand" href="#home"><svg class="bm" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1f3a2c"/><path d="M30 12 L42 34 H36 L47 56 H39 L50 78 H10 L21 56 H13 L24 34 H18 Z" fill="#e9efe4"/><rect x="65" y="22" width="7" height="60" fill="#ffffff"/><rect x="65" y="40" width="3.5" height="2.5" fill="#1f3a2c"/><rect x="68.5" y="56" width="3.5" height="2.5" fill="#1f3a2c"/><circle cx="84" cy="74" r="5" fill="#d23a3f"/></svg><span class="bt"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="bs" data-t="Species fact sheets|Artfakta">Species fact sheets · Artfakta</span></span></a>
+  <nav class="tabs" aria-label="Views">
+    <a class="tab" href="#home" data-v="home" data-tab="Home|Hem"><span>Home</span><small>Hem</small></a>
+    <a class="tab" href="#overview" data-v="overview" data-tab="Species|Arter"><span>Species</span><small>Arter</small></a>
+    <a class="tab" href="#add" data-v="add" data-tab="Add|Lägg till"><span>Add</span><small>Lägg till</small></a>
+    <a class="tab" href="#sheet" data-v="sheet" data-tab="Sheet|Blad"><span>Sheet</span><small>Blad</small></a>
+  </nav>
+  <div class="mbar"><a class="mb add w-only" href="#add" data-ta="Add a species|Lägg till art"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg></a><button type="button" class="mb" id="mLang" data-act="mmenu" aria-expanded="false" data-ta="Language|Språk">EN</button><button type="button" class="mb" id="mAcct" data-act="mmenu" aria-expanded="false" data-ta="Account|Konto"></button></div>
+  <div class="hdr-r"><span class="seg" id="langSeg" role="group" aria-label="Language"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="sv" aria-pressed="false">SV</button><button type="button" data-lang="nl" aria-pressed="false">NL</button></span><div id="acct" class="acct"></div></div>
+</div></header>
+<div id="banner" class="banner" hidden></div>
+<div id="nameBox" class="namebox" hidden><div class="namein">
+  <p id="nameHint" class="muted" style="margin:0" hidden data-t="Choose a username so others can see who added and changed what.|Välj ett användarnamn så att andra ser vem som lagt till och ändrat vad.">Choose a username so others can see who added and changed what.</p>
+  <label class="fl" for="nameInput" data-t="Your username, shown at “added by” and “last changed by” (not your email address)|Ditt användarnamn, visas vid ”tillagd av” och ”senast ändrad av” (inte din e-postadress)">Your username</label>
+  <input id="nameInput" type="text" maxlength="40" autocomplete="nickname">
+  <div class="acts"><button type="button" class="btn primary" data-act="name-save" data-t="Save|Spara">Save</button><button type="button" class="btn" data-act="name-cancel" data-t="Cancel|Avbryt">Cancel</button></div>
+</div></div>
+<main class="page">
+
+<section id="v-home" class="view">
+  <div class="hero">
+    <div><h1 data-th="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest <em>Artfakta för skogsträdgården</em></h1><p id="homeStats" class="muted" style="margin:6px 0 0">Loading…</p></div>
+    <div class="hsearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="hq" type="search" data-tp="Find a species|Hitta en art" placeholder="Find a species · Hitta en art" aria-label="Find a species" autocomplete="off"></div>
+    <div id="hqRes" class="hres" hidden></div>
+    <a class="helplink" href="#help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.3-2.5 3.8"/><path d="M12 17.2h.01"/></svg><span data-t="How to use this app|Så använder du appen|Zo gebruik je de app">How to use this app</span></a>
+  </div>
+  <div id="today" class="today" aria-live="polite"></div>
+  <h2 class="hsec" data-th="Go to|Gå till">Go to <em>Gå till</em></h2>
+  <div class="hgrid">
+    <a class="htile" href="#overview"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4"/><path d="M4 6v15h12"/></svg></span><b data-th="Species database|Artdatabas">Species database <em>Artdatabas</em></b><span data-t="Browse, filter, print and export all species.|Bläddra, filtrera, skriv ut och exportera alla arter.">Browse, filter, print and export all species.</span></a>
+    <a class="htile w-only" href="#add"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span><b data-th="Add a species|Lägg till art">Add a species <em>Lägg till art</em></b><span data-t="New species, or add an entry to one you already have.|Ny art, eller lägg till en post för en art som redan finns.">New species, or add an entry to one you already have.</span></a>
+    <a class="htile w-only" href="#me"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg></span><b data-th="My contributions|Mina bidrag">My contributions <em>Mina bidrag</em></b><span data-t="Your numbers, badges and place on the leaderboard.|Dina siffror, märken och plats på topplistan.">Your numbers, badges and place on the leaderboard.</span></a>
+    <a class="htile" href="#gaps"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg></span><b data-th="Help fill the gaps|Hjälp till att fylla luckorna">Help fill the gaps <em>Hjälp till att fylla luckorna</em></b><span data-t="See which species miss names, photos or key facts.|Se vilka arter som saknar namn, foton eller viktiga uppgifter.">See which species miss names, photos or key facts.</span></a>
+    <a class="htile" href="#pick"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></span><b data-th="Pick a plant|Välj en växt">Pick a plant <em>Välj en växt</em></b><span data-t="Describe a spot (sun, moisture, soil, zone) and see which species fit.|Beskriv en plats (sol, fukt, jord, zon) och se vilka arter som passar.">Describe a spot (sun, moisture, soil, zone) and see which species fit.</span></a>
+    <a class="htile" href="#calendar"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h3M14 14h3M7 17h3"/></svg></span><b data-th="Flowering and harvest calendar|Blom- och skördekalender">Flowering and harvest calendar <em>Blom- och skördekalender</em></b><span data-t="When to plant, when it flowers and when to harvest, across species.|När man planterar, när de blommar och när man skördar, för flera arter.">When to plant, when it flowers and when to harvest, across species.</span></a>
+    <a class="htile" href="#plantings"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span><b data-th="Planting records|Planteringar">Planting records <em>Planteringar</em></b><span data-t="Where and when each species was planted, and how it is doing.|Var och när varje art planterades, och hur den mår.">Where and when each species was planted, and how it is doing.</span></a>
+    <a class="htile" href="#lists"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></span><b data-th="Shared lists|Delade listor">Shared lists <em>Delade listor</em></b><span data-t="Named lists everyone can see, for a bed, a project or a wish list.|Namngivna listor som alla kan se, för en bädd, ett projekt eller en önskelista.">Named lists everyone can see.</span></a>
+    <a class="htile w-only" href="#autofill"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M10 16h4M3 13v2M21 13v2"/></svg></span><b data-th="Ask Artie to pre-fill|Be Artie förifylla|Vraag Artie om in te vullen">Ask Artie to pre-fill <em>Be Artie förifylla</em></b><span data-t="Request species for the auto-fill bot. Its values never replace yours.|Begär arter till förifyllningsboten. Dess värden ersätter aldrig dina.|Vraag soorten aan voor de invulbot. De waarden ervan vervangen nooit die van jou.">Request species for the auto-fill bot.</span></a>
+  </div>
+</section>
+
+<section id="v-overview" class="view" hidden>
+  <div class="ovhead">
+    <div><h1 data-th="Species|Arter">Species <em>Arter</em></h1><p id="ovStats" class="muted" style="margin:4px 0 0">Loading…</p></div>
+    <div class="acts mcol">
+      <label class="chk"><input type="checkbox" data-withlog checked> <span data-t="Include observations|Ta med observationer">Include observations</span></label>
+      <button class="btn sm keep" data-act="print-sheets"><span data-t="Print this list|Skriv ut listan">Print this list</span> (<span class="n">0</span>)</button>
+      <button class="btn sm" data-act="export-sheets"><span data-t="Sheets (.html)|Blad (.html)">Sheets (.html)</span> (<span class="n">0</span>)</button>
+      <button class="btn sm" data-act="export-csv">CSV</button>
+      <button class="btn sm" data-act="export-json">JSON</button>
+      <a class="btn sm" href="#lists" data-t="Lists|Listor">Lists</a>
+      <button class="btn sm keep" data-act="cmp-mode" aria-pressed="false" data-t="Select to compare|Välj för jämförelse">Select to compare</button>
+      <a class="btn sm" href="#gaps" data-t="Help fill the gaps|Fyll luckorna">Help fill the gaps · Fyll luckorna</a>
+      <a class="btn sm w-only" href="#trash"><span data-t="Trash|Papperskorg">Trash</span><span id="trashN"></span></a>
+      <button class="btn sm danger a-only" data-act="remove-examples" id="rmEx" hidden data-t="Remove examples|Ta bort exempel">Remove examples</button>
+      <button type="button" class="btn sm mmore" data-act="mmore" aria-expanded="false" data-t="⋯ More|⋯ Mer|⋯ Meer">⋯ More</button>
+    </div>
+  </div>
+  <div class="tools">
+    <input id="q" type="search" data-tp="Search name, family|Sök namn, familj" placeholder="Search name, family · Sök" aria-label="Search species">
+    <select id="sortSel" aria-label="Sort">
+      <option value="name">A–Z</option><option value="fav" data-t="Favourites first|Favoriter först">Favourites first · Favoriter</option><option value="recent" data-t="Recent|Senast">Recent · Senast</option><option value="verdict" data-t="Verdict|Omdöme">Verdict · Omdöme</option><option value="no" data-t="No.|Nr">No. · Nr</option>
+    </select>
+  </div>
+  <div id="listFilter" class="listflt" hidden><span><span data-t="Showing the list|Visar listan">Showing the list</span> <b id="listFilterName"></b></span><button class="btn sm" data-act="list-clear-filter" data-t="Show all species|Visa alla arter">Show all species</button></div>
+  <details class="flt" id="fltBox"><summary><span data-t="Filters|Filter">Filters · Filter</span> <span id="fltN" class="badge" hidden></span></summary><div id="fltBody"></div></details>
+  <div id="ovList" class="splist"></div>
+  <div id="cmpBar" class="cmpbar" hidden><span><b id="cmpN">0</b> / 4 <span data-t="selected to compare. Tick species in the list.|valda för jämförelse. Bocka för arter i listan.">selected to compare. Tick species in the list.</span></span><span class="acts"><button class="btn sm primary" id="cmpGo" data-act="cmp-go" data-t="Compare|Jämför">Compare</button><button class="btn sm" data-act="cmp-clear" data-t="Clear|Rensa">Clear</button><button class="btn sm" data-act="cmp-mode" data-t="Done|Klar">Done</button></span></div>
+</section>
+
+<section id="v-gaps" class="view" hidden>
+  <div class="ovhead"><div><h1 data-th="Help fill the gaps|Hjälp till att fylla luckorna">Help fill the gaps <em>Hjälp till att fylla luckorna</em></h1><p id="gapStats" class="muted" style="margin:4px 0 0"></p></div><a class="btn sm" href="#overview" data-t="All species|Alla arter">All species · Alla arter</a></div>
+  <div id="gapChips" class="chips"></div>
+  <select id="gapSel" aria-label="Filter by gap · Filtrera på lucka"></select>
+  <div id="gapList" class="splist"></div>
+</section>
+
+<section id="v-me" class="view" hidden>
+  <div class="ovhead"><div><h1 data-th="My contributions|Mina bidrag">My contributions <em>Mina bidrag</em></h1></div><a class="btn sm" href="#gaps" data-t="Help fill the gaps|Fyll luckorna">Help fill the gaps</a></div>
+  <div id="meBody"></div>
+</section>
+
+<section id="v-compare" class="view plan" hidden>
+  <div class="ovhead"><div><h1 data-th="Compare species|Jämför arter">Compare species <em>Jämför arter</em></h1></div>
+    <div class="acts"><select id="cmpPick" aria-label="Add a species"></select><button class="btn sm" data-act="cmp-favs" data-t="Add my favourites|Lägg till mina favoriter">Add my favourites</button><button class="btn sm" data-act="cmp-clear" data-t="Clear|Rensa">Clear</button></div></div>
+  <div id="cmpTable"></div>
+</section>
+
+<section id="v-calendar" class="view plan" hidden>
+  <div class="ovhead"><div><h1 data-th="Flowering and harvest calendar|Blom- och skördekalender">Flowering and harvest calendar <em>Blom- och skördekalender</em></h1><p id="calNote" class="muted" style="margin:4px 0 0"></p></div></div>
+  <div class="acts" style="flex-wrap:wrap;gap:8px">
+    <span class="seg" id="calSet" role="group" aria-label="Which species"><button type="button" data-calset="all" data-t="All|Alla">All</button><button type="button" data-calset="fav" data-t="Favourites|Favoriter">Favourites</button><button type="button" data-calset="list" data-t="Current list|Aktuell lista">Current list</button><button type="button" data-calset="cmp" data-t="Compared|Jämförda">Compared</button></span>
+    <span class="chips" id="calActs"><button type="button" class="chip sm" data-calact="cal1"><i class="ca cal1"></i><span data-t="Plant / sow|Plantera / så">Plant / sow</span></button><button type="button" class="chip sm" data-calact="cal2"><i class="ca cal2"></i><span data-t="Flower|Blomning">Flower</span></button><button type="button" class="chip sm" data-calact="cal3"><i class="ca cal3"></i><span data-t="Harvest|Skörd">Harvest</span></button><button type="button" class="chip sm" data-calact="cal4"><i class="ca cal4"></i><span data-t="Prune / cut|Beskär / skär">Prune / cut</span></button></span>
+  </div>
+  <label class="pkopt"><input type="checkbox" id="calCv" checked> <span data-t="Show cultivars whose months differ from the species|Visa sorter vars månader skiljer sig från arten|Toon cultivars waarvan de maanden afwijken van de soort">Show cultivars whose months differ from the species</span></label>
+  <div id="calGrid" class="tbl"></div>
+</section>
+
+<section id="v-pick" class="view plan" hidden>
+  <div class="ovhead"><div><h1 data-th="Pick a plant|Välj en växt">Pick a plant <em>Välj en växt</em></h1><p class="muted" style="margin:4px 0 0" data-t="Describe the spot. Species that fit come first; favourites that could work with some help come after.|Beskriv platsen. Arter som passar visas först; favoriter som kan fungera med lite hjälp därefter.">Describe the spot.</p></div></div>
+  <div class="pickform">
+    <div class="fgrp"><span class="fl" data-th="Light|Ljus">Light</span><div class="chips" id="pickLight"><button type="button" class="chip sm" data-pl="sun"><i></i><span data-t="Sun|Sol">Sun</span></button><button type="button" class="chip sm" data-pl="part"><i></i><span data-t="Part shade|Halvskugga">Part shade</span></button><button type="button" class="chip sm" data-pl="shade"><i></i><span data-t="Shade|Skugga">Shade</span></button></div></div>
+    <div class="fgrp"><span class="fl" data-th="Moisture|Fukt">Moisture</span><div class="chips" id="pickMoist"><button type="button" class="chip sm" data-pm="1"><i></i><span data-t="Dry|Torr">Dry</span></button><button type="button" class="chip sm" data-pm="2"><i></i>2</button><button type="button" class="chip sm" data-pm="3"><i></i><span data-t="Medium|Medel">Medium</span></button><button type="button" class="chip sm" data-pm="4"><i></i>4</button><button type="button" class="chip sm" data-pm="5"><i></i><span data-t="Wet|Blöt">Wet</span></button></div></div>
+    <div class="fgrp"><span class="fl" data-th="Soil|Jord">Soil</span><div class="chips" id="pickSoil"><button type="button" class="chip sm" data-ps="sand"><i></i><span data-t="Sand|Sand">Sand</span></button><button type="button" class="chip sm" data-ps="loam"><i></i><span data-t="Loam|Mojord">Loam</span></button><button type="button" class="chip sm" data-ps="clay"><i></i><span data-t="Clay|Lera">Clay</span></button><button type="button" class="chip sm" data-ps="humus"><i></i><span data-t="Humus|Mull">Humus</span></button></div></div>
+    <div class="fgrp pkzone"><label><span class="fl" data-th="Swedish growing zone|Odlingszon|Zweedse groeizone">Swedish growing zone</span><select id="pickZone"><option value="">–</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><span class="pkor" data-t="or|eller|of">or</span><label><span class="fl" data-th="Lowest winter temperature|Lägsta vintertemperatur|Laagste wintertemperatuur">Lowest winter temperature</span><select id="pickTemp"><option value="">–</option></select></label></div>
+    <div class="fgrp"><span class="fl" data-th="Plant form|Växtform">Plant form</span><div class="chips" id="pickForm"><button type="button" class="chip sm" data-pf="w"><i></i><span data-t="Woody|Vedartad">Woody</span></button><button type="button" class="chip sm" data-pf="h"><i></i><span data-t="Herbaceous|Örtartad">Herbaceous</span></button></div></div>
+    <div class="fgrp"><label class="fl" for="pickScope" data-th="From list|Från lista|Uit lijst">From list</label><select id="pickScope"></select></div>
+    <label class="pkopt"><input type="checkbox" id="pickCv" checked> <span data-t="Show cultivars under each species|Visa sorter under varje art|Toon cultivars onder elke soort">Show cultivars under each species</span></label>
+    <details id="pickAdv" class="pkadv"></details>
+    <details id="hardTab" class="pkadv"></details>
+    <div class="acts"><button type="button" class="btn sm" data-act="pick-clear" data-t="Clear the spot|Rensa platsen|Plek wissen">Clear the spot</button></div>
+  </div>
+  <button type="button" id="pickJump" class="btn primary pkjump" data-act="pick-jump" hidden></button>
+  <div class="pickres">
+  <div id="pickOut"></div>
+  </div>
+  <div id="pickCmpBar" class="cmpbar" hidden><span><b id="pickCmpN">0</b> / 4 <span data-t="selected to compare|valda för jämförelse">selected to compare</span></span><span class="acts"><button class="btn sm primary" id="pickCmpGo" data-act="cmp-go" data-t="Compare|Jämför">Compare</button><button class="btn sm" data-act="cmp-clear" data-t="Clear|Rensa">Clear</button></span></div>
+</section>
+
+<section id="v-plantings" class="view plan" hidden>
+  <div class="ovhead"><div><h1 data-th="Planting records|Planteringar">Planting records <em>Planteringar</em></h1><p id="plStats" class="muted" style="margin:4px 0 0"></p></div><div class="acts"><button class="btn sm primary w-only" data-act="pl-new" data-t="Add planting|Lägg till plantering">Add planting</button></div></div>
+  <form id="plForm" class="obsform plform" autocomplete="off" novalidate hidden onsubmit="return false">
+    <h2 id="plTitle" class="hsec" style="grid-column:1/-1;margin:0"></h2>
+    <div class="f"><label class="fl" for="plSp" data-t="Species|Art|Soort">Species</label><select id="plSp"></select></div>
+    <div class="f"><label class="fl" for="plCv" data-t="Cultivar|Sort|Cultivar">Cultivar</label><select id="plCv" data-cvnew="plCvNew"></select><input id="plCvNew" type="text" maxlength="80" hidden data-tp="Cultivar name|Sortnamn|Cultivarnaam"></div>
+    <div class="f"><label class="fl" for="plPlace" data-t="Place (bed or area)|Plats (bädd eller område)">Place</label><input id="plPlace" type="text" list="plPlaces" maxlength="120"><datalist id="plPlaces"></datalist></div>
+    <div class="f"><label class="fl" for="plDate" data-t="Planted on|Planterad">Planted on</label><input id="plDate" type="date"></div>
+    <div class="f"><label class="fl" for="plCount" data-t="Number of plants|Antal plantor">Number of plants</label><input id="plCount" type="number" min="1" step="1" inputmode="numeric"></div>
+    <div class="f"><label class="fl" for="plStatus" data-t="Status|Status">Status</label><select id="plStatus"><option value="alive" data-t="Alive|Lever">Alive</option><option value="struggling" data-t="Struggling|Kämpar">Struggling</option><option value="dead" data-t="Dead|Död">Dead</option><option value="removed" data-t="Removed|Borttagen">Removed</option><option value="unknown" data-t="Unknown|Okänd">Unknown</option></select></div>
+    <div class="f"><label class="fl" for="plSource" data-t="Source (where it came from)|Källa (var den kom ifrån)">Source</label><input id="plSource" type="text" list="plSources" maxlength="160"><datalist id="plSources"></datalist></div>
+    <div class="f"><label class="fl" for="plGeo" data-t="Map position (optional: lat, long)|Kartposition (valfritt: lat, long)">Map position</label><span style="display:flex;gap:6px"><input id="plGeo" type="text" inputmode="decimal" placeholder="63.82, 20.26" style="flex:1;min-width:0"><button type="button" class="btn sm" data-act="pl-geo" data-t="Here|Här">Here</button></span></div>
+    <div class="f wide"><label class="fl" for="plNotes" data-t="Notes|Anteckningar">Notes</label><textarea id="plNotes" rows="2" maxlength="600"></textarea></div>
+    <div class="f wide acts"><button type="button" class="btn primary" data-act="pl-save" data-t="Save planting|Spara plantering">Save planting</button><button type="button" class="btn" data-act="pl-cancel" data-t="Cancel|Avbryt">Cancel</button></div>
+  </form>
+  <div class="acts" style="gap:8px;align-items:center"><span class="seg" id="plStatSeg" role="group" aria-label="Status"><button type="button" data-plst="alive" data-t="Alive|Lever">Alive</button><button type="button" data-plst="struggling" data-t="Struggling|Kämpar">Struggling</button><button type="button" data-plst="dead" data-t="Dead|Död">Dead</button><button type="button" data-plst="removed" data-t="Removed|Borttagen">Removed</button></span><select id="plPlaceSel" aria-label="Place"></select></div>
+  <div id="plList" class="stack"></div>
+</section>
+
+<section id="v-lists" class="view plan" hidden>
+  <div id="listsAll">
+    <div class="ovhead"><div><h1 data-th="Shared lists|Delade listor">Shared lists <em>Delade listor</em></h1><p class="muted" style="margin:4px 0 0" data-t="Everyone who signs in can see these lists. Favourites stay private.|Alla som loggar in kan se listorna. Favoriter förblir privata.">Everyone who signs in can see these lists.</p></div></div>
+    <form class="obsform w-only" onsubmit="return false" style="margin:12px 0"><div class="f"><label class="fl" for="newListName" data-t="New list name|Namn på ny lista">New list name</label><input id="newListName" type="text" maxlength="80"></div><div class="f wide"><label class="fl" for="newListDesc" data-t="Description (optional)|Beskrivning (valfri)">Description</label><input id="newListDesc" type="text" maxlength="300"></div><div class="f" style="justify-content:flex-end"><button type="button" class="btn primary" data-act="list-new" data-t="Create list|Skapa lista">Create list</button></div></form>
+    <div id="listsGrid" class="hgrid"></div>
+  </div>
+  <div id="listOne" hidden>
+    <p><a href="#lists" data-t="← All lists|← Alla listor">← All lists</a></p>
+    <div id="listHead" class="listhead"></div>
+    <p id="listInfo" class="muted"></p>
+    <div class="acts" style="margin-bottom:10px"><button class="btn sm" data-act="list-show" data-t="Show in species list (print, calendar)|Visa i artlistan (utskrift, kalender)">Show in species list</button><button class="btn sm" data-act="list-cmp" data-t="Compare these|Jämför dessa">Compare these</button></div>
+    <div id="listSp" class="splist"></div>
+  </div>
+</section>
+
+<section id="v-help" class="view" hidden>
+  <div class="ovhead"><div><h1 data-th="How to use this app|Så använder du appen|Zo gebruik je de app">How to use this app</h1><p id="helpMeta" class="muted" style="margin:4px 0 0"></p></div>
+    <div class="acts"><a class="btn sm" href="manual.pdf" download="Skogstradgardens-artblad-manual.pdf" data-t="Download as PDF (all languages)|Ladda ner som PDF (alla språk)|Downloaden als pdf (alle talen)">Download as PDF (all languages)</a></div></div>
+  <nav id="helpToc" class="htoc" aria-label="Contents"></nav>
+  <article id="helpBody" class="man"></article>
+</section>
+
+<section id="v-autofill" class="view" hidden>
+  <div class="ovhead"><div><h1 data-th="Ask Artie to pre-fill species|Be Artie förifylla arter|Vraag Artie soorten vooraf in te vullen">Ask Artie to pre-fill species</h1></div><a class="btn sm" href="#overview" data-t="All species|Alla arter|Alle soorten">All species</a></div>
+  <div class="afintro">
+    <p data-t="Artie (bot) fills in a first version of a species sheet from public sources: names from Wikidata, plant type and native range from Kew’s World Checklist (WCVP), uses and edible parts from GRIN, size and tolerances from USDA PLANTS, light, moisture and pH from European indicator values, Swedish invasive risk from SLU Artdatabanken, and how far north it is recorded in Sweden from GBIF. Artie’s values are labelled with their source, only fill fields nobody has filled in, and never replace what people enter.|Artie (bot) fyller i en första version av ett artblad från öppna källor: namn från Wikidata, växttyp och naturligt utbredningsområde från Kews världschecklista (WCVP), användning och ätliga delar från GRIN, storlek och tålighet från USDA PLANTS, ljus, fukt och pH från europeiska indikatorvärden, invasionsrisk i Sverige från SLU Artdatabanken och hur långt norrut arten är funnen i Sverige från GBIF. Arties värden märks med sin källa, fyller bara fält som ingen har fyllt i och ersätter aldrig det som personer har skrivit.|Artie (bot) vult een eerste versie van een soortblad in uit openbare bronnen: namen uit Wikidata, planttype en natuurlijk verspreidingsgebied uit de wereldchecklist van Kew (WCVP), gebruik en eetbare delen uit GRIN, grootte en tolerantie uit USDA PLANTS, licht, vocht en pH uit Europese indicatorwaarden, invasierisico in Zweden van SLU Artdatabanken en hoe ver noordelijk de soort in Zweden is waargenomen uit GBIF. De waarden van Artie krijgen hun bron als label, vullen alleen velden in die niemand heeft ingevuld en vervangen nooit wat mensen invoeren.">Artie (bot) fills in a first version of a species sheet from outside sources.</p>
+    <p class="muted" data-t="Requests are collected for the admin, who runs Artie from time to time. Nobody else sees the list. A species that was already requested or filled in is not added twice.|Förfrågningarna samlas för admin, som kör Artie då och då. Ingen annan ser listan. En art som redan har begärts eller fyllts i läggs inte till två gånger.|Aanvragen worden verzameld voor de beheerder, die Artie af en toe laat draaien. Niemand anders ziet de lijst. Een soort die al is aangevraagd of ingevuld, wordt niet twee keer toegevoegd.">Requests are collected for the admin, who runs Artie from time to time.</p>
+  </div>
+  <p id="afRo" class="ro-note" hidden data-t="Only contributors and admins can ask for auto-fill.|Bara bidragsgivare och admin kan be om förifyllning.|Alleen bijdragers en beheerders kunnen om automatisch invullen vragen.">Only contributors and admins can ask for auto-fill.</p>
+  <div id="afForm" class="afform">
+    <label class="f wide"><span class="fl" data-t="Latin names, one per line|Latinska namn, ett per rad|Latijnse namen, één per regel">Latin names, one per line</span><textarea id="afNames" rows="5" autocapitalize="off" spellcheck="false" placeholder="Hippophae rhamnoides&#10;Allium ursinum"></textarea></label>
+    <div class="acts"><button type="button" class="btn primary" data-act="af-send" data-t="Send request|Skicka förfrågan|Aanvraag versturen">Send request</button></div>
+    <div id="afResult" class="afres" aria-live="polite" hidden></div>
+  </div>
+  <div id="afAdmin" class="a-only"></div>
+</section>
+
+<section id="v-trash" class="view" hidden>
+  <div class="ovhead"><div><h1 data-th="Trash|Papperskorg">Trash <em>Papperskorg</em></h1><p class="muted" style="margin:4px 0 0" data-t="Deleted entries and observations stay here for 30 days and can be restored.|Raderade poster och observationer ligger kvar här i 30 dagar och kan återställas.">Deleted entries and observations stay here for 30 days and can be restored.</p></div><a class="btn sm" href="#overview" data-t="All species|Alla arter">All species</a></div>
+  <div id="trashList" class="stack"></div>
+</section>
+
+<section id="v-add" class="view" hidden>
+  <div id="editBanner" class="edit" hidden></div>
+  <datalist id="spNames"></datalist>
+  <p class="ro-note" data-t="You can look, but your account cannot add or change entries. Ask an admin to make you a contributor.|Du kan titta, men ditt konto kan inte lägga till eller ändra poster. Be en admin att göra dig till bidragsgivare.">You can look, but your account cannot add or change entries.</p>
+  <p class="artie-hint w-only"><a href="#autofill" data-t="New species and short on time? Ask Artie (bot) to pre-fill it.|Ny art och ont om tid? Be Artie (bot) att förifylla den.|Nieuwe soort en weinig tijd? Vraag Artie (bot) om hem vooraf in te vullen.">New species and short on time? Ask Artie (bot) to pre-fill it.</a></p>
+  <div id="draftBox" class="nearbox w-only" hidden></div>
+  <form id="form" autocomplete="off" novalidate></form>
+  <div id="nearBox" class="nearbox w-only" role="alert" hidden></div>
+</section>
+
+<section id="v-sheet" class="view" hidden>
+  <div class="bar">
+    <div style="min-width:0;flex:1 1 260px"><label class="fl" for="spSel" data-t="Species|Art|Soort">Species · Art</label><select id="spSel" style="width:100%"></select></div>
+    <div class="acts mcol">
+      <button class="btn a-only" data-act="edit-sheet" data-t="Edit sheet|Redigera blad">Edit sheet</button>
+      <button class="btn a-only" data-act="rename" data-t="Rename|Byt namn">Rename · Byt namn</button>
+      <button class="btn a-only danger" data-act="sp-trash" data-t="Move species to trash|Flytta arten till papperskorgen|Soort naar prullenbak">Move species to trash</button>
+      <button class="btn a-only" data-act="cv-rename" data-t="Rename cultivar|Byt namn på sort|Cultivar hernoemen" style="display:none">Rename cultivar</button>
+      <button class="btn w-only keep" data-act="add-info" data-t="Add info|Lägg till info">Add info · Lägg till</button>
+      <span id="sheetAddList"></span>
+      <button class="btn keep" data-act="compare-add" data-t="Compare|Jämför">Compare</button>
+      <button class="btn" data-act="print-one" data-t="Print|Skriv ut">Print</button>
+      <button class="btn" data-act="export-one" data-t="Download sheet|Ladda ner blad">Download sheet</button>
+      <button type="button" class="btn mmore" data-act="mmore" aria-expanded="false" data-t="⋯ More|⋯ Mer|⋯ Meer">⋯ More</button>
+    </div>
+  </div>
+  <div id="renBox" class="renbox a-only" hidden>
+    <label class="fl" for="renInput" data-t="New Latin name|Nytt latinskt namn">New Latin name · Nytt latinskt namn</label>
+    <input id="renInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" list="spNames">
+    <p id="renHint" class="hint" style="margin:0"></p>
+    <div class="acts"><button type="button" class="btn primary" id="renGo" data-act="ren-go" data-t="Rename|Byt namn">Rename · Byt namn</button><button type="button" class="btn" data-act="ren-cancel" data-t="Cancel|Avbryt">Cancel · Avbryt</button></div>
+  </div>
+  <div id="cvRenBox" class="renbox a-only" hidden>
+    <label class="fl" for="cvRenInput" data-t="New cultivar name|Nytt sortnamn|Nieuwe cultivarnaam">New cultivar name</label>
+    <input id="cvRenInput" type="text" autocomplete="off" spellcheck="false" maxlength="80">
+    <p id="cvRenHint" class="hint" style="margin:0"></p>
+    <div class="acts"><button type="button" class="btn primary" id="cvRenGo" data-act="cv-ren-go" data-t="Rename|Byt namn|Hernoemen">Rename</button><button type="button" class="btn" data-act="cv-ren-cancel" data-t="Cancel|Avbryt|Annuleren">Cancel</button></div>
+  </div>
+  <nav class="spjump" aria-label="On this page"><span class="fl" data-t="Jump to|Gå till|Ga naar">Jump to</span><a href="#" data-jump="cvSec" data-t="Cultivars|Sorter|Cultivars">Cultivars</a><a href="#" data-jump="hPrint" data-t="Print sheet|Utskriftsblad|Afdrukblad">Print sheet</a><a href="#" data-jump="hObs" data-t="Observations|Observationer|Waarnemingen">Observations</a><a href="#" data-jump="hPl" data-t="Plantings|Planteringar|Aanplant">Plantings</a><a href="#" data-jump="hCmt" data-t="Comments|Kommentarer|Opmerkingen">Comments</a><a href="#" data-jump="hSrc" data-t="Where to get it|Var finns den|Waar te krijgen">Where to get it</a><a href="#" data-jump="hEnt" data-t="Entries|Poster|Invoeren">Entries</a></nav>
+  <div id="cvBar"></div>
+  <div id="cardArea"></div>
+  <section id="cvSec" class="cvsec" hidden>
+    <h2><span data-t="Cultivars compared|Sorterna jämförda|Cultivars vergeleken">Cultivars compared</span><span id="cvCount"></span></h2>
+    <div id="cvTable"></div>
+  </section>
+  <div class="row2">
+    <h2 id="hPrint" data-th="Print sheet|Utskriftsblad">Print sheet <em>Utskriftsblad</em></h2>
+    <div class="acts">
+      <span class="seg" id="layoutSeg" role="group" aria-label="Layout"><button type="button" data-layout="card" data-t="Card|Kort">Card</button><button type="button" data-layout="form" data-t="Form|Formulär">Form</button></span>
+      <label class="chk"><input type="checkbox" data-withlog checked> <span data-t="Include observations|Ta med observationer">Include observations</span></label>
+      <span class="seg" id="sideSeg"><button type="button" data-side="front" aria-pressed="true" data-t="Front|Framsida">Front</button><button type="button" data-side="back" aria-pressed="false" data-t="Log|Logg">Log · Logg</button></span>
+    </div>
+  </div>
+  <div class="sheetwrap" id="sheetWrap"><div class="sheetfit" id="sheetFit"></div></div>
+  <p class="muted" style="font-size:13px;margin:0" data-t="A5 landscape, 210 × 148 mm. Print, or download the .html file and print it from a browser (two sheets per A4 also works). Card shows only what is filled in; Form shows every option, for filling in by hand. Untick “Include observations” to leave out the observation pages.|A5 liggande, 210 × 148 mm. Skriv ut, eller ladda ner .html-filen och skriv ut från en webbläsare (två blad per A4 fungerar också). Kort visar bara det som är ifyllt; Formulär visar alla val, för att fylla i för hand. Bocka ur ”Ta med observationer” för att utelämna observationssidorna.">A5 landscape.</p>
+  <h2 id="hObs" data-th="Observation log|Observationer">Observation log <em>Observationer</em></h2>
+  <form id="obsForm" class="obsform w-only" autocomplete="off">
+    <div class="f"><label class="fl" for="obsDate" data-t="Date|Datum">Date · Datum</label><input id="obsDate" type="date"></div>
+    <div class="f"><label class="fl" for="obsPlot" data-t="Plot|Plats">Plot · Plats</label><input id="obsPlot" type="text" placeholder="e.g. Food forest, row 2"></div>
+    <div class="f"><label class="fl" for="obsCv" data-t="Cultivar|Sort|Cultivar">Cultivar</label><select id="obsCv" data-cvnew="obsCvNew"></select><input id="obsCvNew" type="text" maxlength="80" hidden data-tp="Cultivar name|Sortnamn|Cultivarnaam"></div>
+    <div class="f wide"><label class="fl" for="obsText" data-t="Note|Anteckning">Note · Anteckning</label><textarea id="obsText" rows="2" placeholder="Growth, yield, pests, what to change"></textarea></div>
+    <div class="f ph-only"><label class="fl" for="obsPhoto" data-t="Photo|Foto">Photo · Foto</label><input id="obsPhoto" type="file" accept="image/*"></div>
+    <div class="f" style="justify-content:flex-end"><button class="btn primary" id="obsBtn" type="submit" data-t="Add observation|Lägg till observation">Add observation · Lägg till</button></div>
+  </form>
+  <div id="obsList" class="stack"></div>
+  <h2 id="hPl" data-th="Plantings|Planteringar">Plantings <em>Planteringar</em></h2>
+  <p class="muted" style="margin:-6px 0 0"><span id="spPlInfo"></span> <button class="btn sm w-only" data-act="pl-new-here" data-t="Add planting|Lägg till plantering">Add planting</button></p>
+  <div id="spPlList" class="stack"></div>
+  <h2 id="hCmt" data-th="Comments|Kommentarer">Comments <em>Kommentarer</em></h2>
+  <form id="cmtForm" class="cmtform w-only" autocomplete="off" novalidate onsubmit="return false">
+    <label class="fl" for="cmtText" data-t="Add a comment or question about this species|Skriv en kommentar eller fråga om arten">Add a comment</label>
+    <textarea id="cmtText" rows="2" maxlength="2000"></textarea>
+    <div class="acts"><button type="button" class="btn primary sm" data-act="cmt-post" data-t="Post comment|Skicka kommentar">Post comment</button></div>
+  </form>
+  <div id="cmtList" class="stack"></div>
+  <h2 id="hSrc" data-th="Where to get it|Var finns den">Where to get it <em>Var finns den</em></h2>
+  <form id="srcForm" class="obsform w-only" autocomplete="off" novalidate>
+    <div class="f"><label class="fl" for="srcName" data-t="Supplier or person|Leverantör eller person">Supplier or person</label><input id="srcName" type="text" maxlength="120"></div>
+    <div class="f"><label class="fl" for="srcUrl" data-t="Link (optional)|Länk (valfritt)">Link (optional)</label><input id="srcUrl" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://"></div>
+    <div class="f"><label class="fl" for="srcMat" data-t="Material|Material">Material</label><select id="srcMat"><option value="seed" data-t="Seed|Frö">Seed</option><option value="plant" data-t="Plants|Plantor">Plants</option><option value="cutting" data-t="Cuttings|Sticklingar">Cuttings</option><option value="scion" data-t="Scions|Ympris">Scions</option><option value="division" data-t="Divisions|Delningar">Divisions</option><option value="other" data-t="Other|Annat">Other</option></select></div>
+    <div class="f"><label class="fl" for="srcCv" data-t="Cultivar|Sort|Cultivar">Cultivar</label><select id="srcCv" data-cvnew="srcCvNew"></select><input id="srcCvNew" type="text" maxlength="80" hidden data-tp="Cultivar name|Sortnamn|Cultivarnaam"></div>
+    <div class="f wide"><label class="fl" for="srcNote" data-t="Note (price, variety, season)|Anteckning (pris, sort, säsong)">Note (price, variety, season)</label><input id="srcNote" type="text" maxlength="300"></div>
+    <div class="f" style="justify-content:flex-end"><button class="btn primary" id="srcBtn" type="submit" data-t="Add source|Lägg till källa">Add source</button></div>
+  </form>
+  <div id="srcList" class="stack"></div>
+  <h2 id="hEnt" data-th="Entries|Poster">Entries <em>Poster</em></h2>
+  <p class="muted" style="margin:-8px 0 0;font-size:13px">Each entry adds information to the species. Multi-choice fields are combined across entries, single values use the newest entry.</p>
+  <div id="entList" class="stack"></div>
+</section>
+
+</main>
+<nav id="dock" class="dock" aria-label="Shortcuts"><div class="dkrow"><a class="dk" href="#home" data-dk="home" data-ta="Home|Hem"><svg class="dlogo" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1f3a2c"/><path d="M30 12 L42 34 H36 L47 56 H39 L50 78 H10 L21 56 H13 L24 34 H18 Z" fill="#e9efe4"/><rect x="65" y="22" width="7" height="60" fill="#ffffff"/><rect x="65" y="40" width="3.5" height="2.5" fill="#1f3a2c"/><rect x="68.5" y="56" width="3.5" height="2.5" fill="#1f3a2c"/><circle cx="84" cy="74" r="5" fill="#d23a3f"/></svg><span data-t="Home|Hem">Home</span></a><a class="dk" href="#overview" data-dk="overview" data-ta="All species|Alla arter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4"/><path d="M4 6v15h12"/></svg><span data-t="Species|Arter|Soorten">Species</span></a><a class="dk" href="#pick" data-dk="pick" data-ta="Pick a plant|Välj en växt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span data-t="Pick|Välj">Pick</span></a><a class="dk" href="#gaps" data-dk="gaps" data-ta="Help fill the gaps|Hjälp till att fylla luckorna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg><span data-t="Gaps|Luckor">Gaps</span></a><a class="dk" href="#calendar" data-dk="calendar" data-ta="Flowering and harvest calendar|Blom- och skördekalender"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h3M14 14h3M7 17h3"/></svg><span data-t="Calendar|Kalender">Calendar</span></a><a class="dk w-only" href="#me" data-dk="me" data-ta="My contributions|Mina bidrag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg><span data-t="My stats|Bidrag|Bijdragen">My stats</span></a><div class="dk-form w-only" id="dockForm"><div class="notch" role="group" aria-label="Form">
+    <button class="btn primary" id="saveBtn" type="button" data-ta="Save entry|Spara post"><svg class="bi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span data-t="Save|Spara|Opslaan">Save</span></button>
+    <button class="btn" id="resetBtn" type="button" data-ta="Clear the form|Rensa formuläret"><svg class="bi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg><span data-t="Clear|Rensa">Clear</span></button>
+    <span id="saveMsg" class="muted" style="font-size:13px"></span>
+  </div></div></div></nav>
+<div id="auth" hidden><form id="authForm" class="authbox" autocomplete="on">
+  <div class="brand"><svg class="bm" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1f3a2c"/><path d="M30 12 L42 34 H36 L47 56 H39 L50 78 H10 L21 56 H13 L24 34 H18 Z" fill="#e9efe4"/><rect x="65" y="22" width="7" height="60" fill="#ffffff"/><rect x="65" y="40" width="3.5" height="2.5" fill="#1f3a2c"/><rect x="68.5" y="56" width="3.5" height="2.5" fill="#1f3a2c"/><circle cx="84" cy="74" r="5" fill="#d23a3f"/></svg><span class="bt"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="bs" data-t="Species fact sheets|Artfakta">Species fact sheets · Artfakta</span></span></div>
+  <p class="muted" style="margin:0" data-t="Sign in to view and edit the species sheets.|Logga in för att se och redigera artbladen.">Sign in to view and edit the species sheets. · Logga in för att se och redigera artbladen.</p>
+  <label class="f"><span class="fl" data-t="Email|E-post">Email · E-post</span><input id="authEmail" type="email" autocomplete="username" required></label>
+  <label class="f"><span class="fl" data-t="Password|Lösenord">Password · Lösenord</span><input id="authPw" type="password" autocomplete="current-password" required></label>
+  <p id="authMsg" class="hint" role="alert" style="color:var(--warn);margin:0"></p>
+  <div class="acts"><button id="authBtn" class="btn primary" type="submit" data-t="Sign in|Logga in">Sign in · Logga in</button><button id="authCancel" class="btn" type="button" hidden data-t="Cancel|Avbryt">Cancel · Avbryt</button></div>
+</form></div>
+<div id="lb" hidden><img alt=""></div>
+<div id="splash" hidden aria-hidden="true"><div class="spin"><svg class="splogo" viewBox="0 0 100 100" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<rect class="sp-bg" width="100" height="100" rx="18" fill="#1f3a2c"/>
+<path class="sp-ground" d="M8 84 C22 79 36 86 52 82 C68 78 82 85 92 81 V92 H8 Z" fill="#8fa66a"/>
+<rect class="sp-trunk" x="26" y="70" width="4" height="12" fill="#e9efe4"/>
+<path class="sp-spruce" d="M28 12 L39 32 H34 L44 50 H37 L47 70 H9 L19 50 H12 L22 32 H17 Z" fill="#e9efe4"/>
+<ellipse class="sp-crown" cx="62" cy="31" rx="11" ry="14" fill="#8fa66a"/>
+<rect class="sp-birch" x="59.5" y="28" width="5" height="54" fill="#ffffff"/>
+<rect class="sp-mark" x="59.5" y="40" width="2.6" height="1.6" fill="#16271d"/><rect class="sp-mark" x="62" y="50" width="2.5" height="1.6" fill="#16271d"/><rect class="sp-mark" x="59.5" y="60" width="2.6" height="1.6" fill="#16271d"/><rect class="sp-mark" x="62" y="70" width="2.5" height="1.6" fill="#16271d"/>
+<circle class="sp-bush" cx="81" cy="70" r="10" fill="#8fa66a"/>
+<circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
+</svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="config.js"></script><script src="nl.js?v=2026-11-11b"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2026-11-11b"></script></body></html>
