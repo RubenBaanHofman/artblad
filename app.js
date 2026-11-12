@@ -171,7 +171,7 @@ async function loadAll(){
   if(!SB)return;
   try{
     const adm=isAdmin(),soft=q=>Promise.resolve(q).then(x=>x,e=>({error:e}));
-    const r=await Promise.all([fetchAll('entries'),fetchAll('obs'),SB.from('profiles').select('user_id,display_name'),fetchAll('plantings').catch(()=>[]),fetchAll('lists').catch(()=>[]),fetchAll('comments').catch(()=>[]),
+    const r=await Promise.all([fetchAll('entries'),fetchAll('obs'),SB.from('profiles').select('user_id,display_name'),CANW?fetchAll('plantings').catch(()=>[]):[],CANW?fetchAll('lists').catch(()=>[]):[],fetchAll('comments').catch(()=>[]),
       adm?soft(SB.rpc('review_state')):null,adm?soft(SB.from('autofill_requests').select('sid,latin,n,status,first_requested_at,last_requested_at,sent_at').order('first_requested_at')):null]);
     META.clear();PROFILES.clear();
     (r[2].data||[]).forEach(p=>PROFILES.set(p.user_id,p.display_name));
@@ -1004,7 +1004,18 @@ async function flagSend(s){
 /* admin dashboard */
 const admState={tab:'never',n:40};
 function admCounts(){let ok=0,st=0;species.forEach(s=>{const r=REV.st.get(s.sid);if(r){if(r.stale)st++;else ok++}});return{tot:species.length,ok,st,none:species.length-ok-st}}
-function updateAdminBadge(){const n=isAdmin()?REV.flags.length+afRows.filter(r=>r.status==='open').length:0;$$('.admbadge').forEach(b=>{b.hidden=!n;b.textContent=n})}
+function updateAdminBadge(){
+  const f=isAdmin()?REV.flags.length:0,st=isAdmin()?species.filter(s=>{const r=REV.st.get(s.sid);return r&&r.stale}).length:0,a=isAdmin()?afRows.filter(r=>r.status==='open').length:0,n=f+st+a;
+  $$('.admbadge').forEach(b=>{b.hidden=!n;b.textContent=n});
+  const t=tr('Admin dashboard','Adminpanel','Beheerdersdashboard')+(n?': '+[f?f+' '+tr('flagged','flaggade','gemeld'):'',st?st+' '+tr('changed since verification','ändrade sedan verifieringen','gewijzigd sinds verificatie'):'',a?a+' '+tr('for Artie','till Artie','voor Artie'):''].filter(Boolean).join(', '):'');
+  $$('.dkdot').forEach(d=>{d.hidden=!n});$$('#dock [data-dk=admin]').forEach(x=>{x.title=t;x.setAttribute('aria-label',t)});
+}
+// View-only accounts: what contributors can do, and how to get access. ADMIN_CONTACT in config.js (optional): an email address or a link.
+function updateJoin(){
+  const c=String(cfg.ADMIN_CONTACT||'').trim(),box=$('#joinContact');if(!box)return;
+  const href=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c)?'mailto:'+c+'?subject='+encodeURIComponent('Artblad: contributor access'):safeUrl(c);
+  box.innerHTML=href?'<a class="btn primary" href="'+esc(href)+'">'+esc(tr('Contact the admin','Kontakta admin','Neem contact op met de beheerder'))+'</a>':'';
+}
 function updateAdmin(){
   const box=$('#admBody');if(!box)return;
   if(!isAdmin()){box.innerHTML='<p class="muted">'+esc(tr('Only admins can see this page.','Bara admin kan se den här sidan.','Alleen beheerders kunnen deze pagina zien.'))+'</p>';return}
@@ -1888,8 +1899,8 @@ function show(v){
   mmenu(false);$$('.acts.mcol.open').forEach(c=>c.classList.remove('open'));
   $$('.view').forEach(x=>{x.hidden=x.id!=='v-'+v});
   document.body.classList.toggle('onadd',v==='add');dockSize();
-  $$('#dock [data-dk]').forEach(t=>t.setAttribute('aria-current',t.dataset.dk===(v==='trash'||v==='lists'?'overview':v==='help'||v==='autofill'||v==='admin'?'home':v)?'page':'false'));
-  $$('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===(['gaps','trash','compare','lists'].indexOf(v)>=0?'overview':v==='help'||v==='autofill'||v==='admin'?'home':v)?'page':'false'));
+  $$('#dock [data-dk]').forEach(t=>t.setAttribute('aria-current',t.dataset.dk===(v==='trash'||v==='lists'?'overview':v==='help'||v==='autofill'?'home':v)?'page':'false'));
+  $$('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===(['gaps','trash','compare','lists'].indexOf(v)>=0?'overview':v==='help'||v==='autofill'||v==='admin'||v==='join'?'home':v)?'page':'false'));
   if(v==='add'&&!formBuilt)buildForm();
   if(v==='add')draftOffer();
   if(v==='sheet')updateSheet();
@@ -1906,6 +1917,8 @@ function show(v){
   if(v==='autofill')updateAutofill();
   if(v==='admin')updateAdmin();
   if(v==='add'&&document.body.classList.contains('ro')){location.hash='home';return}
+  if(['gaps','plantings','lists'].indexOf(v)>=0&&document.body.classList.contains('ro')&&SESSION){location.hash='join';return}
+  if(v==='join')updateJoin();
   if(v!=='sheet'&&$('#renBox'))$('#renBox').hidden=true;
   window.scrollTo(0,0);
 }
@@ -1913,7 +1926,7 @@ function route(){const h=(location.hash||'#home').slice(1);
   if(h.indexOf('s-')===0){setSel(h.slice(2));show('sheet');return}
   if(h.indexOf('l-')===0){openList=h.slice(2);show('lists');return}
   if(h==='lists')openList='';
- show(['home','overview','add','sheet','gaps','trash','me','compare','calendar','pick','plantings','lists','help','autofill','admin'].indexOf(h)>=0?h:'home')}
+ show(['home','overview','add','sheet','gaps','trash','me','compare','calendar','pick','plantings','lists','help','autofill','admin','join'].indexOf(h)>=0?h:'home')}
 function go(v){if(location.hash==='#'+v)show(v);else location.hash=v}
 function refresh(){derive();revCompute();updateAdminBadge();if(!$('#v-admin').hidden)updateAdmin();updateOverview();if(!$('#v-home').hidden)updateHome();if(!$('#v-gaps').hidden)updateGaps();if(!$('#v-me').hidden)updateMe();if(!$('#v-compare').hidden)updateCompare();if(!$('#v-calendar').hidden)updateCalendar();if(!$('#v-pick').hidden)updatePick();if(!$('#v-plantings').hidden)updatePlantings();if(!$('#v-lists').hidden)updateLists();if(!$('#v-help').hidden)updateHelp();updateTrash();if(!$('#v-sheet').hidden)updateSheet();
   $('#spNames').innerHTML=species.map(s=>'<option value="'+esc(s.latin)+'"></option>').join('');updateHint()}
