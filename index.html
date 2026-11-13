@@ -29,7 +29,7 @@ body:not(.ro) .ro-only{display:none!important}
 .jcard b{font-size:15.5px}.jcard span:last-child{font-size:13.5px;color:var(--muted)}
 .joinhow{padding:16px 18px;border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:14px;background:var(--surface)}.joinhow h2{margin:0 0 6px}.joinhow ol{margin:0 0 8px;padding-left:1.3em;display:grid;gap:4px}
 .dock .dkic{position:relative;display:inline-flex}.dkdot{position:absolute;top:-2px;right:-4px;width:9px;height:9px;border-radius:50%;background:var(--falu);box-shadow:0 0 0 2px var(--surface)}.dkdot[hidden]{display:none}
-</style><title>Skogsträdgårdens artblad</title>
+</style><title>Skogsträdgårdens artblad</title><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1f3a2c"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Artblad">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
@@ -80,7 +80,7 @@ h3{font-size:17px}
 .btn.sm{min-height:32px;padding:4px 10px;font-size:13px}
 .btn.danger{color:var(--warn)}
 .btn[disabled]{opacity:.55;cursor:default}
-.tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,10.5rem);gap:8px}
+.tools{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,10.5rem);gap:8px;align-items:center}
 .tools select{width:100%}
 input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
 textarea{resize:vertical}
@@ -530,8 +530,74 @@ body.ro .dock .w-only{display:none}
 .hdr-r{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.hdr-r .seg button{min-height:32px;padding:4px 9px;font-size:12.5px}.lat .cn{font-style:normal}
 .tab small[hidden]{display:none!important}.tchip.cn{font-style:normal}
 .who{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* herbarium background (design B) with the season; drawings stay behind everything */
+:root{--paperbg:#f3f1ec;--bgink:#7a8590;--bgleaf:none;--bgdot:#e2d9c6;--bgop:.65}
+html[data-season=spring]{--paperbg:#f6f2e4;--bgink:#7c9358;--bgleaf:#e4ecd2}
+html[data-season=summer]{--paperbg:#f7f1e1;--bgink:#8b7a4c;--bgleaf:none}
+html[data-season=autumn]{--paperbg:#f5ede0;--bgink:#9c6440;--bgleaf:#efd5bd}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paperbg:var(--bg);--bgdot:#1f2922;--bgop:.3;--bgleaf:none}}
+:root[data-theme="dark"]{--paperbg:var(--bg);--bgdot:#1f2922;--bgop:.3;--bgleaf:none}
+body{background-color:var(--paperbg);background-image:radial-gradient(var(--bgdot) 1px,transparent 1px);background-size:18px 18px}
+#bgdeco{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:var(--bgop)}
+#bgdeco .bgsprig{position:absolute}
+#bgdeco .bgsprig.r{right:-40px;top:22vh;width:200px;height:320px}
+#bgdeco .bgsprig.l{left:-30px;bottom:12vh;width:160px;height:200px;transform:rotate(-14deg)}
+@media (max-width:720px){#bgdeco .bgsprig.r{width:150px;height:240px;right:-50px}#bgdeco .bgsprig.l{width:120px;height:150px}}
+.herblabel{margin:22px 0 0 auto;width:max-content;max-width:100%;padding:8px 12px;border:1px solid color-mix(in srgb,var(--bgink) 45%,var(--line));background:color-mix(in srgb,var(--surface) 70%,transparent);font-family:var(--display);font-size:12.5px;color:var(--muted);transform:rotate(1.5deg)}
+#splash{background:var(--paperbg);pointer-events:auto}#splash.out{pointer-events:none}
+/* loading screen: falling snow, petals or leaves by season */
+.spfx{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+#splash .spin{position:relative;z-index:1}.spfx i{position:absolute;top:-6vh;left:var(--x);width:calc(8px*var(--s));height:calc(8px*var(--s));border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(110,125,140,.5),0 1px 3px rgba(60,70,80,.25);animation:spfall var(--d) linear var(--l) infinite;opacity:.9}
+.spfx.spring i{background:#f3d6dc;border-radius:60% 0 60% 0;box-shadow:none}
+.spfx.autumn i{background:#d08a4a;border-radius:0 70% 0 70%;box-shadow:none;width:calc(11px*var(--s))}
+.spfx.summer i{background:#e9d27a;box-shadow:none;width:calc(4px*var(--s));height:calc(4px*var(--s));animation-name:spfloat}
+@keyframes spfall{to{transform:translate(4vw,112vh) rotate(260deg)}}
+@keyframes spfloat{from{transform:translate(0,110vh)}to{transform:translate(6vw,-10vh)}}
+@media (prefers-reduced-motion:reduce){.spfx{display:none}}
+/* pictograms, layer diagram, year wheel */
+.pics{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 0;color:var(--accent)}
+.pic{width:20px;height:20px;padding:2px;border-radius:6px;background:color-mix(in srgb,var(--accent) 9%,var(--surface))}
+.sp .pics .pic{width:18px;height:18px}
+.laydia{margin:0 0 8px}.laydia svg{width:100%;max-width:320px;height:auto;display:block}.laydia figcaption{font-size:12.5px;color:var(--muted)}
+.wheel{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0 0 8px}.wheel svg{width:var(--ws);height:var(--ws)}
+.wheel figcaption{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}.wheel figcaption i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+/* same genus */
+.gentab td,.gentab th{white-space:nowrap}.gentab tr.me td{background:color-mix(in srgb,var(--accent) 9%,var(--surface))}
+.gensec .chk{margin-top:8px}
+/* species list as photos */
+#ovList.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr));gap:10px}
+.spt{position:relative}#ovList .spt .sp.tile{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.spt .tph{width:100%;display:flex;align-items:center;justify-content:center;aspect-ratio:1;background:color-mix(in srgb,var(--c) 12%,var(--surface));color:var(--c);font-size:40px}
+.spt .tph img{width:100%;height:100%;object-fit:cover;display:block}.spt .tph>svg{width:38%;height:38%}#ovList.grid .spt .sp.tile{height:100%}
+.spt .tnm{display:flex;flex-direction:column;padding:0 10px 10px;min-width:0}.spt .tnm .lat{font-size:15px}.spt .tnm .nm{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spt .star{position:absolute;top:6px;right:6px}
+/* compact list */
+body.compact .sp{padding:6px 10px;gap:10px}body.compact .sp .ph{width:40px;height:40px;font-size:18px}body.compact .sp .pills,body.compact .sp .pics,body.compact .sp .nm{display:none}
+/* display settings */
+.dispset{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:22px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.dispset .fl{margin:0}
+/* bulk fill */
+.bulkbar{display:grid;gap:8px;padding:12px 14px;margin:0 0 12px;border:1px dashed color-mix(in srgb,var(--accent) 50%,var(--line));border-radius:12px;background:var(--surface)}
+.bulkctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.bulkctl input[type=text]{max-width:16rem}
+.gaprow.bk{grid-template-columns:auto minmax(0,15rem) minmax(0,1fr) auto}.bksel{display:flex;align-items:center;padding:0 2px}.bksel input{width:20px;height:20px}
+@media (max-width:720px){.gaprow.bk{grid-template-columns:auto minmax(0,1fr)}.gaprow.bk>*:not(.bksel){grid-column:2}}
+/* winter records, map, gbif */
+.plw{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:8px 0 0}.plw label{display:grid;gap:2px}.plw input{width:7.5rem}
+.pill.wint{margin:4px 4px 0 0}.pill.wint.died{border-color:color-mix(in srgb,var(--berry) 45%,var(--line))}
+.plmap{height:320px;border-radius:12px;border:1px solid var(--line);margin:0 0 12px;z-index:0}
+.hint.gbif{display:block}.hint.gbif .btn{margin-left:6px}
+/* admin dashboard extras */
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}.charts .wide{grid-column:1/-1}.charts h3{font-size:14px;margin:0 0 6px}
+.hbar{display:grid;grid-template-columns:8rem minmax(0,1fr) 2.2rem;align-items:center;gap:8px;font-size:13px;margin:3px 0}.hbar i{height:10px;border-radius:99px;background:var(--accent);display:block;min-width:2px}.hbar b{text-align:right}
+.vbars{display:flex;align-items:flex-end;gap:6px;height:120px}.vb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}.vb i{width:100%;max-width:28px;background:var(--accent);border-radius:4px 4px 0 0;display:block;min-height:2px}.vb span,.vb b{font-size:11px;color:var(--muted)}.vb b{font-weight:600}
+ul.probs{margin:4px 0 0;padding-left:1.2em;font-size:13.5px}
+/* shields: a new stage */
+.lad.lvlup{animation:lvlup 1.6s ease-out 1}
+@keyframes lvlup{0%{transform:scale(1);box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent)}30%{transform:scale(1.04);box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 0%,transparent)}100%{transform:scale(1)}}
+@media print{#bgdeco,.dispset,.herblabel{display:none!important}body{background:#fff}}
 </style>
-</head><body><header class="top"><div class="top-in">
+</head><body><div id="bgdeco" aria-hidden="true"></div><header class="top"><div class="top-in">
   <a class="brand" href="#home"><svg class="bm" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1f3a2c"/><path d="M30 12 L42 34 H36 L47 56 H39 L50 78 H10 L21 56 H13 L24 34 H18 Z" fill="#e9efe4"/><rect x="65" y="22" width="7" height="60" fill="#ffffff"/><rect x="65" y="40" width="3.5" height="2.5" fill="#1f3a2c"/><rect x="68.5" y="56" width="3.5" height="2.5" fill="#1f3a2c"/><circle cx="84" cy="74" r="5" fill="#d23a3f"/></svg><span class="bt"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="bs" data-t="Species fact sheets|Artfakta">Species fact sheets · Artfakta</span></span></a>
   <nav class="tabs" aria-label="Views">
     <a class="tab" href="#home" data-v="home" data-tab="Home|Hem"><span>Home</span><small>Hem</small></a>
@@ -573,6 +639,13 @@ body.ro .dock .w-only{display:none}
     <a class="htile a-only" href="#admin"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M8.8 12.2l2.2 2.2 4.3-4.6"/></svg></span><b data-th="Admin dashboard|Adminpanel|Beheerdersdashboard">Admin dashboard</b><span data-t="Verified species, review flags and Artie requests. Only admins see this.|Verifierade arter, granskningsflaggor och Artie-förfrågningar. Bara admin ser detta.|Geverifieerde soorten, meldingen en Artie-aanvragen. Alleen beheerders zien dit.">Verified species, review flags and Artie requests.</span><span class="pill admbadge" hidden></span></a>
     <a class="htile ro-only signed" href="#join"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4.4-2.6-7-6-7-9.5A4.5 4.5 0 0 1 12 8a4.5 4.5 0 0 1 7 3.5c0 3.5-2.6 6.9-7 9.5z"/><path d="M12 8V4M10 5.5 12 4l2 1.5"/></svg></span><b data-th="Become a contributor|Bli bidragsgivare|Word bijdrager">Become a contributor</b><span data-t="Add species, observations, photos and more. See what contributors can do.|Lägg till arter, observationer, foton och mer. Se vad bidragsgivare kan göra.|Voeg soorten, waarnemingen, foto’s en meer toe. Bekijk wat bijdragers kunnen doen.">Add species, observations, photos and more.</span></a>
   </div>
+  <div class="dispset">
+    <span class="fl" data-t="Display on this device|Visning på den här enheten|Weergave op dit apparaat">Display on this device</span>
+    <span class="seg" role="group" aria-label="Text size"><button type="button" data-zoom="0.9" aria-label="Smaller text">A−</button><button type="button" data-zoom="1" aria-pressed="true" aria-label="Normal text">A</button><button type="button" data-zoom="1.12" aria-label="Larger text">A+</button><button type="button" data-zoom="1.25" aria-label="Largest text">A++</button></span>
+    <label class="chk"><input type="checkbox" id="dispCompact"> <span data-t="Compact species list|Kompakt artlista|Compacte soortenlijst">Compact species list</span></label>
+    <button type="button" class="btn sm" id="installBtn" data-act="install" hidden data-t="Install as an app|Installera som app|Als app installeren">Install as an app</button>
+  </div>
+  <p id="herbLabel" class="herblabel" aria-hidden="true"></p>
 </section>
 
 <section id="v-overview" class="view" hidden>
@@ -594,6 +667,7 @@ body.ro .dock .w-only{display:none}
   </div>
   <div class="tools">
     <input id="q" type="search" data-tp="Search name, family|Sök namn, familj" placeholder="Search name, family · Sök" aria-label="Search species">
+    <span class="seg" role="group" aria-label="View"><button type="button" data-view="list" aria-pressed="true" data-t="List|Lista|Lijst">List</button><button type="button" data-view="grid" aria-pressed="false" data-t="Photos|Foton|Foto’s">Photos</button></span>
     <select id="sortSel" aria-label="Sort">
       <option value="name">A–Z</option><option value="fav" data-t="Favourites first|Favoriter först">Favourites first · Favoriter</option><option value="recent" data-t="Recent|Senast">Recent · Senast</option><option value="verdict" data-t="Verdict|Omdöme">Verdict · Omdöme</option><option value="no" data-t="No.|Nr">No. · Nr</option>
     </select>
@@ -608,6 +682,7 @@ body.ro .dock .w-only{display:none}
   <div class="ovhead"><div><h1 data-th="Help fill the gaps|Hjälp till att fylla luckorna">Help fill the gaps <em>Hjälp till att fylla luckorna</em></h1><p id="gapStats" class="muted" style="margin:4px 0 0"></p></div><a class="btn sm" href="#overview" data-t="All species|Alla arter">All species · Alla arter</a></div>
   <div id="gapChips" class="chips"></div>
   <select id="gapSel" aria-label="Filter by gap · Filtrera på lucka"></select>
+  <div id="bulkBox" class="w-only"></div>
   <div id="gapList" class="splist"></div>
 </section>
 
@@ -669,6 +744,7 @@ body.ro .dock .w-only{display:none}
     <div class="f wide acts"><button type="button" class="btn primary" data-act="pl-save" data-t="Save planting|Spara plantering">Save planting</button><button type="button" class="btn" data-act="pl-cancel" data-t="Cancel|Avbryt">Cancel</button></div>
   </form>
   <div class="acts" style="gap:8px;align-items:center"><span class="seg" id="plStatSeg" role="group" aria-label="Status"><button type="button" data-plst="alive" data-t="Alive|Lever">Alive</button><button type="button" data-plst="struggling" data-t="Struggling|Kämpar">Struggling</button><button type="button" data-plst="dead" data-t="Dead|Död">Dead</button><button type="button" data-plst="removed" data-t="Removed|Borttagen">Removed</button></span><select id="plPlaceSel" aria-label="Place"></select></div>
+  <div id="plMap" class="plmap" hidden></div>
   <div id="plList" class="stack"></div>
 </section>
 
@@ -792,13 +868,18 @@ body.ro .dock .w-only{display:none}
     <p id="cvRenHint" class="hint" style="margin:0"></p>
     <div class="acts"><button type="button" class="btn primary" id="cvRenGo" data-act="cv-ren-go" data-t="Rename|Byt namn|Hernoemen">Rename</button><button type="button" class="btn" data-act="cv-ren-cancel" data-t="Cancel|Avbryt|Annuleren">Cancel</button></div>
   </div>
-  <nav class="spjump" aria-label="On this page"><span class="fl" data-t="Jump to|Gå till|Ga naar">Jump to</span><a href="#" data-jump="cvSec" data-t="Cultivars|Sorter|Cultivars">Cultivars</a><a href="#" data-jump="hPrint" data-t="Print sheet|Utskriftsblad|Afdrukblad">Print sheet</a><a href="#" data-jump="hObs" data-t="Observations|Observationer|Waarnemingen">Observations</a><a href="#" class="w-only" data-jump="hPl" data-t="Plantings|Planteringar|Aanplant">Plantings</a><a href="#" data-jump="hCmt" data-t="Comments|Kommentarer|Opmerkingen">Comments</a><a href="#" data-jump="hSrc" data-t="Where to get it|Var finns den|Waar te krijgen">Where to get it</a><a href="#" data-jump="hEnt" data-t="Entries|Poster|Invoeren">Entries</a></nav>
+  <nav class="spjump" aria-label="On this page"><span class="fl" data-t="Jump to|Gå till|Ga naar">Jump to</span><a href="#" data-jump="genSec" data-t="Same genus|Samma släkte|Zelfde geslacht">Same genus</a><a href="#" data-jump="cvSec" data-t="Cultivars|Sorter|Cultivars">Cultivars</a><a href="#" data-jump="hPrint" data-t="Print sheet|Utskriftsblad|Afdrukblad">Print sheet</a><a href="#" data-jump="hObs" data-t="Observations|Observationer|Waarnemingen">Observations</a><a href="#" class="w-only" data-jump="hPl" data-t="Plantings|Planteringar|Aanplant">Plantings</a><a href="#" data-jump="hCmt" data-t="Comments|Kommentarer|Opmerkingen">Comments</a><a href="#" data-jump="hSrc" data-t="Where to get it|Var finns den|Waar te krijgen">Where to get it</a><a href="#" data-jump="hEnt" data-t="Entries|Poster|Invoeren">Entries</a></nav>
   <div id="revBox" class="a-only"></div>
   <div id="cvBar"></div>
   <div id="cardArea"></div>
   <section id="cvSec" class="cvsec" hidden>
     <h2><span data-t="Cultivars compared|Sorterna jämförda|Cultivars vergeleken">Cultivars compared</span><span id="cvCount"></span></h2>
     <div id="cvTable"></div>
+  </section>
+  <section id="genSec" class="cvsec gensec" hidden>
+    <h2><span data-t="Same genus|Samma släkte|Zelfde geslacht">Same genus</span>: <i id="genName"></i></h2>
+    <div id="genTable" class="tbl"></div>
+    <label class="chk"><input type="checkbox" data-withgenus> <span data-t="Add this table to the printed sheet|Ta med tabellen på utskriftsbladet|Deze tabel aan het afdrukblad toevoegen">Add this table to the printed sheet</span></label>
   </section>
   <div class="row2">
     <h2 id="hPrint" data-th="Print sheet|Utskriftsblad">Print sheet <em>Utskriftsblad</em></h2>
@@ -860,7 +941,7 @@ body.ro .dock .w-only{display:none}
   <div class="acts"><button id="authBtn" class="btn primary" type="submit" data-t="Sign in|Logga in">Sign in · Logga in</button><button id="authCancel" class="btn" type="button" hidden data-t="Cancel|Avbryt">Cancel · Avbryt</button></div>
 </form></div>
 <div id="lb" hidden><img alt=""></div>
-<div id="splash" hidden aria-hidden="true"><div class="spin"><svg class="splogo" viewBox="0 0 100 100" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<div id="splash" aria-hidden="true"><div class="spfx" aria-hidden="true"></div><div class="spin"><svg class="splogo" viewBox="0 0 100 100" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <rect class="sp-bg" width="100" height="100" rx="18" fill="#1f3a2c"/>
 <path class="sp-ground" d="M8 84 C22 79 36 86 52 82 C68 78 82 85 92 81 V92 H8 Z" fill="#8fa66a"/>
 <rect class="sp-trunk" x="26" y="70" width="4" height="12" fill="#e9efe4"/>
@@ -872,4 +953,4 @@ body.ro .dock .w-only{display:none}
 <circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
 </svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script><script src="nl.js?v=2026-11-13"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2026-11-13"></script></body></html>
+<script src="config.js"></script><script src="nl.js?v=2026-11-14"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2026-11-14"></script></body></html>
