@@ -517,6 +517,25 @@ const SHEET_CSS=`
 .acs .ft{display:flex;justify-content:space-between;gap:4mm;font-size:5.8pt;color:#59625b;border-top:.4pt solid #d4d8d2;padding-top:1.2mm}
 .acs .ft span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .acs .none{color:#9a9f9b}
+.acs.pc{--accent:var(--col);--line:#cdd3cb;--surface:#fff;--muted:#6b726c;--ink:#1a1a1a;grid-template-rows:auto auto minmax(0,1fr) auto}
+.acs .pis{display:inline-flex;gap:.8mm;margin-right:1mm;color:var(--col)}.acs .pi{width:3.8mm;height:3.8mm;display:block}
+.acs .bd{font-size:7pt;columns:3;column-gap:4.5mm;column-fill:balance;min-height:0;overflow:hidden}
+.acs .bk{break-inside:avoid;margin:0 0 1.8mm;border-top:.6pt solid var(--col);padding-top:.7mm}
+.acs .bk h4{margin:0 0 .6mm;font:700 1.12em/1.2 Georgia,'Times New Roman',serif;color:var(--col)}
+.acs .pl{display:flex;flex-wrap:wrap;gap:.6mm;margin:.5mm 0}
+.acs .pl span{display:inline-flex;align-items:center;gap:.5mm;border:.4pt solid #c3cac0;border-radius:3mm;padding:.05mm 1.4mm;font-size:.92em;white-space:nowrap}
+.acs .pl svg{width:1.05em;height:1.05em;color:var(--col)}
+.acs .pkv{display:grid;grid-template-columns:minmax(14mm,auto) 1fr;gap:0 1.4mm;margin:.4mm 0;align-items:baseline}
+.acs .pkv u{text-decoration:none;color:#59625b;font-size:.88em;font-weight:400}.acs .pkv b{font-size:1em}.acs .pkv b{font-weight:400;min-width:0}
+.acs .pdd{display:inline-flex;gap:.5mm;vertical-align:-.2mm}.acs .pdd i{width:.95em;height:.95em;border:.4pt solid var(--col);border-radius:50%}.acs .pdd i.on{background:var(--col)}
+.acs .pwh{display:flex;gap:1.6mm;align-items:center;margin:.3mm 0 .8mm}.acs .pwh svg{width:24mm;height:24mm;flex:none}
+.acs .pwl{display:flex;flex-direction:column;gap:.5mm;font-size:.9em}.acs .pwl i{display:inline-block;width:.9em;height:.9em;border-radius:.4mm;margin-right:.8mm;vertical-align:-.15em}
+.acs .laydia{margin:.3mm 0 .5mm}.acs .laydia svg{width:100%;max-width:50mm;height:auto;display:block}
+.acs.zl .bd{font-size:8pt}.acs.zl .pwh svg{width:28mm;height:28mm}.acs.zl .laydia svg{max-width:58mm}
+.acs.zxl .bd{font-size:9.5pt}.acs.zxl .pwh svg{width:32mm;height:32mm}.acs.zxl .laydia svg{max-width:64mm}
+.acs.z1 .bd{font-size:6.5pt}.acs.z2 .bd{font-size:6pt}.acs.z2 .pwh svg{width:20mm;height:20mm}.acs.z2 .laydia svg{max-width:42mm}
+.acs.z3 .bd{font-size:5.5pt}.acs.z3 .pwh svg{width:17mm;height:17mm}.acs.z3 .laydia svg{max-width:34mm}
+.acs.z4 .bd{font-size:5pt}.acs.z4 .pwh svg{width:15mm;height:15mm}.acs.z4 .laydia svg{max-width:30mm}
 .sl{grid-template-rows:auto auto 1fr auto}
 .sl .lst{column-count:3;column-gap:5mm;column-fill:auto;min-height:0;overflow:hidden;font-size:6.6pt}
 .sl .lst h5{break-after:avoid;margin-top:1.4mm}.sl .lst h5:first-child{margin-top:0}
@@ -565,31 +584,42 @@ function sheetHead(s,lang,src,band){
     '<div class="tags">'+(statO?'<span class="tag soft">'+L(statO.en,statO.sv)+'</span>':'')+(v?'<span class="tag soft">'+L('Use it?','Använda?')+' '+v+'</span>':'')+(invO&&invO.k!=='none'?'<span class="tag">'+L('Invasive risk','Invasionsrisk')+': '+L(invO.en,invO.sv)+'</span>':'')+'</div></div>'+
     '<div class="qrw">'+qrSvg(speciesUrl(s))+L('Scan for the latest version','Skanna för senaste versionen')+'</div></div>';
 }
+// Card layout: the same sections as the species page (year wheel, layer diagram, pills), only what is filled in.
+// The text size steps down until everything fits on the A5 page (measured in a hidden sheet).
 function sheetCard(s,lang,src){
+  const html=z=>sheetCardHTML(s,lang,src,z);
+  if(!document.body)return html('z1');
+  const host=document.createElement('div');host.setAttribute('aria-hidden','true');host.style.cssText='position:absolute;left:-10000px;top:0;visibility:hidden';document.body.appendChild(host);
+  try{for(const z of ['zxl','zl','','z1','z2','z3']){host.innerHTML=html(z);const b=host.querySelector('.bd');if(!b||(b.scrollWidth<=b.clientWidth+1&&b.scrollHeight<=b.clientHeight+1))return html(z)}return html('z4')}
+  finally{host.remove()}
+}
+function sheetCardHTML(s,lang,src,z){
   const m=s.m,w=s.form==='w',L=(en,sv)=>esc(lang==='sv'?sv:lang==='en'?en:lang==='nl'?nl(en):en+' · '+sv);
-  const has=k=>!isEmpty(m[k]),V=k=>esc(vtl(DEF[k],m[k],s.form,lang)),none='<span class="none">–</span>';
-  const pick=o=>esc(lang==='sv'?o.sv:lang==='nl'?nl(o.en):o.en);
-  const chips=(k)=>has(k)?'<div class="chs">'+optsOf(DEF[k],s.form).filter(o=>[].concat(m[k]).indexOf(o.k)>=0).map(o=>'<span class="ch">'+pick(o)+'</span>').join('')+'</div>':'';
-  const K=(en,sv,val)=>'<div class="k"><u>'+L(en,sv)+'</u><b>'+(val||none)+'</b></div>';
-  const size=has('height')?esc(m.height+(has('spread')?' × '+m.spread:'')+' '+(unitOf(DEF.height,s.form)||'')):'';
-  const light=has('light')?LIGHT.filter(o=>m.light.indexOf(o.k)>=0).map(o=>SIC[o.k]+pick(o)).join(' '):'';
-  const moist=has('moist')?[1,2,3,4,5].map(n=>n<=m.moist?SIC.drop:SIC.dropo).join('')+' '+(m.moist<=2?L('dry','torr'):m.moist>=4?L('moist','fuktig'):L('medium','medel')):'';
-  const zone=[has('usda')?'USDA '+esc(m.usda):'',has('szone')?'SE '+esc(m.szone):'',has('rhs')?'RHS '+esc(m.rhs):''].filter(Boolean).join(' · ');
-  const calRows=['cal1','cal2','cal3','cal4'].filter(has);
-  const cal=calRows.length?'<div class="cal"><span></span>'+MONTHS.map(x=>'<span class="mh">'+x+'</span>').join('')+calRows.map(k=>'<u>'+L(CAL_LAB[k][s.form][0],CAL_LAB[k][s.form][1])+'</u>'+MONTHS.map((_,i)=>'<span class="mo'+(m[k].indexOf(i+1)>=0?' on':'')+'"></span>').join('')).join('')+'</div>'
-    :'<div class="none">'+L('No calendar months recorded yet.','Inga kalendermånader registrerade ännu.')+'</div>';
-  const P=(en,sv,txt)=>txt?'<p><span class="lb">'+L(en,sv)+':</span> '+txt+'</p>':'';
-  const c1='<div><h5>'+L('Uses','Användning')+'</h5>'+(chips('uses')||none)+P('Edibility','Ätlighet',has('edibility')?V('edibility'):'')+P('Yield','Skörd',has('yield')?V('yield'):'')+P('Edible','Ätligt',has('edible')?esc(m.edible):'')+P('Main product','Produkt',has('product')?esc(m.product):'')+'</div>';
-  const c2='<div><h5>'+L('Ecosystem','Ekosystem')+'</h5>'+(chips('eco')||none)+P('Notes','Anteckningar',has('ecoNotes')?esc(m.ecoNotes):'')+(has('role')?'<h5 style="margin-top:2mm">'+L('Role','Roll')+'</h5>'+chips('role'):'')+(has('struct')?'<h5 style="margin-top:2mm">'+L('Structure','Struktur')+'</h5>'+chips('struct'):'')+'</div>';
-  const care=[P('Propagate','Förökning',has('prop')?V('prop'):''),w?P('Pollination','Pollinering',has('poll')?V('poll'):''):P('Sowing','Sådd',has('sowing')?V('sowing'):''),
-    P('Effort','Insats',has('effort')?V('effort'):''),P('Establish','Etablering',has('estab')?V('estab'):''),P('Good with','Passar med',has('goodWith')?esc(m.goodWith):''),P('Avoid near','Undvik nära',has('avoid')?esc(m.avoid):''),
-    P('Watch out','Se upp',has('watch')?esc(m.watch):''),P('Planted','Planterad',s.plantings&&s.plantings.length?esc(plSummary(s.plantings).replace(/^[^:]*: /,'')+' · '+[...new Set(s.plantings.map(p=>p.place).filter(Boolean))].slice(0,3).join(', ')):''),P('Get it from','Finns hos',s.src.length?s.src.slice(0,3).map(o=>esc(o.supplier||'')).join(', '):''),P('Cautions','Varningar',has('caut')?V('caut'):'')].join('');
-  const c3='<div><h5>'+L('Growing','Odling')+'</h5>'+(care||none)+'</div>';
-  const origin=[has('region')?V('region'):'',has('habitat')?esc(m.habitat):''].filter(Boolean).join(' · ');
-  return '<section class="acs'+(w?'':' herb')+'">'+sheetHead(s,lang,src)+
-    '<div class="kf">'+K('Size','Storlek',size)+K('Light','Ljus',light)+K('Moisture','Fukt',moist)+K('Soil','Jord',has('soil')?V('soil'):'')+K('Hardiness','Härdighet',zone)+K('Layer','Skikt',has('layer')?V('layer'):'')+'</div>'+
-    cal+'<div class="cols">'+c1+c2+c3+'</div>'+
-    '<div class="ft"><span>'+(origin?L('Origin','Ursprung')+': '+origin:'')+'</span><span>'+(has('sources')?L('Sources','Källor')+': '+esc(m.sources):'')+'</span><span>'+L('Updated','Uppdaterad')+' '+esc(s.updatedDate||'')+'</span></div></section>';
+  const P=(opts,k)=>{const a=[].concat(m[k]==null?[]:m[k]),h=opts.filter(o=>a.indexOf(o.k)>=0);return h.length?'<div class="pl">'+h.map(o=>'<span>'+(k==='light'&&SIC[o.k]?SIC[o.k]:'')+L(o.en,o.sv)+'</span>').join('')+'</div>':''};
+  const KV=(en,sv,v)=>v?'<div class="pkv"><u>'+L(en,sv)+'</u><b>'+v+'</b></div>':'';
+  const T=k=>m[k]?esc(m[k]):'',N=(k,u)=>m[k]!=null&&m[k]!==''?esc(m[k])+' '+(u||unitOf(DEF[k],s.form)||''):'';
+  const DD=n=>'<span class="pdd">'+[1,2,3,4,5].map(i=>'<i'+(i<=n?' class="on"':'')+'></i>').join('')+'</span>';
+  const size=(m.height!=null||m.spread!=null)?esc(m.height!=null?m.height:'?')+' × '+esc(m.spread!=null?m.spread:'?')+' '+unitOf(DEF.height,s.form):'';
+  const nat=(m.nativeH!=null||m.nativeW!=null)?esc(m.nativeH!=null?m.nativeH:'?')+' × '+esc(m.nativeW!=null?m.nativeW:'?')+' m':'';
+  const pv=provenOf(s),zones=[m.usda&&'USDA '+esc(m.usda),m.szone&&'SE '+esc(m.szone),m.rhs&&'RHS '+esc(m.rhs)].filter(Boolean).join(' · ');
+  const calRows=['cal1','cal2','cal3','cal4'].filter(k=>(m[k]||[]).length);
+  const wheel=calRows.length?'<div class="pwh">'+yearWheel(s,0,true)+'<div class="pwl">'+calRows.map(k=>'<span><i style="background:'+CAL_COL[k]+'"></i>'+L(CAL_LAB[k][s.form][0],CAL_LAB[k][s.form][1])+': '+esc(monthsTxt(m[k],lang==='both'?'en':lang))+'</span>').join('')+'</div></div>':'';
+  const planted=s.plantings&&s.plantings.length?esc(plSummary(s.plantings).replace(/^[^:]*: /,'')):'';
+  const blocks=[
+   ['Origin','Ursprung',P(REGIONS,'region')+KV('Native size','Naturlig storlek',nat)+KV('Habitat','Miljö',T('habitat'))+P(SUCC,'succession')+KV('Notes','Anm.',T('range'))],
+   ['Size & form','Storlek & form',P(O('annual:Can be grown as an annual:Kan odlas som ettårig'),'asAnnual')+KV('Size','Storlek',size)+KV('Spacing','Avstånd',N('spacing'))+P(w?CROWN:HABIT,w?'crown':'habit')+P(w?ROOTS_W:ROOTS_H,'roots')+P(w?LEAF:DORM,w?'leaf':'dormant')+KV('Lifespan','Livslängd',N('lifespan'))+KV(w?'First yield':'Sow→harvest',w?'Första skörd':'Sådd→skörd',w?N('firstYield'):N('sowHarvest'))+KV('Product','Produkt',T('product'))],
+   ['Site','Plats',(pv?KV('Proven hardy','Bevisat härdig',esc(provenTxt(pv))):'')+P(LIGHT,'light')+(m.moist?KV('Moisture','Fukt',DD(m.moist)+' '+L('dry→wet','torr→blöt')):'')+P(SOIL,'soil')+P(PH,'ph')+P(TOL,'tol')+KV('Zones','Zoner',zones)],
+   ['Calendar & care','Kalender & skötsel',wheel+P(w?PROP_W:PROP_H,'prop')+P(w?POLL:SOWING,w?'poll':'sowing')+P(EFFORT,'effort')+P(ESTAB,'estab')+KV('Watch-outs','Se upp',T('watch'))],
+   ['Uses','Användning',P(w?USES_W:USES_H,'uses')+P(YIELD,'yield')+KV('Edibility','Ätlighet',isEmpty(m.edibility)?'':Number(m.edibility)===0?L('Inedible','Oätlig'):DD(m.edibility))+KV('Edible / notes','Ätligt',T('edible'))],
+   ['Ecosystem functions','Ekosystemfunktioner',P(w?ECO_W:ECO_H,'eco')+KV('Notes','Anm.',T('ecoNotes'))],
+   ['Placement','Placering',layerDiagram(s,true)+P(LAYER,'layer')+P(ROLE,'role')+P(STRUCT,'struct')+KV('Good with','Passar med',T('goodWith'))+KV('Avoid near','Undvik nära',T('avoid'))],
+   ['Cautions & sources','Varningar & källor',P(CAUT,'caut')+KV('Sources','Källor',T('sources'))+KV('Planted','Planterad',planted)+KV('Get it from','Finns hos',s.src&&s.src.length?s.src.slice(0,3).map(o=>esc(o.supplier||'')).filter(Boolean).join(', '):'')]
+  ];
+  const filled=blocks.filter(b=>b[2].trim()),missing=blocks.filter(b=>!b[2].trim()).map(b=>L(b[0],b[1]));
+  const head=sheetHead(s,lang,src).replace('<div class="tags">','<div class="tags">'+pictos(s,8).replace(/class="pics"/,'class="pis"').replace(/class="pic"/g,'class="pi"'));
+  return '<section class="acs pc'+(w?'':' herb')+(z?' '+z:'')+'">'+head+
+    '<div class="bd">'+(filled.length?filled.map(b=>'<section class="bk"><h4>'+L(b[0],b[1])+'</h4>'+b[2]+'</section>').join(''):'<span class="none">'+L('Nothing recorded yet.','Inget registrerat ännu.')+'</span>')+'</div>'+
+    '<div class="ft"><span>'+(missing.length?L('Not yet filled','Saknas')+': '+missing.join(', '):'')+'</span><span>'+L('Updated','Uppdaterad')+' '+esc(s.updatedDate||'')+'</span></div></section>';
 }
 function sheetList(s,lang,src){
   const m=s.m,w=s.form==='w',L=(en,sv)=>esc(lang==='sv'?sv:lang==='en'?en:lang==='nl'?nl(en):en+' · '+sv);
@@ -1075,7 +1105,7 @@ function pictos(s,max){
 }
 
 /* ---------- food-forest layer diagram ---------- */
-function layerDiagram(s){
+function layerDiagram(s,print){
   const L=s.m.layer||[];if(!L.length)return '';
   const on=k=>L.indexOf(k)>=0,c=k=>on(k)?'var(--accent)':'var(--line)',f=k=>on(k)?'color-mix(in srgb,var(--accent) 30%,transparent)':'transparent';
   const lab=k=>{const o=LAYER.find(x=>x.k===k);return o?trs(o.en,o.sv):k};
@@ -1089,12 +1119,12 @@ function layerDiagram(s){
     '<path d="M236 94c5-5 10-5 15 0s10 5 15 0" stroke="'+c('ground')+'" fill="none"/>'+
     '<path d="M282 96V30M282 84c8 0 12-4 12-10M282 66c8 0 12-4 12-10M282 48c8 0 12-4 12-10" stroke="'+c('vert')+'" fill="none"/>'+
     '<path d="M240 96c-2 8-2 14 0 20M240 102c-5 2-8 6-8 12M240 104c5 2 8 5 9 10" stroke="'+c('root')+'" fill="none"/>'+
-    '</g></svg><figcaption>'+esc(L.map(lab).join(' · '))+'</figcaption></figure>';
+    '</g></svg>'+(print?'':'<figcaption>'+esc(L.map(lab).join(' · '))+'</figcaption>')+'</figure>';
 }
 
 /* ---------- year wheel: the four calendar rows as rings ---------- */
 const CAL_COL={cal1:'#6b8f3a',cal2:'#d98bb0',cal3:'#c06a1f',cal4:'#7d8a93'};
-function yearWheel(s,size){
+function yearWheel(s,size,print){
   const m=s.m,rows=['cal1','cal2','cal3','cal4'].filter(k=>(m[k]||[]).length);if(!rows.length)return '';
   const R=50,cx=60,cy=60,arc=(r0,r1,i)=>{const a0=(i/12)*2*Math.PI-Math.PI/2,a1=((i+1)/12)*2*Math.PI-Math.PI/2,p=(r,a)=>(cx+r*Math.cos(a)).toFixed(2)+' '+(cy+r*Math.sin(a)).toFixed(2);
     return 'M'+p(r1,a0)+' A'+r1+' '+r1+' 0 0 1 '+p(r1,a1)+' L'+p(r0,a1)+' A'+r0+' '+r0+' 0 0 0 '+p(r0,a0)+'Z'};
@@ -1102,6 +1132,7 @@ function yearWheel(s,size){
   rows.forEach((k,ri)=>{const r1=R-ri*w,r0=r1-w+1.5;for(let i=0;i<12;i++)g+='<path d="'+arc(r0,r1,i)+'" fill="'+((m[k]||[]).indexOf(i+1)>=0?CAL_COL[k]:'var(--soft)')+'" stroke="var(--surface)" stroke-width="1"/>'});
   const mon=MONTHS.map((x,i)=>{const a=((i+.5)/12)*2*Math.PI-Math.PI/2;return '<text x="'+(cx+(R+6)*Math.cos(a)).toFixed(1)+'" y="'+(cy+(R+6)*Math.sin(a)+2.5).toFixed(1)+'" text-anchor="middle" font-size="7" fill="var(--muted)">'+x+'</text>'}).join('');
   const nowA=((new Date().getMonth()+.5)/12)*2*Math.PI-Math.PI/2;
+  if(print)return '<svg viewBox="-4 -4 128 128" aria-hidden="true">'+g+mon+'</svg>';
   return '<figure class="wheel" style="--ws:'+(size||132)+'px"><svg viewBox="-4 -4 128 128" role="img" aria-label="'+esc(rows.map(k=>trs(CAL_LAB[k][s.form][0],CAL_LAB[k][s.form][1])).join(', '))+'">'+g+mon+
     '<path d="M60 60L'+(60+16*Math.cos(nowA)).toFixed(1)+' '+(60+16*Math.sin(nowA)).toFixed(1)+'" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/><circle cx="60" cy="60" r="2.2" fill="var(--ink)"/></svg>'+
     '<figcaption>'+rows.map(k=>'<span><i style="background:'+CAL_COL[k]+'"></i>'+esc(trs(CAL_LAB[k][s.form][0],CAL_LAB[k][s.form][1]))+'</span>').join('')+'</figcaption></figure>';
@@ -1298,7 +1329,7 @@ let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;const b=$('#installBtn');if(b)b.hidden=false});
 
 /* ---------- version 2.4.2: section marks, dismissed problems, live updates for admins (setup/v5_live_sections.sql) ---------- */
-const APP_VERSION='2.4.2';
+const APP_VERSION='2.4.3';
 // The sheet's sections for verification. Literature sources have their own mark, which also goes grey after two years.
 const RSECS=[{id:'ident',en:'Names & photo',sv:'Namn & foto',f:['latin','en','sv','nl','family','type','status','photo']}]
   .concat(SEC.map(x=>({id:x.id,en:x.en,sv:x.sv,f:x.f.map(d=>d.k).filter(k=>k!=='sources')})))
@@ -2538,6 +2569,7 @@ document.addEventListener('click',async e=>{
   else if(act==='cancel-edit'){resetDraft()}
   else if(act==='draft-restore')draftRestore();
   else if(act==='draft-discard'){draftClear();toast(tr('Draft discarded','Utkastet slängt','Concept weggegooid'))}
+  else if((act==='print-one'||act==='export-one'||act==='print-sheets'||act==='export-sheets')&&SB&&!CANW)toast(tr('Printing and downloading sheets is for contributors.','Utskrift och nedladdning av blad är för bidragsgivare.','Afdrukken en downloaden van bladen is voor bijdragers.'),'err');
   else if(act==='export-sheets')exportSheets(listInView(),'list_'+today());
   else if(act==='print-sheets')printSheets(listInView());
   else if(act==='print-one'&&cp)printSheets([cp]);

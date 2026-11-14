@@ -1,7 +1,7 @@
 /* Dutch interface text for Skogsträdgårdens artblad, keyed by the English text in app.js and index.html.
    To fix a translation: open this file in Notepad, change the text on the right, save, and redeploy.
    A missing line simply shows the English text. */
-window.ARTBLAD_NL={"Can be grown as":"Kan gekweekt worden als","Can be grown as an annual":"Kan als eenjarige gekweekt worden","Proven hardy":"Bewezen winterhard","Use":"Gebruik","Survived":"Overleefde","Damaged":"Beschadigd","Died":"Dood",
+window.ARTBLAD_NL={"All cultivars follow the species.":"Alle cultivars volgen de soort.","Bold: the cultivar’s own value. Grey: follows the species.":"Vet: eigen waarde van de cultivar. Grijs: volgt de soort.","SAME GENUS":"ZELFDE GESLACHT","CULTIVARS COMPARED":"CULTIVARS VERGELEKEN","Can be grown as":"Kan gekweekt worden als","Can be grown as an annual":"Kan als eenjarige gekweekt worden","Proven hardy":"Bewezen winterhard","Use":"Gebruik","Survived":"Overleefde","Damaged":"Beschadigd","Died":"Dood",
 "Favourites saved on this device only":"Favorieten alleen op dit apparaat bewaard",
 "Favourite":"Favoriet",
 "Favourites":"Favorieten",

@@ -618,6 +618,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 .spclist button:hover,.spclist button.act{background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
 .spclist button[aria-selected=true]{font-weight:600}
 .gapsort{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0}.gapsort .fl{margin:0}
+.printbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:4px 0 10px}.printbar .btn svg{vertical-align:-4px}
 .appver{margin:14px 0 0;text-align:center;font-size:12.5px;color:var(--muted)}
 /* shields: a new stage */
 .lad.lvlup{animation:lvlup 1.6s ease-out 1}
@@ -673,7 +674,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <button type="button" class="btn sm" id="installBtn" data-act="install" hidden data-t="Install as an app|Installera som app|Als app installeren">Install as an app</button>
   </div>
   <p id="herbLabel" class="herblabel" aria-hidden="true"></p>
-  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.2.1</span></p>
+  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.3</span></p>
 </section>
 
 <section id="v-overview" class="view" hidden>
@@ -681,8 +682,8 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <div><h1 data-th="Species|Arter">Species <em>Arter</em></h1><p id="ovStats" class="muted" style="margin:4px 0 0">Loading…</p></div>
     <div class="acts mcol">
       <label class="chk"><input type="checkbox" data-withlog checked> <span data-t="Include observations|Ta med observationer">Include observations</span></label>
-      <button class="btn sm keep" data-act="print-sheets"><span data-t="Print this list|Skriv ut listan">Print this list</span> (<span class="n">0</span>)</button>
-      <button class="btn sm" data-act="export-sheets"><span data-t="Sheets (.html)|Blad (.html)">Sheets (.html)</span> (<span class="n">0</span>)</button>
+      <button class="btn sm keep w-only" data-act="print-sheets"><span data-t="Print this list|Skriv ut listan">Print this list</span> (<span class="n">0</span>)</button>
+      <button class="btn sm w-only" data-act="export-sheets"><span data-t="Sheets (.html)|Blad (.html)">Sheets (.html)</span> (<span class="n">0</span>)</button>
       <button class="btn sm" data-act="export-csv">CSV</button>
       <button class="btn sm" data-act="export-json">JSON</button>
       <a class="btn sm w-only" href="#lists" data-t="Lists|Listor">Lists</a>
@@ -873,9 +874,9 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
       <button class="btn w-only keep" data-act="add-info" data-t="Add info|Lägg till info">Add info · Lägg till</button>
       <span id="sheetAddList"></span>
       <button class="btn keep" data-act="compare-add" data-t="Compare|Jämför">Compare</button>
-      <button class="btn" data-act="print-one" data-t="Print|Skriv ut">Print</button>
+      <button class="btn w-only" data-act="print-one" data-t="Print|Skriv ut">Print</button>
       <button class="btn" data-act="flag-open" data-t="Flag for review|Flagga för granskning|Melden voor controle">Flag for review</button>
-      <button class="btn" data-act="export-one" data-t="Download sheet|Ladda ner blad">Download sheet</button>
+      <button class="btn w-only" data-act="export-one" data-t="Download sheet|Ladda ner blad">Download sheet</button>
       <button type="button" class="btn mmore" data-act="mmore" aria-expanded="false" data-t="⋯ More|⋯ Mer|⋯ Meer">⋯ More</button>
     </div>
   </div>
@@ -919,6 +920,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
       <span class="seg" id="sideSeg"><button type="button" data-side="front" aria-pressed="true" data-t="Front|Framsida">Front</button><button type="button" data-side="back" aria-pressed="false" data-t="Log|Logg">Log · Logg</button></span>
     </div>
   </div>
+  <div class="printbar w-only"><button type="button" class="btn primary" data-act="print-one"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7" rx="1"/></svg> <span data-t="Print this card|Skriv ut kortet|Deze kaart afdrukken">Print this card</span></button><button type="button" class="btn" data-act="export-one" data-t="Download (.html)|Ladda ner (.html)|Downloaden (.html)">Download (.html)</button><small class="muted" data-t="To save a PDF, choose “Save as PDF” as the printer.|Välj ”Spara som PDF” som skrivare för att spara en PDF.|Kies “Opslaan als pdf” als printer om een pdf te bewaren.">To save a PDF, choose “Save as PDF” as the printer.</small></div>
   <div class="sheetwrap" id="sheetWrap"><div class="sheetfit" id="sheetFit"></div></div>
   <p class="muted" style="font-size:13px;margin:0" data-t="A5 landscape, 210 × 148 mm. Print, or download the .html file and print it from a browser (two sheets per A4 also works). Card shows only what is filled in; Form shows every option, for filling in by hand. Untick “Include observations” to leave out the observation pages.|A5 liggande, 210 × 148 mm. Skriv ut, eller ladda ner .html-filen och skriv ut från en webbläsare (två blad per A4 fungerar också). Kort visar bara det som är ifyllt; Formulär visar alla val, för att fylla i för hand. Bocka ur ”Ta med observationer” för att utelämna observationssidorna.">A5 landscape.</p>
   <h2 id="hObs" data-th="Observation log|Observationer">Observation log <em>Observationer</em></h2>
@@ -983,4 +985,4 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 <circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
 </svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script><script src="nl.js?v=2.4.2"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.2"></script></body></html>
+<script src="config.js"></script><script src="nl.js?v=2.4.3"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.3"></script></body></html>
