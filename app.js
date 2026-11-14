@@ -940,7 +940,9 @@ function cvTableHTML(s){
 }
 function updateSheet(){
   const sel=$('#spSel');
-  sel.innerHTML=species.length?species.map(s=>'<option value="'+esc(s.sid)+'"'+(s.sid===selected?' selected':'')+'>'+esc(dispName(s))+((commonName(s)?s.latin:(s.m.en||s.m.sv))?' — '+esc(commonName(s)?s.latin:(s.m.en||s.m.sv)):'')+'</option>').join(''):'<option>No species yet</option>';
+  const byLat=(a,b)=>a.latin.localeCompare(b.latin,'en');
+  sel.innerHTML=species.length?species.slice().sort(byLat).map(s=>'<option value="'+esc(s.sid)+'"'+(s.sid===selected?' selected':'')+'>'+esc(dispName(s))+((commonName(s)?s.latin:(s.m.en||s.m.sv))?' — '+esc(commonName(s)?s.latin:(s.m.en||s.m.sv)):'')+'</option>').join(''):'<option>No species yet</option>';
+  spPickShow();
   $$('#langSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lang===state.lang));
   $$('#sideSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.side===state.side));
   const s=selected&&bySid.get(selected),p=cur();
@@ -1121,11 +1123,32 @@ function genusTableHTML(s,lang,print,only){
   return '<table class="'+(print?'gtab':'cmpt gentab')+'"><thead><tr>'+cols.map(c=>'<th scope="col">'+L(c[0],c[1])+'</th>').join('')+'</tr></thead><tbody>'+
     list.map(x=>'<tr'+(x.sid===s.sid?' class="me"':'')+'>'+cols.map(c=>'<td>'+c[2](x)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
 }
+// Split a printed table over as many A5 backs as needed, filling each page until it is full: the rows are measured
+// in a hidden sheet (row heights depend on how much text each row has). Without a page to measure in: fixed counts.
+function fitPages(rows,page,fallback){
+  const out=[];let i=0;
+  const host=document.body&&document.createElement('div');
+  if(host){host.className='sheetfit';host.setAttribute('aria-hidden','true');host.style.cssText='position:absolute;left:-10000px;top:0;visibility:hidden;transform:none;width:auto;height:auto';document.body.appendChild(host)}
+  try{
+    while(i<rows.length){
+      let n=fallback;
+      if(host){
+        host.innerHTML=page(rows.slice(i));
+        const w=host.querySelector('.gwrap'),trs=host.querySelectorAll('.gtab tbody tr'),note=host.querySelector('.gnote');
+        if(w&&w.clientHeight>0&&trs.length){
+          const lim=w.getBoundingClientRect().top+w.clientHeight-(note?note.getBoundingClientRect().height+4:0);
+          n=0;trs.forEach(tr=>{if(tr.getBoundingClientRect().bottom<=lim+0.5)n++});
+        }
+      }
+      n=Math.max(1,Math.min(n,rows.length-i));out.push(page(rows.slice(i,i+n)));i+=n;
+    }
+  }finally{if(host)host.remove()}
+  return out.join('');
+}
 function sheetGenus(s,lang){
   const t=genusTableHTML(s,lang,true);if(!t)return '';
   const L=(en,sv)=>esc(lang==='sv'?sv:lang==='nl'?nl(en):en);
-  const all=genusList(s),pages=[];for(let i=0;i<all.length;i+=14)pages.push(all.slice(i,i+14));
-  return pages.map(pg=>'<section class="sheet back tblp'+(s.form==='w'?'':' herb')+'"><div class="band"><span>'+L('SAME GENUS','SAMMA SLÄKTE')+': <i>'+esc(genusOf(s.latin))+'</i></span><small><i>'+esc(s.latin)+'</i> · '+esc(s.no)+'</small></div><div class="gwrap">'+genusTableHTML(s,lang,true,pg)+'</div></section>').join('');
+  return fitPages(genusList(s),pg=>'<section class="sheet back tblp'+(s.form==='w'?'':' herb')+'"><div class="band"><span>'+L('SAME GENUS','SAMMA SLÄKTE')+': <i>'+esc(genusOf(s.latin))+'</i></span><small><i>'+esc(s.latin)+'</i> · '+esc(s.no)+'</small></div><div class="gwrap">'+genusTableHTML(s,lang,true,pg)+'</div></section>',14);
 }
 
 /* ---------- species list as a photo grid ---------- */
@@ -1397,13 +1420,12 @@ function sheetCv(s,lang){
   const L=(en,sv)=>esc(lang==='sv'?sv:lang==='nl'?nl(en):en),dash='–',lg=lang==='both'?'en':lang;
   const lab=k=>DEF[k].t==='cal'?L(CAL_LAB[k][s.form][0],CAL_LAB[k][s.form][1]):L(DEF[k].en,DEF[k].sv);
   const val=(x,k)=>{const v=x.m[k];if(isEmpty(v))return dash;if(DEF[k].t==='cal')return esc(monthsTxt(v,lg));if(DEF[k].t==='scale')return Number(v)===0&&k==='edibility'?L('Inedible','Oätlig'):esc(v+'/5');return esc(vtl(DEF[k],v,s.form,lg))};
-  const rows=[s].concat(s.cvs),PER_C=6,PER_R=13,pages=[];
+  const rows=[s].concat(s.cvs),PER_C=6;
   const kc=keys.length?[]:[[]];for(let i=0;i<keys.length;i+=PER_C)kc.push(keys.slice(i,i+PER_C));
-  kc.forEach(ks=>{for(let i=0;i<rows.length;i+=PER_R)pages.push([ks,rows.slice(i,i+PER_R)])});
-  return pages.map(([ks,rs])=>'<section class="sheet back tblp'+(s.form==='w'?'':' herb')+'"><div class="band"><span>'+L('CULTIVARS COMPARED','SORTERNA JÄMFÖRDA')+'</span><small><i>'+esc(s.latin)+'</i> · '+esc(s.no)+'</small></div><div class="gwrap"><table class="gtab"><thead><tr><th scope="col">'+L('Cultivar','Sort')+'</th>'+
+  return kc.map(ks=>fitPages(rows,rs=>'<section class="sheet back tblp'+(s.form==='w'?'':' herb')+'"><div class="band"><span>'+L('CULTIVARS COMPARED','SORTERNA JÄMFÖRDA')+'</span><small><i>'+esc(s.latin)+'</i> · '+esc(s.no)+'</small></div><div class="gwrap"><table class="gtab"><thead><tr><th scope="col">'+L('Cultivar','Sort')+'</th>'+
     (ks.length?ks.map(k=>'<th scope="col">'+lab(k)+'</th>').join(''):'<th></th>')+'</tr></thead><tbody>'+
     rs.map(x=>'<tr'+(x.isCv?'':' class="me"')+'><td>'+(x.isCv?esc(cvQ(x.cv)):'<i>'+L('Species','Arten')+'</i>')+'</td>'+(ks.length?ks.map(k=>{const own=x.isCv&&!isEmpty(x.own[k]);return '<td'+(x.isCv&&!own?' class="inh"':own?' class="own"':'')+'>'+val(x,k)+'</td>'}).join(''):'<td>'+L('All cultivars follow the species.','Alla sorter följer arten.')+'</td>')+'</tr>').join('')+
-    '</tbody></table><p class="gnote">'+L('Bold: the cultivar’s own value. Grey: follows the species.','Fetstil: sortens eget värde. Grått: följer arten.')+'</p></div></section>').join('');
+    '</tbody></table><p class="gnote">'+L('Bold: the cultivar’s own value. Grey: follows the species.','Fetstil: sortens eget värde. Grått: följer arten.')+'</p></div></section>',13)).join('');
 }
 
 {const av=document.getElementById('appVer');if(av)av.textContent=APP_VERSION}
@@ -1633,7 +1655,8 @@ const gapState={only:''};
 let gapLast='';
 function updateGaps(){
   if(gapState.only!==gapLast){gapLast=gapState.only;bulkState.sel.clear();bulkState.val=null}
-  const list=species.filter(s=>!gapState.only||!GAPS.find(g=>g.k===gapState.only).ok(s)).sort((a,b)=>completeness(a)-completeness(b)||byName(a,b));
+  const list=species.filter(s=>!gapState.only||!GAPS.find(g=>g.k===gapState.only).ok(s)).sort(store.get('ab.gapsort')==='latin'?(a,b)=>a.latin.localeCompare(b.latin,'en'):(a,b)=>completeness(a)-completeness(b)||byName(a,b));
+  $$('#gapSort [data-gapsort]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.gapsort===(store.get('ab.gapsort')==='latin'?'latin':'least')));
   const avg=species.length?Math.round(species.reduce((t,s)=>t+completeness(s),0)/species.length):0;
   $('#gapStats').textContent=tr(species.length+' species, on average '+avg+'% complete. Least complete first.',species.length+' arter, i snitt '+avg+' % ifyllda. Minst ifyllda först.',species.length+' soorten, gemiddeld '+avg+'% ingevuld. Minst ingevulde eerst.');
   $('#gapChips').innerHTML='<button type="button" class="chip sm" data-gap="" aria-pressed="'+(!gapState.only)+'"><i></i><span>'+trh('All species','Alla arter')+'</span></button>'+
@@ -2445,6 +2468,7 @@ document.addEventListener('click',async e=>{
   const bv=t.closest('[data-bulkv]');if(bv){const v=Number(bv.dataset.bulkv);bulkState.val=bulkState.val===v?null:v;updateGaps();return}
   const bm=t.closest('[data-bulkm]');if(bm){const v=Number(bm.dataset.bulkm),a=new Set(bulkState.val||[]);a.has(v)?a.delete(v):a.add(v);bulkState.val=a.size?[...a].sort((x,y)=>x-y):null;updateGaps();return}
   const zb=t.closest('[data-zoom]');if(zb){store.set('ab.zoom',zb.dataset.zoom);dispApply();dockSize();return}
+  const gso=t.closest('[data-gapsort]');if(gso){store.set('ab.gapsort',gso.dataset.gapsort);updateGaps();return}
   const vb=t.closest('[data-view]');if(vb){store.set('ab.view',vb.dataset.view);dispApply();updateOverview();return}
   const fo=t.closest('[data-favonly]');if(fo){state.favOnly=!state.favOnly;updateOverview();return}
   const cd=t.closest('[data-cmp-del]');if(cd){cmp=cmp.filter(x=>x!==cd.dataset.cmpDel);saveCmp();updateCompare();return}
@@ -2588,6 +2612,34 @@ document.addEventListener('input',e=>{
 });
 $('#sortSel').addEventListener('change',e=>{state.sort=e.target.value;updateOverview()});
 $('#spSel').addEventListener('change',e=>{selected=e.target.value;selCv='';updateSheet()});
+/* Species picker on the species page: type to filter (like the Home search) or open the whole list; sorted by Latin name. */
+const spLabel=s=>s.latin+(commonName(s)?' — '+commonName(s):(s.m.en||s.m.sv)?' — '+(s.m.en||s.m.sv):'');
+let spAct=-1;
+function spPickShow(){const i=$('#spPick');if(!i||document.activeElement===i)return;const s=selected&&bySid.get(selected);i.value=s?spLabel(s)+(selCv?' '+cvQ((s.cvs.find(c=>c.ck===selCv)||{}).cv||''):''):''}
+function spPickOpen(q){
+  const box=$('#spPickList'),i=$('#spPick');q=String(q||'').trim();
+  const hits=species.filter(s=>!q||textHit(s,q)).sort((a,b)=>a.latin.localeCompare(b.latin,'en'));
+  box.innerHTML=hits.length?hits.map((s,k)=>{const c=q&&!textHit(Object.assign({},s,{cvs:[]}),q)&&cvHit(s,q),ref=c?s.sid+'--'+c.ck:s.sid,cm=commonName(s)||s.m.en||s.m.sv||'';
+    return '<button type="button" role="option" id="spo'+k+'" data-pick="'+esc(ref)+'" aria-selected="'+(s.sid===selected&&!c)+'"><i>'+esc(s.latin)+'</i>'+(c?' <b>'+esc(cvQ(c.cv))+'</b>':'')+(cm?'<small>'+esc(cm)+'</small>':'')+'</button>'}).join('')
+    :'<p class="muted" style="margin:6px 10px">'+esc(tr('No species match','Inga arter matchar','Geen soorten gevonden'))+' “'+esc(q)+'”.</p>';
+  box.hidden=false;i.setAttribute('aria-expanded','true');if(q)box.scrollTop=0;
+  spAct=q?0:hits.findIndex(s=>s.sid===selected);spMark(!q);
+}
+function spMark(scroll){const bs=$$('#spPickList [data-pick]');bs.forEach((b,k)=>b.classList.toggle('act',k===spAct));const a=bs[spAct];$('#spPick').setAttribute('aria-activedescendant',a?a.id:'');if(a&&scroll!==false)a.scrollIntoView({block:'nearest'})}
+function spPickClose(){const box=$('#spPickList');if(!box)return;box.hidden=true;$('#spPick').setAttribute('aria-expanded','false');spAct=-1}
+function spPickGo(ref){spPickClose();setSel(ref);try{history.replaceState(null,'','#s-'+ref)}catch(e){}$('#spPick').blur();updateSheet()}
+(()=>{const i=$('#spPick');if(!i)return;
+  i.addEventListener('focus',()=>{i.select();spPickOpen('')});
+  i.addEventListener('input',()=>spPickOpen(i.value));
+  i.addEventListener('keydown',e=>{const bs=$$('#spPickList [data-pick]');
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if($('#spPickList').hidden)spPickOpen(i.value);spAct=Math.max(0,Math.min(bs.length-1,spAct+(e.key==='ArrowDown'?1:-1)));spMark()}
+    else if(e.key==='Enter'){e.preventDefault();const b=bs[spAct>=0?spAct:0];if(b)spPickGo(b.dataset.pick)}
+    else if(e.key==='Escape'){spPickClose();i.blur();spPickShow()}});
+  $('#spPickBtn').addEventListener('click',()=>{if($('#spPickList').hidden){i.focus()}else{spPickClose();i.blur();spPickShow()}});
+  $('#spPickList').addEventListener('mousedown',e=>e.preventDefault());
+  $('#spPickList').addEventListener('click',e=>{const b=e.target.closest('[data-pick]');if(b)spPickGo(b.dataset.pick)});
+  i.addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement!==i){spPickClose();spPickShow()}},120));
+})();
 $('#saveBtn').addEventListener('click',saveForm);
 $('#resetBtn').addEventListener('click',resetDraft);
 $('#form').addEventListener('submit',e=>e.preventDefault());

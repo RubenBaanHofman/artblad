@@ -608,6 +608,16 @@ body.compact .spw .sp{padding-right:52px}
 details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer;color:var(--muted)}
 .probrow ul.probs{margin-top:2px}
 .vleg.vsec{margin-top:2px}
+.spcombo{position:relative}
+.spcombo input{width:100%;padding-right:42px}
+.spcbtn{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--muted);cursor:pointer;border-radius:8px}
+.spclist{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;max-height:min(60vh,420px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.14);padding:4px}
+.spclist button{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--ink);cursor:pointer;min-height:40px;font:inherit}
+.spclist button i{font-family:var(--display);font-size:16px}
+.spclist button small{color:var(--muted)}
+.spclist button:hover,.spclist button.act{background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
+.spclist button[aria-selected=true]{font-weight:600}
+.gapsort{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0}.gapsort .fl{margin:0}
 .appver{margin:14px 0 0;text-align:center;font-size:12.5px;color:var(--muted)}
 /* shields: a new stage */
 .lad.lvlup{animation:lvlup 1.6s ease-out 1}
@@ -663,7 +673,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <button type="button" class="btn sm" id="installBtn" data-act="install" hidden data-t="Install as an app|Installera som app|Als app installeren">Install as an app</button>
   </div>
   <p id="herbLabel" class="herblabel" aria-hidden="true"></p>
-  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.2</span></p>
+  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.2.1</span></p>
 </section>
 
 <section id="v-overview" class="view" hidden>
@@ -700,6 +710,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
   <div class="ovhead"><div><h1 data-th="Help fill the gaps|Hjälp till att fylla luckorna">Help fill the gaps <em>Hjälp till att fylla luckorna</em></h1><p id="gapStats" class="muted" style="margin:4px 0 0"></p></div><a class="btn sm" href="#overview" data-t="All species|Alla arter">All species · Alla arter</a></div>
   <div id="gapChips" class="chips"></div>
   <select id="gapSel" aria-label="Filter by gap · Filtrera på lucka"></select>
+  <div class="gapsort"><span class="fl" data-t="Order|Ordning|Volgorde">Order</span><span class="seg" id="gapSort" role="group" aria-label="Order"><button type="button" data-gapsort="least" aria-pressed="true" data-t="Least information first|Minst information först|Minste informatie eerst">Least information first</button><button type="button" data-gapsort="latin" aria-pressed="false" data-t="Latin name|Latinskt namn|Latijnse naam">Latin name</button></span></div>
   <div id="bulkBox" class="w-only"></div>
   <div id="gapList" class="splist"></div>
 </section>
@@ -853,7 +864,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 
 <section id="v-sheet" class="view" hidden>
   <div class="bar">
-    <div style="min-width:0;flex:1 1 260px"><label class="fl" for="spSel" data-t="Species|Art|Soort">Species · Art</label><select id="spSel" style="width:100%"></select></div>
+    <div style="min-width:0;flex:1 1 260px"><label class="fl" for="spPick" data-t="Species|Art|Soort">Species · Art</label><div class="spcombo"><input id="spPick" type="text" role="combobox" autocomplete="off" spellcheck="false" autocapitalize="off" aria-autocomplete="list" aria-expanded="false" aria-controls="spPickList" data-tp="Type a name, or pick from the list|Skriv ett namn eller välj i listan|Typ een naam of kies uit de lijst" placeholder="Type a name, or pick from the list"><button type="button" id="spPickBtn" class="spcbtn" tabindex="-1" aria-label="Show all species"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button><div id="spPickList" class="spclist" role="listbox" aria-label="Species" hidden></div></div><select id="spSel" hidden aria-hidden="true" tabindex="-1"></select></div>
     <div class="acts mcol">
       <button class="btn a-only" data-act="edit-sheet" data-t="Edit sheet|Redigera blad">Edit sheet</button>
       <button class="btn a-only" data-act="rename" data-t="Rename|Byt namn">Rename · Byt namn</button>
