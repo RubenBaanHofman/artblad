@@ -1009,11 +1009,15 @@ function updateSheet(){
 const WOUT=O('survived:Survived:Överlevde|damaged:Damaged:Skadad|died:Died:Dog');
 // The coldest winter temperature a species (or cultivar) is recorded to have survived, and in how many plantings.
 function provenOf(x){
-  const pl=(x&&x.plantings)||[];let t=null;const ids=new Set();
+  const pl=(x&&x.plantings)||[];let t=null,ts=null;const ids=new Set(),sids=new Set();
   pl.forEach(p=>(p.winters||[]).forEach(w=>{const v=Number(w.t);if(w.o==='survived'&&w.t!==''&&w.t!=null&&isFinite(v)){ids.add(p.id);if(t==null||v<t)t=v}}));
-  return t==null?null:{t,n:ids.size};
+  // Encounters marked as established, with the winter climate of their map position (Open-Meteo): "seen established".
+  pl.forEach(p=>{if(isEnc(p)&&p.established&&p.clim&&isFinite(p.clim.t)){sids.add(p.id);if(ts==null||p.clim.t<ts)ts=p.clim.t}});
+  if(t==null&&ts==null)return null;
+  return{t:t==null?ts:ts==null?t:Math.min(t,ts),n:ids.size,tOwn:t,tSeen:ts,ns:sids.size};
 }
-const provenTxt=pv=>tr('Survived ','Överlevde ','Overleefde ')+fmtC(pv.t)+' ('+pv.n+' '+(pv.n===1?tr('planting','plantering','aanplant'):tr('plantings','planteringar','aanplantingen'))+')';
+const provenTxt=pv=>[pv.tOwn!=null?tr('Survived ','Överlevde ','Overleefde ')+fmtC(pv.tOwn)+' ('+pv.n+' '+(pv.n===1?tr('planting','plantering','aanplant'):tr('plantings','planteringar','aanplantingen'))+')':'',
+  pv.tSeen!=null?tr('seen established where winters reach ≈ ','sedd etablerad där vintrarna når ≈ ','gevestigd gezien waar de winters ≈ ')+fmtC(pv.tSeen)+tr('','',' halen')+' ('+pv.ns+' '+(pv.ns===1?tr('encounter','fynd','vondst'):tr('encounters','fynd','vondsten'))+')':''].filter(Boolean).join(' · ').replace(/^./,c=>c.toUpperCase());
 const lastWinter=()=>{const d=new Date(),y=d.getMonth()<6?d.getFullYear()-1:d.getFullYear();return y+'/'+String(y+1).slice(2)};
 function winterRows(p){return (p.winters||[]).map(w=>'<span class="pill wint '+esc(w.o)+'">'+esc(tr('Winter ','Vinter ','Winter ')+w.w+': '+(w.t!==''&&w.t!=null?fmtC(Number(w.t))+', ':'')+trs((WOUT.find(o=>o.k===w.o)||{en:w.o,sv:w.o}).en,(WOUT.find(o=>o.k===w.o)||{en:w.o,sv:w.o}).sv))+'</span>').join('')}
 function winterForm(p){return '<div class="plw" data-plw="'+esc(p.id)+'" hidden><label><span class="fl">'+trh('Winter','Vinter','Winter')+'</span><input type="text" class="plw-w" value="'+esc(lastWinter())+'" maxlength="9"></label>'+
@@ -1330,7 +1334,7 @@ let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;const b=$('#installBtn');if(b)b.hidden=false});
 
 /* ---------- version 2.4.2: section marks, dismissed problems, live updates for admins (setup/v5_live_sections.sql) ---------- */
-const APP_VERSION='2.4.4';
+const APP_VERSION='2.4.5';
 // The sheet's sections for verification. Literature sources have their own mark, which also goes grey after two years.
 const RSECS=[{id:'ident',en:'Names & photo',sv:'Namn & foto',f:['latin','en','sv','nl','family','type','status','photo']}]
   .concat(SEC.map(x=>({id:x.id,en:x.en,sv:x.sv,f:x.f.map(d=>d.k).filter(k=>k!=='sources')})))
@@ -2250,11 +2254,50 @@ async function cmtSave(id){
   const c=(state.comments||[]).find(x=>x.id===id),t=($('#cmtEdit')||{}).value;if(!c||!t||!t.trim())return;
   try{cmtState.edit=null;await Data.saveRow('comments',id,Object.assign({},c,{id:undefined,text:t.trim()}));toast(tr('Comment saved','Kommentar sparad'))}catch(e){toast(errMsg(e),'err')}
 }
+/* ---------- winter climate of a map position (Open-Meteo historical weather, ERA5-Land, CC BY 4.0, no key) ----------
+   The average of each winter's lowest temperature over the 30 winters 1995/96–2024/25 (the USDA zone definition), plus the coldest. */
+const CLIM_FROM='1995-07-01',CLIM_TO='2025-06-30';
+async function climLookup(lat,lng){
+  const u='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+CLIM_FROM+'&end_date='+CLIM_TO+'&daily=temperature_2m_min&models=era5_land&timezone=GMT';
+  const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);
+  try{const r=await fetch(u,{signal:ctl.signal});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();return climFrom(j)}finally{clearTimeout(to)}
+}
+function climFrom(j){
+  const d=(j&&j.daily)||{},tm=d.time||[],v=d.temperature_2m_min||[],w=new Map();
+  tm.forEach((x,i)=>{const t=v[i];if(t==null||!isFinite(t))return;const y=+x.slice(0,4),m=+x.slice(5,7),k=m>=7?y:y-1,c=w.get(k)||{min:99,n:0};c.n++;if(t<c.min)c.min=t;w.set(k,c)});
+  const mins=[...w.values()].filter(c=>c.n>=300).map(c=>c.min);if(mins.length<10)throw new Error('too little data');
+  const mean=mins.reduce((a,b)=>a+b,0)/mins.length;
+  return{t:Math.round(mean*10)/10,lo:Math.round(Math.min.apply(null,mins)*10)/10,n:mins.length,elev:j.elevation!=null?Math.round(j.elevation):null,src:'Open-Meteo ERA5-Land',at:today()};
+}
+const usdaOfT=t=>{const f=t*1.8+32;if(f<-60)return '1a';const k=Math.floor((f+60)/5),n=Math.min(13,Math.floor(k/2)+1);return n+(k%2?'b':'a')};
+const seOfT=t=>Math.max(1,Math.min(8,Math.ceil((-t-10)/5)));
+function climTxt(c){
+  return tr('Winter low here ≈ ','Vinterlägsta här ≈ ','Winterminimum hier ≈ ')+fmtC(c.t)+' '+tr('on average (coldest ','i snitt (kallast ','gemiddeld (koudst ')+fmtC(c.lo)+', '+c.n+' '+tr('winters','vintrar','winters')+')'+
+    ' · ≈ '+tr('zone ','zon ','zone ')+seOfT(c.t)+' · ≈ USDA '+usdaOfT(c.t);
+}
+const CLIM_CREDIT='<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (ERA5-Land, CC BY 4.0)';
+async function plClimFor(doc){
+  if(!(isEnc(doc)&&doc.established&&isFinite(doc.lat)&&isFinite(doc.lng)))return false;
+  try{doc.clim=await climLookup(Number(doc.lat),Number(doc.lng));return true}catch(e){return null}
+}
+async function plClimRetry(id){
+  const p=(state.plantings||[]).find(x=>x.id===id);if(!p)return;const doc=Object.assign({},p);delete doc.id;
+  toast(tr('Looking up the winter climate…','Hämtar vinterklimatet…','Winterklimaat opzoeken…'));
+  const ok=await plClimFor(doc);if(!ok){toast(tr('The climate look-up did not work. Try again later.','Klimatuppslaget fungerade inte. Försök igen senare.','Het klimaat opzoeken lukte niet. Probeer het later opnieuw.'),'err');return}
+  try{await Data.saveRow('plantings',id,doc);toast(tr('Winter climate added','Vinterklimat tillagt','Winterklimaat toegevoegd'))}catch(e){toast(errMsg(e),'err')}
+}
+function encInfo(p){
+  if(!isEnc(p))return '';
+  if(!p.established)return '<br><small class="muted">'+esc(tr('Not marked as established: does not count as proven hardy.','Inte markerad som etablerad: räknas inte som bevisat härdig.','Niet als gevestigd gemarkeerd: telt niet als bewezen winterhard.'))+'</small>';
+  if(p.clim)return '<br><small>'+esc(tr('Established. ','Etablerad. ','Gevestigd. ')+climTxt(p.clim))+'. <span class="muted">'+esc(tr('Climate: ','Klimat: ','Klimaat: '))+CLIM_CREDIT+'</span></small>';
+  if(!isFinite(p.lat)||p.lat===''||p.lat==null)return '<br><small class="muted">'+esc(tr('Established. Add a map position to look up its winter climate.','Etablerad. Lägg till en kartposition för att hämta vinterklimatet.','Gevestigd. Voeg een kaartpositie toe om het winterklimaat op te zoeken.'))+'</small>';
+  return '<br><small class="muted">'+esc(tr('Established. Winter climate not looked up yet.','Etablerad. Vinterklimatet är inte hämtat än.','Gevestigd. Winterklimaat nog niet opgezocht.'))+'</small>'+(canEdit(p.id)?' <button type="button" class="btn sm w-only" data-act="pl-clim" data-id="'+esc(p.id)+'">'+esc(tr('Look up climate','Hämta klimat','Klimaat opzoeken'))+'</button>':'');
+}
 function plRow(p,showSpecies){
   const x=bySid.get(p.sid),last=(p.checks||[]).slice(-1)[0];
   return '<div class="ent plrow"><span style="min-width:0">'+(showSpecies?'<button type="button" class="lnk" data-open="'+esc(p.sid+(p.cultivar?'--'+cvKey(p.cultivar):''))+'"><b>'+esc(x?dispName(x):p.latin||p.sid)+(p.cultivar?' '+cvQ(cvNorm(p.cultivar)):'')+'</b></button> · ':(p.cultivar&&!(cur()||{}).isCv?cvPill(p)+' · ':''))+
     (isEnc(p)?'<span class="pill enc">'+esc(tr('Encounter','Fynd','Vondst'))+'</span> ':'')+'<b>'+esc(p.place||tr('No place given','Ingen plats angiven'))+'</b>'+(p.count&&!isEnc(p)?' · '+esc(p.count)+' '+tr('plants','plantor'):'')+' · '+esc(p.date||'')+' '+pstatPill(p.status)+
-    (p.source?'<br><small class="muted">'+tr('Source','Källa')+': '+esc(p.source)+'</small>':'')+(p.notes?'<br>'+esc(p.notes):'')+
+    (p.source?'<br><small class="muted">'+tr('Source','Källa')+': '+esc(p.source)+'</small>':'')+(p.notes?'<br>'+esc(p.notes):'')+encInfo(p)+
     (last?'<br><small class="muted">'+tr('Last check','Senaste kontroll')+' '+esc(last.date)+(last.note?': '+esc(last.note):'')+'</small>':'')+
     (SB?'<br><small class="muted">'+rowStamp(p.id).slice(3)+'</small>':'')+((p.winters||[]).length?'<br>'+winterRows(p):'')+(canEdit(p.id)?winterForm(p):'')+'</span>'+
     (canEdit(p.id)?'<span class="acts w-only"><button class="btn sm" data-act="pl-winter" data-id="'+esc(p.id)+'">'+tr('Log a winter','Notera en vinter','Winter noteren')+'</button><select data-plstat="'+esc(p.id)+'" aria-label="'+esc(tr('Update status','Uppdatera status'))+'"><option value="">'+esc(tr('Update status…','Uppdatera status…'))+'</option>'+PSTAT.map(o=>'<option value="'+o.k+'">'+esc(trs(o.en,o.sv))+'</option>').join('')+'</select><button class="btn sm" data-act="pl-edit" data-id="'+esc(p.id)+'">'+tr('Edit','Redigera')+'</button><button class="btn sm danger" data-act="pl-del" data-id="'+esc(p.id)+'">'+tr('Delete','Radera')+'</button></span>':'')+'</div>';
@@ -2267,7 +2310,7 @@ function plFormOpen(p,sid,cv,kind){
   plCvFill(p?cvKey(p.cultivar):(cv!=null?cv:((sid||selected)===selected?selCv:'')));
   $('#plPlace').value=p?p.place||'':'';$('#plDate').value=p?p.date||today():today();$('#plCount').value=p&&p.count?p.count:'';
   $('#plSource').value=p?p.source||'':'';$('#plStatus').value=p?p.status||'alive':'alive';$('#plNotes').value=p?p.notes||'':'';
-  $('#plGeo').value=p&&p.lat!=null?p.lat+', '+p.lng:'';
+  $('#plGeo').value=p&&p.lat!=null?p.lat+', '+p.lng:'';{const c=$('#plEstab');if(c)c.checked=!!(p&&p.established)}
   $('#plTitle').textContent=plState.kind==='encounter'?(p?tr('Edit encounter','Redigera fynd','Vondst bewerken'):tr('New encounter','Nytt fynd','Nieuwe vondst')):(p?tr('Edit planting','Redigera plantering'):tr('New planting','Ny plantering'));
   const places=[...new Set((state.plantings||[]).map(x=>x.place).filter(Boolean))].sort();
   $('#plPlaces').innerHTML=places.map(x=>'<option value="'+esc(x)+'"></option>').join('');
@@ -2282,7 +2325,7 @@ async function plSave(){
   const old=plState.edit&&(state.plantings||[]).find(p=>p.id===plState.edit);
   const geo=$('#plGeo').value.split(',').map(v=>parseFloat(v));
   const st=$('#plStatus').value;
-  const doc=enc?{kind:'encounter',sid,latin:x.latin,place:$('#plPlace').value.trim(),date:$('#plDate').value||today(),status:st,checks:old&&old.checks?old.checks.slice():[],createdAt:old?old.createdAt:Date.now()}
+  const doc=enc?{kind:'encounter',sid,latin:x.latin,place:$('#plPlace').value.trim(),date:$('#plDate').value||today(),status:st,established:!!($('#plEstab')||{}).checked,checks:old&&old.checks?old.checks.slice():[],createdAt:old?old.createdAt:Date.now()}
     :{sid,latin:x.latin,place:$('#plPlace').value.trim(),date:$('#plDate').value||today(),count:$('#plCount').value?Number($('#plCount').value):null,
     source:$('#plSource').value.trim(),status:st,notes:$('#plNotes').value.trim(),checks:old&&old.checks?old.checks.slice():[],createdAt:old?old.createdAt:Date.now()};
   if(old&&old.winters)doc.winters=old.winters;
@@ -2290,7 +2333,9 @@ async function plSave(){
   if(old&&old.fromV1)doc.fromV1=true;
   if(cv)doc.cultivar=cv;
   if(old&&old.status!==st)doc.checks.push({date:today(),status:st,note:''});
-  try{await Data.saveRow('plantings',plState.edit,doc);$('#plForm').hidden=true;plState.edit=null;toast(enc?tr('Encounter saved','Fyndet sparat','Vondst opgeslagen'):tr('Planting saved','Plantering sparad'));updatePlantings()}catch(e){toast(errMsg(e),'err')}
+  if(enc&&old&&old.clim&&old.lat===doc.lat&&old.lng===doc.lng)doc.clim=old.clim;
+let climFail=false;if(enc&&doc.established&&!doc.clim&&isFinite(doc.lat)){toast(tr('Looking up the winter climate…','Hämtar vinterklimatet…','Winterklimaat opzoeken…'));if(await plClimFor(doc)===null)climFail=true}
+  try{await Data.saveRow('plantings',plState.edit,doc);$('#plForm').hidden=true;plState.edit=null;toast(climFail?tr('Encounter saved, but the climate look-up did not work. Use “Look up climate” later.','Fyndet sparat, men klimatuppslaget fungerade inte. Använd ”Hämta klimat” senare.','Vondst opgeslagen, maar het klimaat opzoeken lukte niet. Gebruik later “Klimaat opzoeken”.'):enc?(doc.clim?tr('Encounter saved: ','Fyndet sparat: ','Vondst opgeslagen: ')+climTxt(doc.clim):tr('Encounter saved','Fyndet sparat','Vondst opgeslagen')):tr('Planting saved','Plantering sparad'),climFail?'err':'');updatePlantings()}catch(e){toast(errMsg(e),'err')}
 }
 async function plSetStatus(id,st,note){
   const p=(state.plantings||[]).find(x=>x.id===id);if(!p||!st)return;
@@ -2601,6 +2646,7 @@ document.addEventListener('click',async e=>{
   else if(act==='pick-clear'){Object.assign(pickState,{light:'',moist:0,soil:new Set(),zone:'',temp:'',form:'',scope:''});ADV.forEach(x=>advState.sets[x[0]].clear());advState.caut.clear();advState.inv='';advState.verdict=0;advState.edib=0;advState.strict=false;updatePick()}
   else if(act==='cmp-mode'){cmpMode=!cmpMode;updateOverview()}
   else if(act==='pl-new')plFormOpen(null,a.dataset.sid);
+  else if(act==='pl-clim')plClimRetry(a.dataset.id);
   else if(act==='pl-new-enc')plFormOpen(null,a.dataset.sid,'','encounter');
   else if(act==='mmenu')mmenu(!document.body.classList.contains('mmenu'));
   else if(act==='mmore'){const c=a.closest('.acts');const o=!c.classList.contains('open');c.classList.toggle('open',o);a.setAttribute('aria-expanded',o)}
