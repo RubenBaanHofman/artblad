@@ -82,6 +82,7 @@ h3{font-size:17px}
 .btn[disabled]{opacity:.55;cursor:default}
 .tools{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,10.5rem);gap:8px;align-items:center}
 .tools select{width:100%}
+@media (max-width:560px){.tools{grid-template-columns:auto minmax(0,1fr)}.tools>:first-child{grid-column:1/-1}}
 input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
 textarea{resize:vertical}
 select{width:auto}
@@ -592,6 +593,22 @@ body.compact .sp{padding:6px 10px;gap:10px}body.compact .sp .ph{width:40px;heigh
 .hbar{display:grid;grid-template-columns:8rem minmax(0,1fr) 2.2rem;align-items:center;gap:8px;font-size:13px;margin:3px 0}.hbar i{height:10px;border-radius:99px;background:var(--accent);display:block;min-width:2px}.hbar b{text-align:right}
 .vbars{display:flex;align-items:flex-end;gap:6px;height:120px}.vb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}.vb i{width:100%;max-width:28px;background:var(--accent);border-radius:4px 4px 0 0;display:block;min-height:2px}.vb span,.vb b{font-size:11px;color:var(--muted)}.vb b{font-weight:600}
 ul.probs{margin:4px 0 0;padding-left:1.2em;font-size:13.5px}
+/* 2.4.2: compact list keeps room for the star; section marks; dismissed problems; version line */
+body.compact .spw .sp{padding-right:52px}
+.secmarks{flex-basis:100%;display:grid;gap:6px}
+.secchips{display:flex;flex-wrap:wrap;gap:6px}
+.secchip{appearance:none;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:4px 10px 4px 7px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:500 13.5px var(--ui);cursor:pointer}
+.secchip svg{width:16px;height:16px}.secchip svg circle{fill:#2f8a43}.secchip svg path{fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.secchip.stale svg circle{fill:#9aa09a}.secchip.ok{border-color:color-mix(in srgb,#2f8a43 45%,var(--line))}
+.secchip .sc0{width:14px;height:14px;border:1.5px dashed var(--muted);border-radius:50%;display:inline-block}
+.secchip.armed{border-color:var(--danger,#9a3a2a);color:var(--danger,#9a3a2a)}
+.secchip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.smk svg{width:13px;height:13px}
+.disbtn{font-size:12.5px;margin-left:4px;white-space:nowrap}
+details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer;color:var(--muted)}
+.probrow ul.probs{margin-top:2px}
+.vleg.vsec{margin-top:2px}
+.appver{margin:14px 0 0;text-align:center;font-size:12.5px;color:var(--muted)}
 /* shields: a new stage */
 .lad.lvlup{animation:lvlup 1.6s ease-out 1}
 @keyframes lvlup{0%{transform:scale(1);box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent)}30%{transform:scale(1.04);box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 0%,transparent)}100%{transform:scale(1)}}
@@ -646,6 +663,7 @@ ul.probs{margin:4px 0 0;padding-left:1.2em;font-size:13.5px}
     <button type="button" class="btn sm" id="installBtn" data-act="install" hidden data-t="Install as an app|Installera som app|Als app installeren">Install as an app</button>
   </div>
   <p id="herbLabel" class="herblabel" aria-hidden="true"></p>
+  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.2</span></p>
 </section>
 
 <section id="v-overview" class="view" hidden>
@@ -875,6 +893,7 @@ ul.probs{margin:4px 0 0;padding-left:1.2em;font-size:13.5px}
   <section id="cvSec" class="cvsec" hidden>
     <h2><span data-t="Cultivars compared|Sorterna jämförda|Cultivars vergeleken">Cultivars compared</span><span id="cvCount"></span></h2>
     <div id="cvTable"></div>
+    <label class="chk"><input type="checkbox" data-withcv> <span data-t="Add this table to the printed sheet|Ta med tabellen på utskriftsbladet|Deze tabel aan het afdrukblad toevoegen">Add this table to the printed sheet</span></label>
   </section>
   <section id="genSec" class="cvsec gensec" hidden>
     <h2><span data-t="Same genus|Samma släkte|Zelfde geslacht">Same genus</span>: <i id="genName"></i></h2>
@@ -953,4 +972,4 @@ ul.probs{margin:4px 0 0;padding-left:1.2em;font-size:13.5px}
 <circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
 </svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script><script src="nl.js?v=2026-11-14"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2026-11-14"></script></body></html>
+<script src="config.js"></script><script src="nl.js?v=2.4.2"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.2"></script></body></html>
