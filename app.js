@@ -1315,12 +1315,13 @@ function loadLeaflet(){
 }
 async function updatePlMap(list){
   const box=$('#plMap');if(!box)return;const pts=list.filter(p=>isFinite(p.lat)&&isFinite(p.lng)&&p.lat!==''&&p.lng!=='');
-  box.hidden=!pts.length;if(!pts.length)return;
+  box.hidden=!pts.length;if(!pts.length){const k=$('#plMapKey');if(k)k.hidden=true;return}
   try{await loadLeaflet()}catch(e){box.hidden=true;return}
   if(!plMap){plMap=L.map(box,{scrollWheelZoom:false});L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(plMap);plLayer=L.layerGroup().addTo(plMap)}
   plLayer.clearLayers();const b=[];
-  pts.forEach(p=>{const s=bySid.get(p.sid);const mk=L.circleMarker([p.lat,p.lng],{radius:7,weight:2,color:p.status==='dead'?'#9a3a2a':p.status==='struggling'?'#b07a12':'#2f5d3a',fillOpacity:.6});
-    mk.bindPopup('<b>'+esc(s?dispName(s):p.latin||p.sid)+'</b><br>'+esc(p.place||'')+' · '+esc(p.status||''));mk.addTo(plLayer);b.push([p.lat,p.lng])});
+  {const k=$('#plMapKey');if(k)k.hidden=!pts.some(isEnc)}
+  pts.forEach(p=>{const s=bySid.get(p.sid),en=isEnc(p);const mk=L.circleMarker([p.lat,p.lng],en?{radius:6,weight:2,dashArray:'3 3',color:'#2f6f8f',fillColor:'#2f6f8f',fillOpacity:.3}:{radius:7,weight:2,color:p.status==='dead'?'#9a3a2a':p.status==='struggling'?'#b07a12':'#2f5d3a',fillOpacity:.6});
+    mk.bindPopup('<b>'+esc(s?dispName(s):p.latin||p.sid)+'</b><br>'+(en?esc(tr('Encounter','Fynd','Vondst'))+' · ':'')+esc(p.place||'')+' · '+esc(p.status||''));mk.addTo(plLayer);b.push([p.lat,p.lng])});
   setTimeout(()=>{plMap.invalidateSize();if(b.length===1)plMap.setView(b[0],16);else plMap.fitBounds(b,{padding:[24,24],maxZoom:17})},50);
 }
 
@@ -1329,7 +1330,7 @@ let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;const b=$('#installBtn');if(b)b.hidden=false});
 
 /* ---------- version 2.4.2: section marks, dismissed problems, live updates for admins (setup/v5_live_sections.sql) ---------- */
-const APP_VERSION='2.4.3';
+const APP_VERSION='2.4.4';
 // The sheet's sections for verification. Literature sources have their own mark, which also goes grey after two years.
 const RSECS=[{id:'ident',en:'Names & photo',sv:'Namn & foto',f:['latin','en','sv','nl','family','type','status','photo']}]
   .concat(SEC.map(x=>({id:x.id,en:x.en,sv:x.sv,f:x.f.map(d=>d.k).filter(k=>k!=='sources')})))
@@ -2212,9 +2213,16 @@ function updatePick(){
 }
 /* ---------- planting records ---------- */
 const PSTAT=O('alive:Alive:Lever|struggling:Struggling:Kämpar|dead:Dead:Död|removed:Removed:Borttagen|unknown:Unknown:Okänd');
-const plState={status:'',place:'',edit:null};
+const plState={status:'',place:'',edit:null,kind:''};
+const isEnc=p=>p&&p.kind==='encounter';
+const plShowEnc=()=>store.get('ab.plenc')!=='0';
 const pstatPill=st=>{const o=PSTAT.find(x=>x.k===st)||PSTAT[4];return '<span class="pill pst '+esc(o.k)+'">'+esc(trs(o.en,o.sv))+'</span>'};
-function plSummary(list){
+function plSummary(all){
+  const enc=all.filter(isEnc).length,list=all.filter(p=>!isEnc(p));
+  const e=enc?enc+' '+(enc===1?tr('encounter','fynd','vondst'):tr('encounters','fynd','vondsten')):'';
+  const m=plSummary1(list);return [m,e].filter(Boolean).join(' · ');
+}
+function plSummary1(list){
   if(!list.length)return '';
   const n=k=>list.filter(p=>p.status===k).length,plants=list.reduce((t,p)=>t+(Number(p.count)||1),0);
   return (state.lang==='nl'?list.length+' aanplant'+(list.length===1?'':'en')+' ('+plants+' plant'+(plants===1?'':'en')+'): ':state.lang==='sv'?list.length+' plantering'+(list.length===1?'':'ar')+' ('+plants+' plant'+(plants===1?'a':'or')+'): ':list.length+' planting'+(list.length===1?'':'s')+' ('+plants+' plant'+(plants===1?'':'s')+'): ')+
@@ -2245,22 +2253,22 @@ async function cmtSave(id){
 function plRow(p,showSpecies){
   const x=bySid.get(p.sid),last=(p.checks||[]).slice(-1)[0];
   return '<div class="ent plrow"><span style="min-width:0">'+(showSpecies?'<button type="button" class="lnk" data-open="'+esc(p.sid+(p.cultivar?'--'+cvKey(p.cultivar):''))+'"><b>'+esc(x?dispName(x):p.latin||p.sid)+(p.cultivar?' '+cvQ(cvNorm(p.cultivar)):'')+'</b></button> · ':(p.cultivar&&!(cur()||{}).isCv?cvPill(p)+' · ':''))+
-    '<b>'+esc(p.place||tr('No place given','Ingen plats angiven'))+'</b>'+(p.count?' · '+esc(p.count)+' '+tr('plants','plantor'):'')+' · '+esc(p.date||'')+' '+pstatPill(p.status)+
+    (isEnc(p)?'<span class="pill enc">'+esc(tr('Encounter','Fynd','Vondst'))+'</span> ':'')+'<b>'+esc(p.place||tr('No place given','Ingen plats angiven'))+'</b>'+(p.count&&!isEnc(p)?' · '+esc(p.count)+' '+tr('plants','plantor'):'')+' · '+esc(p.date||'')+' '+pstatPill(p.status)+
     (p.source?'<br><small class="muted">'+tr('Source','Källa')+': '+esc(p.source)+'</small>':'')+(p.notes?'<br>'+esc(p.notes):'')+
     (last?'<br><small class="muted">'+tr('Last check','Senaste kontroll')+' '+esc(last.date)+(last.note?': '+esc(last.note):'')+'</small>':'')+
     (SB?'<br><small class="muted">'+rowStamp(p.id).slice(3)+'</small>':'')+((p.winters||[]).length?'<br>'+winterRows(p):'')+(canEdit(p.id)?winterForm(p):'')+'</span>'+
     (canEdit(p.id)?'<span class="acts w-only"><button class="btn sm" data-act="pl-winter" data-id="'+esc(p.id)+'">'+tr('Log a winter','Notera en vinter','Winter noteren')+'</button><select data-plstat="'+esc(p.id)+'" aria-label="'+esc(tr('Update status','Uppdatera status'))+'"><option value="">'+esc(tr('Update status…','Uppdatera status…'))+'</option>'+PSTAT.map(o=>'<option value="'+o.k+'">'+esc(trs(o.en,o.sv))+'</option>').join('')+'</select><button class="btn sm" data-act="pl-edit" data-id="'+esc(p.id)+'">'+tr('Edit','Redigera')+'</button><button class="btn sm danger" data-act="pl-del" data-id="'+esc(p.id)+'">'+tr('Delete','Radera')+'</button></span>':'')+'</div>';
 }
 function plCvFill(ck){const s=bySid.get($('#plSp').value);$('#plCv').innerHTML=cvOptions(s,ck,tr('Species / unknown cultivar','Arten / okänd sort','Soort / onbekende cultivar'));$('#plCv').value=ck&&s&&s.cvs.some(c=>c.ck===ck)?ck:'';$('#plCvNew').hidden=true;$('#plCvNew').value=''}
-function plFormOpen(p,sid,cv){
-  plState.edit=p?p.id:null;const f=$('#plForm');f.hidden=false;
+function plFormOpen(p,sid,cv,kind){
+  plState.edit=p?p.id:null;plState.kind=p?(isEnc(p)?'encounter':''):(kind||'');const f=$('#plForm');f.hidden=false;f.classList.toggle('enc',plState.kind==='encounter');
   $('#plSp').innerHTML=species.slice().sort(byName).map(x=>'<option value="'+esc(x.sid)+'">'+esc(dispName(x))+(commonName(x)?' ('+esc(x.latin)+')':'')+'</option>').join('');
   $('#plSp').value=p?p.sid:(sid||selected||'');$('#plSp').disabled=!!p;
   plCvFill(p?cvKey(p.cultivar):(cv!=null?cv:((sid||selected)===selected?selCv:'')));
   $('#plPlace').value=p?p.place||'':'';$('#plDate').value=p?p.date||today():today();$('#plCount').value=p&&p.count?p.count:'';
   $('#plSource').value=p?p.source||'':'';$('#plStatus').value=p?p.status||'alive':'alive';$('#plNotes').value=p?p.notes||'':'';
   $('#plGeo').value=p&&p.lat!=null?p.lat+', '+p.lng:'';
-  $('#plTitle').textContent=p?tr('Edit planting','Redigera plantering'):tr('New planting','Ny plantering');
+  $('#plTitle').textContent=plState.kind==='encounter'?(p?tr('Edit encounter','Redigera fynd','Vondst bewerken'):tr('New encounter','Nytt fynd','Nieuwe vondst')):(p?tr('Edit planting','Redigera plantering'):tr('New planting','Ny plantering'));
   const places=[...new Set((state.plantings||[]).map(x=>x.place).filter(Boolean))].sort();
   $('#plPlaces').innerHTML=places.map(x=>'<option value="'+esc(x)+'"></option>').join('');
   const srcs=[...new Set(state.obs.filter(o=>o.kind==='source').map(o=>o.supplier).filter(Boolean))].sort();
@@ -2269,17 +2277,20 @@ function plFormOpen(p,sid,cv){
 }
 async function plSave(){
   const sid=$('#plSp').value,x=bySid.get(sid);if(!x){toast(tr('Choose a species.','Välj en art.'),'err');return}
-  const cv=cvRead('#plCv','#plCvNew',x);if(cv===null){toast(tr('Type the cultivar name.','Skriv sortnamnet.','Typ de cultivarnaam.'),'err');return}
+  const enc=plState.kind==='encounter';
+  const cv=enc?'':cvRead('#plCv','#plCvNew',x);if(cv===null){toast(tr('Type the cultivar name.','Skriv sortnamnet.','Typ de cultivarnaam.'),'err');return}
   const old=plState.edit&&(state.plantings||[]).find(p=>p.id===plState.edit);
   const geo=$('#plGeo').value.split(',').map(v=>parseFloat(v));
   const st=$('#plStatus').value;
-  const doc={sid,latin:x.latin,place:$('#plPlace').value.trim(),date:$('#plDate').value||today(),count:$('#plCount').value?Number($('#plCount').value):null,
+  const doc=enc?{kind:'encounter',sid,latin:x.latin,place:$('#plPlace').value.trim(),date:$('#plDate').value||today(),status:st,checks:old&&old.checks?old.checks.slice():[],createdAt:old?old.createdAt:Date.now()}
+    :{sid,latin:x.latin,place:$('#plPlace').value.trim(),date:$('#plDate').value||today(),count:$('#plCount').value?Number($('#plCount').value):null,
     source:$('#plSource').value.trim(),status:st,notes:$('#plNotes').value.trim(),checks:old&&old.checks?old.checks.slice():[],createdAt:old?old.createdAt:Date.now()};
+  if(old&&old.winters)doc.winters=old.winters;
   if(geo.length===2&&geo.every(isFinite)){doc.lat=geo[0];doc.lng=geo[1]}
   if(old&&old.fromV1)doc.fromV1=true;
   if(cv)doc.cultivar=cv;
   if(old&&old.status!==st)doc.checks.push({date:today(),status:st,note:''});
-  try{await Data.saveRow('plantings',plState.edit,doc);$('#plForm').hidden=true;plState.edit=null;toast(tr('Planting saved','Plantering sparad'));updatePlantings()}catch(e){toast(errMsg(e),'err')}
+  try{await Data.saveRow('plantings',plState.edit,doc);$('#plForm').hidden=true;plState.edit=null;toast(enc?tr('Encounter saved','Fyndet sparat','Vondst opgeslagen'):tr('Planting saved','Plantering sparad'));updatePlantings()}catch(e){toast(errMsg(e),'err')}
 }
 async function plSetStatus(id,st,note){
   const p=(state.plantings||[]).find(x=>x.id===id);if(!p||!st)return;
@@ -2291,7 +2302,8 @@ function updatePlantings(){
   const places=[...new Set(all.map(p=>p.place).filter(Boolean))].sort();
   $('#plPlaceSel').innerHTML='<option value="">'+esc(tr('All places','Alla platser'))+'</option>'+places.map(x=>'<option'+(x===plState.place?' selected':'')+'>'+esc(x)+'</option>').join('');
   $$('#plStatSeg [data-plst]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.plst===plState.status));
-  const list=all.filter(p=>(!plState.status||p.status===plState.status)&&(!plState.place||p.place===plState.place));
+  const se=plShowEnc();{const c=$('#plShowEnc');if(c)c.checked=se;const lb=c&&c.closest('label');if(lb)lb.style.display=all.some(isEnc)?'':'none'}
+  const list=all.filter(p=>(!plState.status||p.status===plState.status)&&(!plState.place||p.place===plState.place)&&(se||!isEnc(p)));
   $('#plStats').textContent=plSummary(all)||tr('No planting records yet.','Inga planteringar ännu.');
   $('#plList').innerHTML=list.length?list.map(p=>plRow(p,true)).join(''):'<div class="empty"><p>'+tr('No planting records match.','Inga planteringar matchar.')+'</p></div>';
   updatePlMap(list);
@@ -2589,6 +2601,7 @@ document.addEventListener('click',async e=>{
   else if(act==='pick-clear'){Object.assign(pickState,{light:'',moist:0,soil:new Set(),zone:'',temp:'',form:'',scope:''});ADV.forEach(x=>advState.sets[x[0]].clear());advState.caut.clear();advState.inv='';advState.verdict=0;advState.edib=0;advState.strict=false;updatePick()}
   else if(act==='cmp-mode'){cmpMode=!cmpMode;updateOverview()}
   else if(act==='pl-new')plFormOpen(null,a.dataset.sid);
+  else if(act==='pl-new-enc')plFormOpen(null,a.dataset.sid,'','encounter');
   else if(act==='mmenu')mmenu(!document.body.classList.contains('mmenu'));
   else if(act==='mmore'){const c=a.closest('.acts');const o=!c.classList.contains('open');c.classList.toggle('open',o);a.setAttribute('aria-expanded',o)}
   else if(act==='cmt-post'&&s)cmtPost(s);
@@ -2597,6 +2610,7 @@ document.addEventListener('click',async e=>{
   else if(act==='cmt-save')cmtSave(a.dataset.id);
   else if(act==='cmt-del')arm(a,async()=>{try{await Data.trash('comments',a.dataset.id,true);toast(tr('Moved to the trash','Flyttad till papperskorgen'))}catch(err){toast(errMsg(err),'err')}});
   else if(act==='pl-new-here'&&s){go('plantings');setTimeout(()=>plFormOpen(null,s.sid,selCv),50)}
+  else if(act==='pl-enc-here'&&s){go('plantings');setTimeout(()=>plFormOpen(null,s.sid,'','encounter'),50)}
   else if(act==='pl-edit'){const p=(state.plantings||[]).find(x=>x.id===a.dataset.id);if(p){if($('#v-plantings').hidden){go('plantings');setTimeout(()=>plFormOpen(p),50)}else plFormOpen(p)}}
   else if(act==='pl-save')plSave();
   else if(act==='pl-cancel'){$('#plForm').hidden=true;plState.edit=null}
@@ -2627,7 +2641,7 @@ document.addEventListener('click',async e=>{
 document.addEventListener('change',e=>{
   if(e.target.id==='cvSel'){const v=e.target.value,sp=bySid.get(slug(canon(draft.latin||'')));if(v==='__new'){draft._cvNew=true;draft.cultivar='';$('#cvNew').value='';$('#cvNew').hidden=false;$('#cvNew').focus()}else{draft._cvNew=false;const c=sp&&sp.cvs.find(x=>x.ck===v);draft.cultivar=c?c.cv:'';$('#cvNew').hidden=true}cvHint();return}
   if(e.target.matches('select[data-cvnew]')){const i=$('#'+e.target.dataset.cvnew);if(i){i.hidden=e.target.value!=='__new';if(!i.hidden)i.focus()}return}
-  if(e.target.matches('[data-addlist]')){const v=e.target.value;e.target.value='';if(v)listAdd(v,e.target.dataset.addlist);return}if(e.target.matches('[data-plstat]')){plSetStatus(e.target.dataset.plstat,e.target.value);return}if(e.target.id==='plSp'){plCvFill('');return}if(e.target.id==='plPlaceSel'){plState.place=e.target.value;updatePlantings();return}if(e.target.matches('[data-cmpsel]')){const id=e.target.dataset.cmpsel;if(e.target.checked){if(cmp.length>=CMP_MAX){e.target.checked=false;toast(tr('You can compare up to 4 species.','Du kan jämföra upp till 4 arter.'),'err');return}cmp.push(id)}else cmp=cmp.filter(x=>x!==id);saveCmp();updateCmpBar();return}if(e.target.id==='cmpPick'&&e.target.value){cmpAdd(e.target.value);updateCompare();return}if(e.target.id==='pickZone'){pickState.zone=e.target.value;if(pickState.zone)pickState.temp='';updatePick();return}if(e.target.id==='pickTemp'){pickState.temp=e.target.value;if(pickState.temp!=='')pickState.zone='';updatePick();return}if(e.target.id==='pickScope'){pickState.scope=e.target.value;updatePick();return}if(e.target.id==='advInv'){advState.inv=e.target.value;updatePick();return}if(e.target.id==='advEdib'){advState.edib=Number(e.target.value);updatePick();return}if(e.target.id==='advVerdict'){advState.verdict=Number(e.target.value);updatePick();return}if(e.target.id==='advStrict'){advState.strict=e.target.checked;updatePick();return}if(e.target.id==='advAnn'){advState.ann=e.target.checked;updatePick();return}if(e.target.id==='pickCv'){pickState.cv=e.target.checked;store.set('ab.pickcv',pickState.cv?'1':'0');updatePick();return}if(e.target.id==='calCv'){calState.cv=e.target.checked;store.set('ab.calcv',calState.cv?'1':'0');updateCalendar();return}if(e.target.matches('[data-bulksel]')){const v=e.target.dataset.bulksel;e.target.checked?bulkState.sel.add(v):bulkState.sel.delete(v);$('#bulkBox').innerHTML=bulkBarHTML();return}if(e.target.id==='bulkCal'){bulkState.cal=e.target.value;bulkState.val=null;updateGaps();return}if(e.target.id==='bulkZf'){bulkState.zfield=e.target.value;updateGaps();return}if(e.target.id==='dispCompact'){store.set('ab.compact',e.target.checked?'1':'0');dispApply();return}if(e.target.matches('[data-withcv]')){state.withCv=e.target.checked;store.set('ab.withcv',state.withCv?'1':'0');updateSheet();return}if(e.target.matches('[data-withgenus]')){state.withGenus=e.target.checked;store.set('ab.withgenus',state.withGenus?'1':'0');updateSheet();return}if(e.target.matches('[data-withlog]')){state.withLog=e.target.checked;store.set('ab.withlog',state.withLog?'1':'0');if(!state.withLog)state.side='front';$$('[data-withlog]').forEach(c=>c.checked=state.withLog);updateSheet();return}if(e.target.id==='gapSel'){gapState.only=e.target.value;updateGaps()}});
+  if(e.target.matches('[data-addlist]')){const v=e.target.value;e.target.value='';if(v)listAdd(v,e.target.dataset.addlist);return}if(e.target.id==='plShowEnc'){store.set('ab.plenc',e.target.checked?'1':'0');updatePlantings();return}if(e.target.matches('[data-plstat]')){plSetStatus(e.target.dataset.plstat,e.target.value);return}if(e.target.id==='plSp'){plCvFill('');return}if(e.target.id==='plPlaceSel'){plState.place=e.target.value;updatePlantings();return}if(e.target.matches('[data-cmpsel]')){const id=e.target.dataset.cmpsel;if(e.target.checked){if(cmp.length>=CMP_MAX){e.target.checked=false;toast(tr('You can compare up to 4 species.','Du kan jämföra upp till 4 arter.'),'err');return}cmp.push(id)}else cmp=cmp.filter(x=>x!==id);saveCmp();updateCmpBar();return}if(e.target.id==='cmpPick'&&e.target.value){cmpAdd(e.target.value);updateCompare();return}if(e.target.id==='pickZone'){pickState.zone=e.target.value;if(pickState.zone)pickState.temp='';updatePick();return}if(e.target.id==='pickTemp'){pickState.temp=e.target.value;if(pickState.temp!=='')pickState.zone='';updatePick();return}if(e.target.id==='pickScope'){pickState.scope=e.target.value;updatePick();return}if(e.target.id==='advInv'){advState.inv=e.target.value;updatePick();return}if(e.target.id==='advEdib'){advState.edib=Number(e.target.value);updatePick();return}if(e.target.id==='advVerdict'){advState.verdict=Number(e.target.value);updatePick();return}if(e.target.id==='advStrict'){advState.strict=e.target.checked;updatePick();return}if(e.target.id==='advAnn'){advState.ann=e.target.checked;updatePick();return}if(e.target.id==='pickCv'){pickState.cv=e.target.checked;store.set('ab.pickcv',pickState.cv?'1':'0');updatePick();return}if(e.target.id==='calCv'){calState.cv=e.target.checked;store.set('ab.calcv',calState.cv?'1':'0');updateCalendar();return}if(e.target.matches('[data-bulksel]')){const v=e.target.dataset.bulksel;e.target.checked?bulkState.sel.add(v):bulkState.sel.delete(v);$('#bulkBox').innerHTML=bulkBarHTML();return}if(e.target.id==='bulkCal'){bulkState.cal=e.target.value;bulkState.val=null;updateGaps();return}if(e.target.id==='bulkZf'){bulkState.zfield=e.target.value;updateGaps();return}if(e.target.id==='dispCompact'){store.set('ab.compact',e.target.checked?'1':'0');dispApply();return}if(e.target.matches('[data-withcv]')){state.withCv=e.target.checked;store.set('ab.withcv',state.withCv?'1':'0');updateSheet();return}if(e.target.matches('[data-withgenus]')){state.withGenus=e.target.checked;store.set('ab.withgenus',state.withGenus?'1':'0');updateSheet();return}if(e.target.matches('[data-withlog]')){state.withLog=e.target.checked;store.set('ab.withlog',state.withLog?'1':'0');if(!state.withLog)state.side='front';$$('[data-withlog]').forEach(c=>c.checked=state.withLog);updateSheet();return}if(e.target.id==='gapSel'){gapState.only=e.target.value;updateGaps()}});
 document.addEventListener('input',e=>{
   if(e.target.id==='bulkText'){bulkState.val=e.target.value.trim()||null;const b=$('[data-act=bulk-apply]');if(b)b.disabled=!bulkState.sel.size||isEmpty(bulkState.val);return}
   const t=e.target;

@@ -619,6 +619,10 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 .spclist button[aria-selected=true]{font-weight:600}
 .gapsort{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0}.gapsort .fl{margin:0}
 .printbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:4px 0 10px}.printbar .btn svg{vertical-align:-4px}
+.plform.enc .pl-only,.plform:not(.enc) .enc-only{display:none!important}
+.pill.enc{border-color:#2f6f8f;color:#2f6f8f}
+.plmapkey{display:flex;gap:14px;font-size:13px;color:var(--muted);margin:6px 0 0}.plmapkey .mk{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.plmapkey .mk.own{background:#2f5d3a99;border:2px solid #2f5d3a}.plmapkey .mk.enc{background:#2f6f8f55;border:2px dashed #2f6f8f}
 .appver{margin:14px 0 0;text-align:center;font-size:12.5px;color:var(--muted)}
 /* shields: a new stage */
 .lad.lvlup{animation:lvlup 1.6s ease-out 1}
@@ -674,7 +678,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <button type="button" class="btn sm" id="installBtn" data-act="install" hidden data-t="Install as an app|Installera som app|Als app installeren">Install as an app</button>
   </div>
   <p id="herbLabel" class="herblabel" aria-hidden="true"></p>
-  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.3</span></p>
+  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.4</span></p>
 </section>
 
 <section id="v-overview" class="view" hidden>
@@ -759,22 +763,24 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 </section>
 
 <section id="v-plantings" class="view plan" hidden>
-  <div class="ovhead"><div><h1 data-th="Planting records|Planteringar">Planting records <em>Planteringar</em></h1><p id="plStats" class="muted" style="margin:4px 0 0"></p></div><div class="acts"><button class="btn sm primary w-only" data-act="pl-new" data-t="Add planting|Lägg till plantering">Add planting</button></div></div>
+  <div class="ovhead"><div><h1 data-th="Planting records|Planteringar">Planting records <em>Planteringar</em></h1><p id="plStats" class="muted" style="margin:4px 0 0"></p></div><div class="acts"><button class="btn sm primary w-only" data-act="pl-new" data-t="Add planting|Lägg till plantering">Add planting</button><button class="btn sm w-only" data-act="pl-new-enc" data-t="Log an encounter|Notera ett fynd|Vondst vastleggen">Log an encounter</button></div></div>
   <form id="plForm" class="obsform plform" autocomplete="off" novalidate hidden onsubmit="return false">
     <h2 id="plTitle" class="hsec" style="grid-column:1/-1;margin:0"></h2>
+    <p class="enc-only muted" style="grid-column:1/-1;margin:0" data-t="An encounter is a species you came across that you did not plant yourself, for example in a garden, park or the wild. It tells us where the species grows; give a map position if you can.|Ett fynd är en art du stött på som du inte planterat själv, till exempel i en trädgård, en park eller i naturen. Det visar var arten växer; ange gärna en kartposition.|Een vondst is een soort die je tegenkwam en die je niet zelf hebt geplant, bijvoorbeeld in een tuin, park of in het wild. Het laat zien waar de soort groeit; geef zo mogelijk een kaartpositie.">An encounter is a species you came across that you did not plant yourself.</p>
     <div class="f"><label class="fl" for="plSp" data-t="Species|Art|Soort">Species</label><select id="plSp"></select></div>
-    <div class="f"><label class="fl" for="plCv" data-t="Cultivar|Sort|Cultivar">Cultivar</label><select id="plCv" data-cvnew="plCvNew"></select><input id="plCvNew" type="text" maxlength="80" hidden data-tp="Cultivar name|Sortnamn|Cultivarnaam"></div>
+    <div class="pl-only f"><label class="fl" for="plCv" data-t="Cultivar|Sort|Cultivar">Cultivar</label><select id="plCv" data-cvnew="plCvNew"></select><input id="plCvNew" type="text" maxlength="80" hidden data-tp="Cultivar name|Sortnamn|Cultivarnaam"></div>
     <div class="f"><label class="fl" for="plPlace" data-t="Place (bed or area)|Plats (bädd eller område)">Place</label><input id="plPlace" type="text" list="plPlaces" maxlength="120"><datalist id="plPlaces"></datalist></div>
-    <div class="f"><label class="fl" for="plDate" data-t="Planted on|Planterad">Planted on</label><input id="plDate" type="date"></div>
-    <div class="f"><label class="fl" for="plCount" data-t="Number of plants|Antal plantor">Number of plants</label><input id="plCount" type="number" min="1" step="1" inputmode="numeric"></div>
+    <div class="f"><label class="fl" for="plDate"><span class="pl-only" data-t="Planted on|Planterad|Geplant op">Planted on</span><span class="enc-only" data-t="Seen on|Sedd|Gezien op">Seen on</span></label><input id="plDate" type="date"></div>
+    <div class="pl-only f"><label class="fl" for="plCount" data-t="Number of plants|Antal plantor">Number of plants</label><input id="plCount" type="number" min="1" step="1" inputmode="numeric"></div>
     <div class="f"><label class="fl" for="plStatus" data-t="Status|Status">Status</label><select id="plStatus"><option value="alive" data-t="Alive|Lever">Alive</option><option value="struggling" data-t="Struggling|Kämpar">Struggling</option><option value="dead" data-t="Dead|Död">Dead</option><option value="removed" data-t="Removed|Borttagen">Removed</option><option value="unknown" data-t="Unknown|Okänd">Unknown</option></select></div>
-    <div class="f"><label class="fl" for="plSource" data-t="Source (where it came from)|Källa (var den kom ifrån)">Source</label><input id="plSource" type="text" list="plSources" maxlength="160"><datalist id="plSources"></datalist></div>
+    <div class="pl-only f"><label class="fl" for="plSource" data-t="Source (where it came from)|Källa (var den kom ifrån)">Source</label><input id="plSource" type="text" list="plSources" maxlength="160"><datalist id="plSources"></datalist></div>
     <div class="f"><label class="fl" for="plGeo" data-t="Map position (optional: lat, long)|Kartposition (valfritt: lat, long)">Map position</label><span style="display:flex;gap:6px"><input id="plGeo" type="text" inputmode="decimal" placeholder="63.82, 20.26" style="flex:1;min-width:0"><button type="button" class="btn sm" data-act="pl-geo" data-t="Here|Här">Here</button></span></div>
-    <div class="f wide"><label class="fl" for="plNotes" data-t="Notes|Anteckningar">Notes</label><textarea id="plNotes" rows="2" maxlength="600"></textarea></div>
-    <div class="f wide acts"><button type="button" class="btn primary" data-act="pl-save" data-t="Save planting|Spara plantering">Save planting</button><button type="button" class="btn" data-act="pl-cancel" data-t="Cancel|Avbryt">Cancel</button></div>
+    <div class="pl-only f wide"><label class="fl" for="plNotes" data-t="Notes|Anteckningar">Notes</label><textarea id="plNotes" rows="2" maxlength="600"></textarea></div>
+    <div class="f wide acts"><button type="button" class="btn primary" data-act="pl-save"><span class="pl-only" data-t="Save planting|Spara plantering|Aanplant opslaan">Save planting</span><span class="enc-only" data-t="Save encounter|Spara fyndet|Vondst opslaan">Save encounter</span></button><button type="button" class="btn" data-act="pl-cancel" data-t="Cancel|Avbryt">Cancel</button></div>
   </form>
-  <div class="acts" style="gap:8px;align-items:center"><span class="seg" id="plStatSeg" role="group" aria-label="Status"><button type="button" data-plst="alive" data-t="Alive|Lever">Alive</button><button type="button" data-plst="struggling" data-t="Struggling|Kämpar">Struggling</button><button type="button" data-plst="dead" data-t="Dead|Död">Dead</button><button type="button" data-plst="removed" data-t="Removed|Borttagen">Removed</button></span><select id="plPlaceSel" aria-label="Place"></select></div>
+  <div class="acts" style="gap:8px;align-items:center"><span class="seg" id="plStatSeg" role="group" aria-label="Status"><button type="button" data-plst="alive" data-t="Alive|Lever">Alive</button><button type="button" data-plst="struggling" data-t="Struggling|Kämpar">Struggling</button><button type="button" data-plst="dead" data-t="Dead|Död">Dead</button><button type="button" data-plst="removed" data-t="Removed|Borttagen">Removed</button></span><select id="plPlaceSel" aria-label="Place"></select><label class="chk"><input type="checkbox" id="plShowEnc" checked> <span data-t="Show encounters|Visa fynd|Vondsten tonen">Show encounters</span></label></div>
   <div id="plMap" class="plmap" hidden></div>
+  <p id="plMapKey" class="plmapkey" hidden><span><i class="mk own"></i><span data-t="Our plantings|Våra planteringar|Onze aanplantingen">Our plantings</span></span><span><i class="mk enc"></i><span data-t="Encounters|Fynd|Vondsten">Encounters</span></span></p>
   <div id="plList" class="stack"></div>
 </section>
 
@@ -934,7 +940,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
   </form>
   <div id="obsList" class="stack"></div>
   <h2 id="hPl" class="w-only" data-th="Plantings|Planteringar">Plantings <em>Planteringar</em></h2>
-  <p class="muted w-only" style="margin:-6px 0 0"><span id="spPlInfo"></span> <button class="btn sm w-only" data-act="pl-new-here" data-t="Add planting|Lägg till plantering">Add planting</button></p>
+  <p class="muted w-only" style="margin:-6px 0 0"><span id="spPlInfo"></span> <button class="btn sm w-only" data-act="pl-new-here" data-t="Add planting|Lägg till plantering">Add planting</button> <button class="btn sm w-only" data-act="pl-enc-here" data-t="Log an encounter|Notera ett fynd|Vondst vastleggen">Log an encounter</button></p>
   <div id="spPlList" class="stack w-only"></div>
   <h2 id="hCmt" data-th="Comments|Kommentarer">Comments <em>Kommentarer</em></h2>
   <form id="cmtForm" class="cmtform w-only" autocomplete="off" novalidate onsubmit="return false">
@@ -985,4 +991,4 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 <circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
 </svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script><script src="nl.js?v=2.4.3"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.3"></script></body></html>
+<script src="config.js"></script><script src="nl.js?v=2.4.4"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.4"></script></body></html>
