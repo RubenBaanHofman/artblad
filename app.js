@@ -1019,16 +1019,26 @@ function provenOf(x){
 const provenTxt=pv=>[pv.tOwn!=null?tr('Survived ','Överlevde ','Overleefde ')+fmtC(pv.tOwn)+' ('+pv.n+' '+(pv.n===1?tr('planting','plantering','aanplant'):tr('plantings','planteringar','aanplantingen'))+')':'',
   pv.tSeen!=null?tr('seen established where winters reach ≈ ','sedd etablerad där vintrarna når ≈ ','gevestigd gezien waar de winters ≈ ')+fmtC(pv.tSeen)+tr('','',' halen')+' ('+pv.ns+' '+(pv.ns===1?tr('encounter','fynd','vondst'):tr('encounters','fynd','vondsten'))+')':''].filter(Boolean).join(' · ').replace(/^./,c=>c.toUpperCase());
 const lastWinter=()=>{const d=new Date(),y=d.getMonth()<6?d.getFullYear()-1:d.getFullYear();return y+'/'+String(y+1).slice(2)};
-function winterRows(p){return (p.winters||[]).map(w=>'<span class="pill wint '+esc(w.o)+'">'+esc(tr('Winter ','Vinter ','Winter ')+w.w+': '+(w.t!==''&&w.t!=null?fmtC(Number(w.t))+', ':'')+trs((WOUT.find(o=>o.k===w.o)||{en:w.o,sv:w.o}).en,(WOUT.find(o=>o.k===w.o)||{en:w.o,sv:w.o}).sv))+'</span>').join('')}
+function winterRows(p){return (p.winters||[]).map(w=>'<span class="pill wint '+esc(w.o)+'"'+(w.tSrc?' title="'+esc(tr('Lowest temperature looked up for this spot and winter (Open-Meteo, ERA5-Land, CC BY 4.0)','Lägsta temperatur hämtad för platsen och vintern (Open-Meteo, ERA5-Land, CC BY 4.0)','Laagste temperatuur opgezocht voor deze plek en winter (Open-Meteo, ERA5-Land, CC BY 4.0)'))+'"':'')+'>'+esc(tr('Winter ','Vinter ','Winter ')+w.w+': '+(w.t!==''&&w.t!=null?(w.tSrc?'≈ ':'')+fmtC(Number(w.t))+', ':'')+trs((WOUT.find(o=>o.k===w.o)||{en:w.o,sv:w.o}).en,(WOUT.find(o=>o.k===w.o)||{en:w.o,sv:w.o}).sv))+'</span>').join('')}
 function winterForm(p){return '<div class="plw" data-plw="'+esc(p.id)+'" hidden><label><span class="fl">'+trh('Winter','Vinter','Winter')+'</span><input type="text" class="plw-w" value="'+esc(lastWinter())+'" maxlength="9"></label>'+
-  '<label><span class="fl">'+trh('Lowest temperature (°C)','Lägsta temperatur (°C)','Laagste temperatuur (°C)')+'</span><input type="number" class="plw-t" step="1" min="-60" max="20"></label>'+
+  '<label><span class="fl">'+trh('Lowest temperature (°C)','Lägsta temperatur (°C)','Laagste temperatuur (°C)')+'</span><input type="number" class="plw-t" step="1" min="-60" max="20" placeholder="'+esc(isFinite(p.lat)&&p.lat!=null&&p.lat!==''?tr('empty = look up','tom = hämta','leeg = opzoeken'):'')+'"></label>'+
   '<label><span class="fl">'+trh('Result','Resultat','Resultaat')+'</span><select class="plw-o">'+WOUT.map(o=>'<option value="'+o.k+'">'+esc(trs(o.en,o.sv))+'</option>').join('')+'</select></label>'+
-  '<button type="button" class="btn sm primary" data-act="pl-winter-save" data-id="'+esc(p.id)+'">'+esc(tr('Save winter','Spara vinter','Winter opslaan'))+'</button></div>'}
+  '<button type="button" class="btn sm primary" data-act="pl-winter-save" data-id="'+esc(p.id)+'">'+esc(tr('Save winter','Spara vinter','Winter opslaan'))+'</button>'+
+  '<small class="muted plw-h">'+esc(isFinite(p.lat)&&p.lat!=null&&p.lat!==''?tr('Leave the temperature empty and the app looks up the lowest temperature of that winter at this map position.','Lämna temperaturen tom så hämtar appen vinterns lägsta temperatur på kartpositionen.','Laat de temperatuur leeg, dan zoekt de app de laagste temperatuur van die winter op deze kaartpositie op.'):tr('Add a map position to this record and the app can look up the winter’s lowest temperature for you.','Lägg till en kartposition så kan appen hämta vinterns lägsta temperatur åt dig.','Voeg een kaartpositie toe, dan kan de app de laagste temperatuur van de winter voor je opzoeken.'))+'</small></div>'}
 async function plWinterSave(id){
   const box=$('[data-plw="'+id+'"]'),p=(state.plantings||[]).find(x=>x.id===id);if(!box||!p)return;
   const w=box.querySelector('.plw-w').value.trim()||lastWinter(),tv=box.querySelector('.plw-t').value,o=box.querySelector('.plw-o').value;
-  const doc=Object.assign({},p);delete doc.id;doc.winters=(p.winters||[]).concat([{w,t:tv===''?'':Number(tv),o,date:today()}]);
-  try{await Data.saveRow('plantings',id,doc);toast(tr('Winter saved','Vintern sparad','Winter opgeslagen'))}catch(e){toast(errMsg(e),'err')}
+  const rec={w,t:tv===''?'':Number(tv),o,date:today()};let msg='',bad=false;
+  // No temperature given: look up the lowest temperature of that winter at the record's map position.
+  if(tv===''&&isFinite(p.lat)&&p.lat!=null&&p.lat!==''){
+    const y=winterStart(w);
+    if(y==null){msg=tr('Saved without temperature: write the winter like 2025/26 to look it up.','Sparad utan temperatur: skriv vintern som 2025/26 för att hämta den.','Opgeslagen zonder temperatuur: schrijf de winter als 2025/26 om hem op te zoeken.');bad=true}
+    else{toast(tr('Looking up that winter’s lowest temperature…','Hämtar vinterns lägsta temperatur…','Laagste temperatuur van die winter opzoeken…'));
+      try{const r=await winterMin(Number(p.lat),Number(p.lng),y);rec.t=r.t;rec.tSrc='open-meteo';msg=tr('Winter saved: lowest ≈ ','Vintern sparad: lägsta ≈ ','Winter opgeslagen: laagste ≈ ')+fmtC(r.t)+(r.partial?tr(' (so far)',' (hittills)',' (tot nu toe)'):'')}
+      catch(e){msg=tr('Winter saved, but the temperature look-up did not work.','Vintern sparad, men temperaturuppslaget fungerade inte.','Winter opgeslagen, maar de temperatuur opzoeken lukte niet.');bad=true}}
+  }
+  const doc=Object.assign({},p);delete doc.id;doc.winters=(p.winters||[]).concat([rec]);
+  try{await Data.saveRow('plantings',id,doc);toast(msg||tr('Winter saved','Vintern sparad','Winter opgeslagen'),bad?'err':'')}catch(e){toast(errMsg(e),'err')}
 }
 
 /* ---------- sanity checks (admins): possible problems, never blocking ---------- */
@@ -1334,7 +1344,7 @@ let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;const b=$('#installBtn');if(b)b.hidden=false});
 
 /* ---------- version 2.4.2: section marks, dismissed problems, live updates for admins (setup/v5_live_sections.sql) ---------- */
-const APP_VERSION='2.4.5';
+const APP_VERSION='2.4.5.1';
 // The sheet's sections for verification. Literature sources have their own mark, which also goes grey after two years.
 const RSECS=[{id:'ident',en:'Names & photo',sv:'Namn & foto',f:['latin','en','sv','nl','family','type','status','photo']}]
   .concat(SEC.map(x=>({id:x.id,en:x.en,sv:x.sv,f:x.f.map(d=>d.k).filter(k=>k!=='sources')})))
@@ -2261,6 +2271,18 @@ async function climLookup(lat,lng){
   const u='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+CLIM_FROM+'&end_date='+CLIM_TO+'&daily=temperature_2m_min&models=era5_land&timezone=GMT';
   const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);
   try{const r=await fetch(u,{signal:ctl.signal});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();return climFrom(j)}finally{clearTimeout(to)}
+}
+// "2025/26", "2025-26", "2025/2026" or "2025" → 2025 (the winter that starts in the autumn of that year).
+function winterStart(w){const m=/^\s*(\d{4})(?:\s*[\/–-]\s*(\d{2}|\d{4}))?\s*$/.exec(String(w||''));if(!m)return null;const y=+m[1];if(y<1950||y>new Date().getFullYear())return null;return y}
+// The lowest daily minimum at a spot from 1 July of year y to 30 June the year after (up to a few days ago for the current winter).
+async function winterMin(lat,lng,y){
+  const lag=new Date(Date.now()-6*864e5).toISOString().slice(0,10),end=String(y+1)+'-06-30',to=end<lag?end:lag,partial=end>=lag;
+  const u='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+y+'-07-01&end_date='+to+'&daily=temperature_2m_min&models=era5_land&timezone=GMT';
+  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),15000);
+  try{const r=await fetch(u,{signal:ctl.signal});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();
+    const v=((j.daily||{}).temperature_2m_min||[]).filter(x=>x!=null&&isFinite(x));if(v.length<30)throw new Error('too little data');
+    return{t:Math.round(Math.min.apply(null,v)*10)/10,partial}}
+  finally{clearTimeout(tm)}
 }
 function climFrom(j){
   const d=(j&&j.daily)||{},tm=d.time||[],v=d.temperature_2m_min||[],w=new Map();

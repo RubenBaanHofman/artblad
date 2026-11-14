@@ -377,7 +377,8 @@ svg.shd{width:46px;height:54px}.shd .sh-bg{fill:var(--soft)}.shd .sh-rim{stroke:
 .bp{text-align:right}.bn2{color:var(--muted)}
 #v-me{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}#v-me[hidden]{display:none!important}
 /* Batch C */
-.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;min-height:40px;cursor:pointer;white-space:nowrap}.chk input{width:18px;height:18px;accent-color:var(--accent)}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;min-height:40px;cursor:pointer;white-space:nowrap}.chk input{width:18px;height:18px;flex:none;accent-color:var(--accent)}
+.chk.chkwrap{white-space:normal;max-width:100%}.plw-h{flex-basis:100%;font-size:12.5px}
 .ro-note{display:none;padding:12px 14px;border:1px solid color-mix(in srgb,var(--berry) 40%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--berry) 6%,var(--surface));margin:0 0 10px}
 .ro .ro-note{display:block}
 .row2 .acts{flex-wrap:wrap}
@@ -678,7 +679,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <button type="button" class="btn sm" id="installBtn" data-act="install" hidden data-t="Install as an app|Installera som app|Als app installeren">Install as an app</button>
   </div>
   <p id="herbLabel" class="herblabel" aria-hidden="true"></p>
-  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.5</span></p>
+  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.5.1</span></p>
 </section>
 
 <section id="v-overview" class="view" hidden>
@@ -774,7 +775,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <div class="pl-only f"><label class="fl" for="plCount" data-t="Number of plants|Antal plantor">Number of plants</label><input id="plCount" type="number" min="1" step="1" inputmode="numeric"></div>
     <div class="f"><label class="fl" for="plStatus" data-t="Status|Status">Status</label><select id="plStatus"><option value="alive" data-t="Alive|Lever">Alive</option><option value="struggling" data-t="Struggling|Kämpar">Struggling</option><option value="dead" data-t="Dead|Död">Dead</option><option value="removed" data-t="Removed|Borttagen">Removed</option><option value="unknown" data-t="Unknown|Okänd">Unknown</option></select></div>
     <div class="pl-only f"><label class="fl" for="plSource" data-t="Source (where it came from)|Källa (var den kom ifrån)">Source</label><input id="plSource" type="text" list="plSources" maxlength="160"><datalist id="plSources"></datalist></div>
-    <div class="f wide enc-only"><label class="chk"><input type="checkbox" id="plEstab"> <span data-t="Established: it has clearly survived at least one winter here|Etablerad: den har tydligt klarat minst en vinter här|Gevestigd: hij heeft hier duidelijk minstens één winter overleefd">Established: it has clearly survived at least one winter here</span></label><span class="hint" data-t="Only established encounters with a map position count towards “Proven hardy”: the app then looks up how cold winters get at that spot.|Bara etablerade fynd med en kartposition räknas till ”Bevisat härdig”: appen hämtar då hur kalla vintrarna blir på platsen.|Alleen gevestigde vondsten met een kaartpositie tellen mee voor “Bewezen winterhard”: de app zoekt dan op hoe koud de winters daar worden.">Only established encounters with a map position count towards “Proven hardy”.</span></div>
+    <div class="f wide enc-only"><label class="chk chkwrap"><input type="checkbox" id="plEstab"> <span data-t="Established (survived a winter here)|Etablerad (har klarat en vinter här)|Gevestigd (heeft hier een winter overleefd)">Established (survived a winter here)</span></label><span class="hint" data-t="Only established encounters with a map position count towards “Proven hardy”: the app then looks up how cold winters get at that spot.|Bara etablerade fynd med en kartposition räknas till ”Bevisat härdig”: appen hämtar då hur kalla vintrarna blir på platsen.|Alleen gevestigde vondsten met een kaartpositie tellen mee voor “Bewezen winterhard”: de app zoekt dan op hoe koud de winters daar worden.">Only established encounters with a map position count towards “Proven hardy”.</span></div>
     <div class="f"><label class="fl" for="plGeo" data-t="Map position (optional: lat, long)|Kartposition (valfritt: lat, long)">Map position</label><span style="display:flex;gap:6px"><input id="plGeo" type="text" inputmode="decimal" placeholder="63.82, 20.26" style="flex:1;min-width:0"><button type="button" class="btn sm" data-act="pl-geo" data-t="Here|Här">Here</button></span></div>
     <div class="pl-only f wide"><label class="fl" for="plNotes" data-t="Notes|Anteckningar">Notes</label><textarea id="plNotes" rows="2" maxlength="600"></textarea></div>
     <div class="f wide acts"><button type="button" class="btn primary" data-act="pl-save"><span class="pl-only" data-t="Save planting|Spara plantering|Aanplant opslaan">Save planting</span><span class="enc-only" data-t="Save encounter|Spara fyndet|Vondst opslaan">Save encounter</span></button><button type="button" class="btn" data-act="pl-cancel" data-t="Cancel|Avbryt">Cancel</button></div>
@@ -992,4 +993,4 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 <circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
 </svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script><script src="nl.js?v=2.4.5"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.5"></script></body></html>
+<script src="config.js"></script><script src="nl.js?v=2.4.5.1"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.5.1"></script></body></html>
