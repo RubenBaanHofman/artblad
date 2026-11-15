@@ -1035,7 +1035,7 @@ async function plWinterSave(id){
     if(y==null){msg=tr('Saved without temperature: write the winter like 2025/26 to look it up.','Sparad utan temperatur: skriv vintern som 2025/26 för att hämta den.','Opgeslagen zonder temperatuur: schrijf de winter als 2025/26 om hem op te zoeken.');bad=true}
     else{toast(tr('Looking up that winter’s lowest temperature…','Hämtar vinterns lägsta temperatur…','Laagste temperatuur van die winter opzoeken…'));
       try{const r=await winterMin(Number(p.lat),Number(p.lng),y);rec.t=r.t;rec.tSrc='open-meteo';msg=tr('Winter saved: lowest ≈ ','Vintern sparad: lägsta ≈ ','Winter opgeslagen: laagste ≈ ')+fmtC(r.t)+(r.partial?tr(' (so far)',' (hittills)',' (tot nu toe)'):'')}
-      catch(e){msg=tr('Winter saved, but the temperature look-up did not work.','Vintern sparad, men temperaturuppslaget fungerade inte.','Winter opgeslagen, maar de temperatuur opzoeken lukte niet.');bad=true}}
+      catch(e){msg=tr('Winter saved without temperature. ','Vintern sparad utan temperatur. ','Winter opgeslagen zonder temperatuur. ')+omErrMsg(e);bad=true}}
   }
   const doc=Object.assign({},p);delete doc.id;doc.winters=(p.winters||[]).concat([rec]);
   try{await Data.saveRow('plantings',id,doc);toast(msg||tr('Winter saved','Vintern sparad','Winter opgeslagen'),bad?'err':'')}catch(e){toast(errMsg(e),'err')}
@@ -1344,7 +1344,7 @@ let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;const b=$('#installBtn');if(b)b.hidden=false});
 
 /* ---------- version 2.4.2: section marks, dismissed problems, live updates for admins (setup/v5_live_sections.sql) ---------- */
-const APP_VERSION='2.4.6';
+const APP_VERSION='2.4.6.1';
 // The sheet's sections for verification. Literature sources have their own mark, which also goes grey after two years.
 const RSECS=[{id:'ident',en:'Names & photo',sv:'Namn & foto',f:['latin','en','sv','nl','family','type','status','photo']}]
   .concat(SEC.map(x=>({id:x.id,en:x.en,sv:x.sv,f:x.f.map(d=>d.k).filter(k=>k!=='sources')})))
@@ -1509,7 +1509,7 @@ function seCalLocal(){try{const v=JSON.parse(store.get('ab.secal')||'null');retu
 const seCalNow=()=>seCalLocal()||SE_CAL_BUILTIN;
 function SE_T(z){z=Math.max(1,Math.min(8,Number(z)||1));const c=seCalNow()||SE_DEF;return{lo:c[z-1],hi:z===1?c[0]+5:c[z-2]}}
 const seOfT=t=>{for(let z=1;z<=8;z++)if(t>=SE_T(z).lo)return z;return 8};
-const CALIB={running:false,rows:[],res:null,txt:store.get('ab.secalref')||SE_REF_DEFAULT};
+const CALIB={running:false,stop:false,rows:[],res:null,wait:0,txt:store.get('ab.secalref')||SE_REF_DEFAULT};
 function calParse(txt){return String(txt||'').split('\n').map(l=>l.split(';').map(x=>x.trim())).filter(a=>a.length>=3).map(a=>{const g=a[2].split(',').map(Number);return{z:Number(a[0]),name:a[1],lat:g[0],lng:g[1]}}).filter(r=>r.z>=1&&r.z<=8&&isFinite(r.lat)&&isFinite(r.lng))}
 const median=a=>{const s=a.slice().sort((x,y)=>x-y),n=s.length;return n?(n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2):null};
 // Proposed coldest edge of each zone: halfway between the typical winter lows of neighbouring zones (zones without places are interpolated).
@@ -1524,14 +1524,24 @@ function calPropose(rows){
 async function calRun(){
   if(CALIB.running)return;const ta=$('#calRef');if(ta){CALIB.txt=ta.value;store.set('ab.secalref',CALIB.txt)}
   const rows=calParse(CALIB.txt);if(rows.length<4){toast(tr('Give at least 4 places, one per line: zone; name; lat, long','Ange minst 4 platser, en per rad: zon; namn; lat, long','Geef minstens 4 plaatsen, één per regel: zone; naam; lat, long'),'err');return}
-  CALIB.running=true;CALIB.rows=rows;CALIB.res=null;updateAdmin();
-  for(const r of rows){try{r.t=(await climLookup(r.lat,r.lng)).t}catch(e){r.t=NaN;r.err=1}updateAdmin();await new Promise(ok=>setTimeout(ok,150))}
-  CALIB.running=false;CALIB.res=calPropose(rows);updateAdmin();
+  // Places already looked up (saved on this device) are not fetched again.
+  rows.forEach(r=>{const c=climCacheGet(r.lat.toFixed(3)+','+r.lng.toFixed(3));if(c)r.t=c.t});
+  CALIB.running=true;CALIB.stop=false;CALIB.rows=rows;CALIB.res=null;CALIB.msg='';updateAdmin();
+  for(const r of rows){
+    if(CALIB.stop)break;if(isFinite(r.t))continue;
+    r.busy=1;updateAdmin();
+    try{r.t=(await climLookup(r.lat,r.lng,true,ms=>{CALIB.wait=Date.now()+ms;updateAdmin()})).t;r.err=0}
+    catch(e){r.t=NaN;r.err=1;if(e.limit==='day'){CALIB.msg=omErrMsg(e);r.busy=0;break}}
+    r.busy=0;CALIB.wait=0;updateAdmin();
+  }
+  CALIB.running=false;CALIB.wait=0;const done=rows.filter(r=>isFinite(r.t)).length;
+  if(done<rows.length&&!CALIB.msg)CALIB.msg=tr('Not all places are done. Press Run / continue to finish them; the others are kept.','Alla platser är inte klara. Tryck Kör / fortsätt för att göra klart; de andra sparas.','Niet alle plaatsen zijn klaar. Druk op Uitvoeren / doorgaan om ze af te maken; de andere blijven bewaard.');
+  CALIB.res=calPropose(rows);updateAdmin();
 }
 function calibHTML(){
   const cur=seCalNow(),src=seCalLocal()?tr('calibrated, on this device only (testing)','kalibrerad, bara på den här enheten (test)','gekalibreerd, alleen op dit apparaat (test)'):SE_CAL_BUILTIN?tr('calibrated (built in)','kalibrerad (inbyggd)','gekalibreerd (ingebouwd)'):tr('the old approximate table','den gamla ungefärliga tabellen','de oude benaderde tabel');
   const band=z=>{const b=SE_T(z);return (z===1?'> ':'')+fmtC(b.lo)+(z===1?'':' … '+fmtC(b.hi))};
-  const rows=CALIB.rows.map(r=>'<tr><td>'+r.z+'</td><td>'+esc(r.name)+'</td><td>'+(r.t==null?(CALIB.running?'…':''):isFinite(r.t)?fmtC(r.t)+' <small class="muted">('+r.t.toFixed(1)+')</small>':'<span class="muted">'+esc(tr('failed','misslyckades','mislukt'))+'</span>')+'</td></tr>').join('');
+  const rows=CALIB.rows.map(r=>'<tr><td>'+r.z+'</td><td>'+esc(r.name)+'</td><td>'+(r.busy?'…':r.t==null?'':isFinite(r.t)?fmtC(r.t)+' <small class="muted">('+r.t.toFixed(1)+')</small>':'<span class="muted">'+esc(tr('failed','misslyckades','mislukt'))+'</span>')+'</td></tr>').join('');
   const P=CALIB.res;
   const prop=P?'<h3>'+trh('Proposed table','Föreslagen tabell','Voorgestelde tabel')+'</h3><table class="cmpt"><thead><tr><th>'+trh('Zone','Zon','Zone')+'</th><th>'+trh('Typical winter low of the places','Typisk vinterlägsta för platserna','Typisch winterminimum van de plaatsen')+'</th><th>'+trh('Now','Nu','Nu')+'</th><th>'+trh('Proposed','Förslag','Voorstel')+'</th></tr></thead><tbody>'+
     [1,2,3,4,5,6,7,8].map(z=>'<tr><td>'+z+'</td><td>'+(P.med[z-1]==null?'<span class="muted">'+esc(tr('no places (estimated)','inga platser (uppskattad)','geen plaatsen (geschat)'))+'</span>':fmtC(P.med[z-1]))+'</td><td>'+esc(band(z))+'</td><td>'+(z===1?'> ':'')+fmtC(P.lo[z-1])+(z===1?'':' … '+fmtC(P.lo[z-2]))+'</td></tr>').join('')+'</tbody></table>'+
@@ -1540,7 +1550,9 @@ function calibHTML(){
   return '<p>'+esc(tr('Swedish growing zones come from growers’ experience, not from temperatures. Pick a plant, Proven hardy and the zone shown for map positions need a temperature for each zone. This tool looks up the typical winter low (Open-Meteo, the same method as for encounters) for reference places whose zone you know, and proposes a table from them.','Svenska odlingszoner bygger på odlares erfarenhet, inte på temperaturer. Välj en växt, Bevisat härdig och zonen som visas för kartpositioner behöver en temperatur för varje zon. Verktyget hämtar typisk vinterlägsta (Open-Meteo, samma metod som för fynd) för referensplatser vars zon du känner, och föreslår en tabell utifrån dem.','Zweedse groeizones zijn gebaseerd op ervaring van kwekers, niet op temperaturen. Kies een plant, Bewezen winterhard en de zone bij kaartposities hebben per zone een temperatuur nodig. Dit hulpmiddel zoekt het typische winterminimum op (Open-Meteo, dezelfde methode als bij vondsten) voor referentieplaatsen waarvan je de zone kent, en stelt daaruit een tabel voor.'))+'</p>'+
     '<p class="muted" style="font-size:13px">'+esc(tr('Table in use: ','Tabell som används: ','Tabel in gebruik: ')+src)+(seCalLocal()?' <button type="button" class="btn sm" data-act="cal-reset">'+esc(tr('Back to the built-in table','Tillbaka till den inbyggda tabellen','Terug naar de ingebouwde tabel'))+'</button>':'')+'</p>'+
     '<label class="fl" for="calRef">'+trh('Reference places (zone; name; lat, long). Check the zones against the RST zone map and edit freely.','Referensplatser (zon; namn; lat, long). Kontrollera zonerna mot RST:s zonkarta och ändra fritt.','Referentieplaatsen (zone; naam; lat, long). Controleer de zones met de zonekaart van RST en pas vrij aan.')+'</label><textarea id="calRef" rows="8" spellcheck="false">'+esc(CALIB.txt)+'</textarea>'+
-    '<div class="acts"><button type="button" class="btn sm" data-act="cal-run"'+(CALIB.running?' disabled':'')+'>'+esc(CALIB.running?tr('Looking up…','Hämtar…','Opzoeken…'):tr('Run the calibration','Kör kalibreringen','Kalibratie uitvoeren'))+'</button><button type="button" class="btn sm" data-act="cal-default">'+esc(tr('Restore the suggested places','Återställ de föreslagna platserna','Voorgestelde plaatsen terugzetten'))+'</button></div>'+
+    '<p class="muted" style="font-size:13px">'+esc(tr('Each place costs about 170 of Open-Meteo’s free “calls” (5 000 an hour, 10 000 a day), so the tool paces itself: about 25 places an hour. Keep this page open; results are saved, so you can stop and continue later.','Varje plats kostar ungefär 170 av Open-Meteos fria ”anrop” (5 000 i timmen, 10 000 per dag), så verktyget tar det lugnt: ungefär 25 platser i timmen. Håll sidan öppen; resultaten sparas, så du kan avbryta och fortsätta senare.','Elke plaats kost ongeveer 170 van de gratis “calls” van Open-Meteo (5 000 per uur, 10 000 per dag), dus het hulpmiddel doet het rustig aan: ongeveer 25 plaatsen per uur. Houd deze pagina open; resultaten worden bewaard, dus je kunt stoppen en later doorgaan.'))+'</p>'+
+    (CALIB.running||CALIB.msg?'<p class="admnew" style="font-size:14px">'+(CALIB.running?esc(tr('Done: ','Klart: ','Klaar: ')+CALIB.rows.filter(r=>isFinite(r.t)).length+' / '+CALIB.rows.length)+(CALIB.wait>Date.now()?esc(' · '+tr('waiting for Open-Meteo’s limit until ','väntar på Open-Meteos gräns till ','wachten op de limiet van Open-Meteo tot ')+new Date(CALIB.wait).toLocaleTimeString(state.lang==='sv'?'sv-SE':state.lang==='nl'?'nl-NL':'en-GB',{hour:'2-digit',minute:'2-digit'})):''):esc(CALIB.msg))+'</p>':'')+
+    '<div class="acts"><button type="button" class="btn sm" data-act="cal-run"'+(CALIB.running?' disabled':'')+'>'+esc(CALIB.running?tr('Looking up…','Hämtar…','Opzoeken…'):tr('Run / continue','Kör / fortsätt','Uitvoeren / doorgaan'))+'</button>'+(CALIB.running?'<button type="button" class="btn sm" data-act="cal-stop">'+esc(tr('Stop','Stoppa','Stoppen'))+'</button>':'')+'<button type="button" class="btn sm" data-act="cal-default">'+esc(tr('Restore the suggested places','Återställ de föreslagna platserna','Voorgestelde plaatsen terugzetten'))+'</button></div>'+
     (rows?'<div class="tbl"><table class="cmpt"><thead><tr><th>'+trh('Zone','Zon','Zone')+'</th><th>'+trh('Place','Plats','Plaats')+'</th><th>'+trh('Typical winter low','Typisk vinterlägsta','Typisch winterminimum')+'</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'')+prop+
     '<small class="muted">'+esc(tr('Climate: ','Klimat: ','Klimaat: '))+CLIM_CREDIT+'</small>';
 }
@@ -1591,7 +1603,7 @@ async function pickFromMap(){
   const [c,s,p]=await Promise.allSettled([climLookup(lat,lng),sguSoil(lat,lng),sguPerm(lat,lng)]);
   const lines=[],ok=x=>x.status==='fulfilled'&&x.value!=null;
   if(ok(c)){pickState.temp=String(Math.round(c.value.t));pickState.zone='';lines.push('<li><b>'+esc(tr('Lowest winter temperature: ','Lägsta vintertemperatur: ','Laagste wintertemperatuur: '))+esc(fmtC(c.value.t))+'</b> '+esc(tr('(typical winter low, ≈ zone ','(typisk vinterlägsta, ≈ zon ','(typisch winterminimum, ≈ zone ')+seOfT(c.value.t)+')')+' <small class="muted">'+CLIM_CREDIT+'</small></li>')}
-  else lines.push('<li class="muted">'+esc(tr('Winter climate: could not be looked up.','Vinterklimat: kunde inte hämtas.','Winterklimaat: kon niet worden opgezocht.'))+'</li>');
+  else lines.push('<li class="muted">'+esc(tr('Winter climate: ','Vinterklimat: ','Winterklimaat: ')+omErrMsg(c.reason))+'</li>');
   const sc=ok(s)?soilClass(s.value):null;
   if(ok(s)){if(sc.soil.length)pickState.soil=new Set(sc.soil);
     lines.push('<li><b>'+esc(tr('Soil: ','Jord: ','Grond: '))+esc(s.value)+'</b>'+(sc.soil.length?' → '+esc(sc.soil.map(k=>{const o=SOIL.find(x=>x.k===k);return o?trs(o.en,o.sv):k}).join(', ')):sc.fill?' · '+esc(tr('made ground: check the actual soil','utfyllnad: kontrollera den verkliga jorden','opgehoogde grond: controleer de echte grond')):sc.rock?' · '+esc(tr('thin soil on bedrock','tunt jordlager på berg','dunne grond op rots')):'')+' <small class="muted">SGU, '+esc(tr('soil map 1:25 000–1:100 000','jordartskarta 1:25 000–1:100 000','grondsoortenkaart 1:25 000–1:100 000'))+' (CC0)</small></li>')}
@@ -2396,30 +2408,67 @@ async function cmtSave(id){
 }
 /* ---------- winter climate of a map position (Open-Meteo historical weather, ERA5-Land, CC BY 4.0, no key) ----------
    The average of each winter's lowest temperature over the 30 winters 1995/96–2024/25 (the USDA zone definition), plus the coldest. */
-const CLIM_FROM='1995-07-01',CLIM_TO='2025-06-30';
-async function climLookup(lat,lng){
-  const u='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+CLIM_FROM+'&end_date='+CLIM_TO+'&daily=temperature_2m_min&models=era5_land&timezone=GMT';
-  const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);
-  try{const r=await fetch(u,{signal:ctl.signal});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();return climFrom(j)}finally{clearTimeout(to)}
+/* Open-Meteo's free service counts every 2 weeks of data as one "call": 600 a minute, 5 000 an hour, 10 000 a day per connection.
+   So: only the cold season (15 Nov–15 Mar) of 20 winters (2005/06–2024/25), about 173 calls per place; a budget kept on this
+   device that waits (calibration) or explains (single look-ups); and a cache of looked-up places. */
+const CLIM_Y0=2005,CLIM_Y1=2024,CLIM_SEASON=['-11-15','-03-15'];
+const omLimits=()=>Object.assign({min:540,hour:4800,day:9500},window.__omLimits||{});
+const omWeight=(a,b)=>Math.max(0.1,((new Date(b)-new Date(a))/864e5+1)/14);
+function omLog(){let l=[];try{l=JSON.parse(store.get('ab.omlog')||'[]')}catch(e){}const now=Date.now();return l.filter(x=>Array.isArray(x)&&now-x[0]<864e5)}
+function omWait(w){
+  const L=omLimits(),l=omLog(),now=Date.now(),sum=ms=>l.filter(x=>now-x[0]<ms).reduce((t,x)=>t+x[1],0);
+  const need=(ms,lim)=>{let u=sum(ms);if(u+w<=lim)return 0;const old=l.filter(x=>now-x[0]<ms).sort((a,b)=>a[0]-b[0]);for(const x of old){u-=x[1];if(u+w<=lim)return x[0]+ms-now+500}return ms};
+  return{min:need(6e4,L.min),hour:need(36e5,L.hour),day:need(864e5,L.day)};
+}
+function omNote(w){const l=omLog();l.push([Date.now(),Math.round(w*100)/100]);try{store.set('ab.omlog',JSON.stringify(l.slice(-3000)))}catch(e){}}
+const omErr=(kind,ms)=>Object.assign(new Error('limit'),{limit:kind,ms});
+let OM_LAST_ERR=null;
+// One request for one stretch of days; returns the daily minimums. wait: true = wait for the budget (calibration), else throw.
+async function omFetch(lat,lng,a,b,wait,onWait){
+  const w=omWeight(a,b);
+  for(let tries=0;;tries++){
+    const q=omWait(w);
+    if(q.day){throw omErr('day',q.day)}
+    const ms=Math.max(q.min,q.hour);
+    if(ms){if(!wait)throw omErr(q.hour?'hour':'min',ms);if(onWait)onWait(ms);await new Promise(r=>setTimeout(r,Math.min(ms,15000)));continue}
+    omNote(w);
+    const u='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+a+'&end_date='+b+'&daily=temperature_2m_min&models=era5_land&timezone=GMT';
+    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);let r;
+    try{r=await fetch(u,{signal:ctl.signal})}finally{clearTimeout(to)}
+    if(r.ok){const j=await r.json();return{v:((j.daily||{}).temperature_2m_min||[]).filter(x=>x!=null&&isFinite(x)),elev:j.elevation}}
+    let reason='';try{reason=(await r.json()).reason||''}catch(e){}
+    if(r.status===429||/limit/i.test(reason)){
+      const kind=/daily|day/i.test(reason)?'day':/hour/i.test(reason)?'hour':'min';
+      if(!wait||kind==='day'||tries>=5)throw omErr(kind,kind==='day'?864e5:kind==='hour'?36e5:6e4);
+      if(onWait)onWait(6e4);await new Promise(r=>setTimeout(r,6e4));continue}
+    throw new Error('HTTP '+r.status+(reason?': '+reason:''));
+  }
+}
+function omErrMsg(e){
+  if(!e||!e.limit)return tr('The look-up did not work. Try again later.','Uppslaget fungerade inte. Försök igen senare.','Het opzoeken lukte niet. Probeer het later opnieuw.');
+  if(e.limit==='day')return tr('Open-Meteo’s free daily limit is used up on this connection. Try again tomorrow.','Open-Meteos fria dagsgräns är förbrukad på den här anslutningen. Försök igen i morgon.','De gratis daglimiet van Open-Meteo is op voor deze verbinding. Probeer het morgen opnieuw.');
+  const m=Math.max(1,Math.ceil((e.ms||6e4)/6e4));
+  return tr('Open-Meteo’s free limit is reached for now. Try again in about ','Open-Meteos fria gräns är nådd just nu. Försök igen om ungefär ','De gratis limiet van Open-Meteo is nu bereikt. Probeer het over ongeveer ')+m+' '+tr('min.','min.','min.');
+}
+function climCacheGet(k){try{return (JSON.parse(store.get('ab.climcache')||'{}'))[k]||null}catch(e){return null}}
+function climCacheSet(k,v){try{const c=JSON.parse(store.get('ab.climcache')||'{}');c[k]=v;const ks=Object.keys(c);if(ks.length>300)delete c[ks[0]];store.set('ab.climcache',JSON.stringify(c))}catch(e){}}
+// The typical winter low of a spot: the mean of the 20 winter minimums (USDA definition), plus the coldest.
+async function climLookup(lat,lng,wait,onWait){
+  const k=lat.toFixed(3)+','+lng.toFixed(3),c=climCacheGet(k);if(c)return c;
+  const mins=[];let elev=null;
+  for(let y=CLIM_Y0;y<=CLIM_Y1;y++){const r=await omFetch(lat,lng,y+CLIM_SEASON[0],(y+1)+CLIM_SEASON[1],wait,onWait);if(r.elev!=null)elev=r.elev;if(r.v.length>=100)mins.push(Math.min.apply(null,r.v))}
+  if(mins.length<15)throw new Error('too little data');
+  const mean=mins.reduce((a,b)=>a+b,0)/mins.length;
+  const out={t:Math.round(mean*10)/10,lo:Math.round(Math.min.apply(null,mins)*10)/10,n:mins.length,elev:elev!=null?Math.round(elev):null,src:'Open-Meteo ERA5-Land, '+CLIM_Y0+'/'+String(CLIM_Y0+1).slice(2)+'–'+CLIM_Y1+'/'+String(CLIM_Y1+1).slice(2)+', 15 Nov–15 Mar',at:today()};
+  climCacheSet(k,out);return out;
 }
 // "2025/26", "2025-26", "2025/2026" or "2025" → 2025 (the winter that starts in the autumn of that year).
 function winterStart(w){const m=/^\s*(\d{4})(?:\s*[\/–-]\s*(\d{2}|\d{4}))?\s*$/.exec(String(w||''));if(!m)return null;const y=+m[1];if(y<1950||y>new Date().getFullYear())return null;return y}
-// The lowest daily minimum at a spot from 1 July of year y to 30 June the year after (up to a few days ago for the current winter).
+// The lowest daily minimum at a spot from 1 October of year y to 30 April the year after (up to a few days ago for the current winter).
 async function winterMin(lat,lng,y){
-  const lag=new Date(Date.now()-6*864e5).toISOString().slice(0,10),end=String(y+1)+'-06-30',to=end<lag?end:lag,partial=end>=lag;
-  const u='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+y+'-07-01&end_date='+to+'&daily=temperature_2m_min&models=era5_land&timezone=GMT';
-  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),15000);
-  try{const r=await fetch(u,{signal:ctl.signal});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();
-    const v=((j.daily||{}).temperature_2m_min||[]).filter(x=>x!=null&&isFinite(x));if(v.length<30)throw new Error('too little data');
-    return{t:Math.round(Math.min.apply(null,v)*10)/10,partial}}
-  finally{clearTimeout(tm)}
-}
-function climFrom(j){
-  const d=(j&&j.daily)||{},tm=d.time||[],v=d.temperature_2m_min||[],w=new Map();
-  tm.forEach((x,i)=>{const t=v[i];if(t==null||!isFinite(t))return;const y=+x.slice(0,4),m=+x.slice(5,7),k=m>=7?y:y-1,c=w.get(k)||{min:99,n:0};c.n++;if(t<c.min)c.min=t;w.set(k,c)});
-  const mins=[...w.values()].filter(c=>c.n>=300).map(c=>c.min);if(mins.length<10)throw new Error('too little data');
-  const mean=mins.reduce((a,b)=>a+b,0)/mins.length;
-  return{t:Math.round(mean*10)/10,lo:Math.round(Math.min.apply(null,mins)*10)/10,n:mins.length,elev:j.elevation!=null?Math.round(j.elevation):null,src:'Open-Meteo ERA5-Land',at:today()};
+  const lag=new Date(Date.now()-6*864e5).toISOString().slice(0,10),end=String(y+1)+'-04-30',to=end<lag?end:lag,partial=end>=lag;
+  const r=await omFetch(lat,lng,y+'-10-01',to,false);if(r.v.length<30)throw new Error('too little data');
+  return{t:Math.round(Math.min.apply(null,r.v)*10)/10,partial};
 }
 const usdaOfT=t=>{const f=t*1.8+32;if(f<-60)return '1a';const k=Math.floor((f+60)/5),n=Math.min(13,Math.floor(k/2)+1);return n+(k%2?'b':'a')};
 function climTxt(c){
@@ -2429,12 +2478,12 @@ function climTxt(c){
 const CLIM_CREDIT='<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (ERA5-Land, CC BY 4.0)';
 async function plClimFor(doc){
   if(!(isEnc(doc)&&doc.established&&isFinite(doc.lat)&&isFinite(doc.lng)))return false;
-  try{doc.clim=await climLookup(Number(doc.lat),Number(doc.lng));return true}catch(e){return null}
+  try{doc.clim=await climLookup(Number(doc.lat),Number(doc.lng));OM_LAST_ERR=null;return true}catch(e){OM_LAST_ERR=e;return null}
 }
 async function plClimRetry(id){
   const p=(state.plantings||[]).find(x=>x.id===id);if(!p)return;const doc=Object.assign({},p);delete doc.id;
   toast(tr('Looking up the winter climate…','Hämtar vinterklimatet…','Winterklimaat opzoeken…'));
-  const ok=await plClimFor(doc);if(!ok){toast(tr('The climate look-up did not work. Try again later.','Klimatuppslaget fungerade inte. Försök igen senare.','Het klimaat opzoeken lukte niet. Probeer het later opnieuw.'),'err');return}
+  const ok=await plClimFor(doc);if(!ok){toast(omErrMsg(OM_LAST_ERR),'err');return}
   try{await Data.saveRow('plantings',id,doc);toast(tr('Winter climate added','Vinterklimat tillagt','Winterklimaat toegevoegd'))}catch(e){toast(errMsg(e),'err')}
 }
 function encInfo(p){
@@ -2486,7 +2535,7 @@ async function plSave(){
   if(old&&old.status!==st)doc.checks.push({date:today(),status:st,note:''});
   if(enc&&old&&old.clim&&old.lat===doc.lat&&old.lng===doc.lng)doc.clim=old.clim;
 let climFail=false;if(enc&&doc.established&&!doc.clim&&isFinite(doc.lat)){toast(tr('Looking up the winter climate…','Hämtar vinterklimatet…','Winterklimaat opzoeken…'));if(await plClimFor(doc)===null)climFail=true}
-  try{await Data.saveRow('plantings',plState.edit,doc);$('#plForm').hidden=true;plState.edit=null;toast(climFail?tr('Encounter saved, but the climate look-up did not work. Use “Look up climate” later.','Fyndet sparat, men klimatuppslaget fungerade inte. Använd ”Hämta klimat” senare.','Vondst opgeslagen, maar het klimaat opzoeken lukte niet. Gebruik later “Klimaat opzoeken”.'):enc?(doc.clim?tr('Encounter saved: ','Fyndet sparat: ','Vondst opgeslagen: ')+climTxt(doc.clim):tr('Encounter saved','Fyndet sparat','Vondst opgeslagen')):tr('Planting saved','Plantering sparad'),climFail?'err':'');updatePlantings()}catch(e){toast(errMsg(e),'err')}
+  try{await Data.saveRow('plantings',plState.edit,doc);$('#plForm').hidden=true;plState.edit=null;toast(climFail?tr('Encounter saved. Winter climate: ','Fyndet sparat. Vinterklimat: ','Vondst opgeslagen. Winterklimaat: ')+omErrMsg(OM_LAST_ERR)+' '+tr('Use “Look up climate” later.','Använd ”Hämta klimat” senare.','Gebruik later “Klimaat opzoeken”.'):enc?(doc.clim?tr('Encounter saved: ','Fyndet sparat: ','Vondst opgeslagen: ')+climTxt(doc.clim):tr('Encounter saved','Fyndet sparat','Vondst opgeslagen')):tr('Planting saved','Plantering sparad'),climFail?'err':'');updatePlantings()}catch(e){toast(errMsg(e),'err')}
 }
 async function plSetStatus(id,st,note){
   const p=(state.plantings||[]).find(x=>x.id===id);if(!p||!st)return;
@@ -2798,6 +2847,7 @@ document.addEventListener('click',async e=>{
   else if(act==='cmp-mode'){cmpMode=!cmpMode;updateOverview()}
   else if(act==='pl-new')plFormOpen(null,a.dataset.sid);
   else if(act==='cal-run')calRun();
+  else if(act==='cal-stop'){CALIB.stop=true;toast(tr('Stopping after the current place…','Stoppar efter den aktuella platsen…','Stoppen na de huidige plaats…'))}
   else if(act==='cal-default'){CALIB.txt=SE_REF_DEFAULT;store.set('ab.secalref','');updateAdmin()}
   else if(act==='cal-try'&&CALIB.res){store.set('ab.secal',JSON.stringify(CALIB.res.lo));toast(tr('The new table is used on this device. Try Pick a plant.','Den nya tabellen används på den här enheten. Prova Välj en växt.','De nieuwe tabel wordt op dit apparaat gebruikt. Probeer Kies een plant.'));calApplied()}
   else if(act==='cal-reset'){store.set('ab.secal','');toast(tr('Back to the built-in table','Tillbaka till den inbyggda tabellen','Terug naar de ingebouwde tabel'));calApplied()}
