@@ -627,6 +627,8 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 .pkgeo-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pkgeo-row input{flex:1 1 10rem;min-width:0}.pkgeo-row select{flex:1 1 12rem;min-width:0;width:auto}
 .pkgeo-res{margin:8px 0 0;padding-left:1.1em;font-size:14px}.pkgeo-res li{margin:2px 0}
 .caltxt{width:100%;font:12px/1.4 ui-monospace,monospace}#calRef{width:100%;font:13px/1.4 ui-monospace,monospace}
+.pkhard{font-size:13px;color:var(--muted);margin:3px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px}
+.pkboth{display:inline-flex;vertical-align:-3px}.pkboth svg{width:22px;height:18px}
 .appver{margin:14px 0 0;text-align:center;font-size:12.5px;color:var(--muted)}
 /* shields: a new stage */
 .lad.lvlup{animation:lvlup 1.6s ease-out 1}
@@ -682,7 +684,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <button type="button" class="btn sm" id="installBtn" data-act="install" hidden data-t="Install as an app|Installera som app|Als app installeren">Install as an app</button>
   </div>
   <p id="herbLabel" class="herblabel" aria-hidden="true"></p>
-  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.6.3</span></p>
+  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.7</span></p>
 </section>
 
 <section id="v-overview" class="view" hidden>
@@ -752,7 +754,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <div class="fgrp"><span class="fl" data-th="Light|Ljus">Light</span><div class="chips" id="pickLight"><button type="button" class="chip sm" data-pl="sun"><i></i><span data-t="Sun|Sol">Sun</span></button><button type="button" class="chip sm" data-pl="part"><i></i><span data-t="Part shade|Halvskugga">Part shade</span></button><button type="button" class="chip sm" data-pl="shade"><i></i><span data-t="Shade|Skugga">Shade</span></button></div></div>
     <div class="fgrp"><span class="fl" data-th="Moisture|Fukt">Moisture</span><div class="chips" id="pickMoist"><button type="button" class="chip sm" data-pm="1"><i></i><span data-t="Dry|Torr">Dry</span></button><button type="button" class="chip sm" data-pm="2"><i></i>2</button><button type="button" class="chip sm" data-pm="3"><i></i><span data-t="Medium|Medel">Medium</span></button><button type="button" class="chip sm" data-pm="4"><i></i>4</button><button type="button" class="chip sm" data-pm="5"><i></i><span data-t="Wet|Blöt">Wet</span></button></div></div>
     <div class="fgrp"><span class="fl" data-th="Soil|Jord">Soil</span><div class="chips" id="pickSoil"><button type="button" class="chip sm" data-ps="sand"><i></i><span data-t="Sand|Sand">Sand</span></button><button type="button" class="chip sm" data-ps="loam"><i></i><span data-t="Loam|Mojord">Loam</span></button><button type="button" class="chip sm" data-ps="clay"><i></i><span data-t="Clay|Lera">Clay</span></button><button type="button" class="chip sm" data-ps="humus"><i></i><span data-t="Humus|Mull">Humus</span></button></div></div>
-    <div class="fgrp pkzone"><label><span class="fl" data-th="Swedish growing zone|Odlingszon|Zweedse groeizone">Swedish growing zone</span><select id="pickZone"><option value="">–</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><span class="pkor" data-t="or|eller|of">or</span><label><span class="fl" data-th="Lowest winter temperature|Lägsta vintertemperatur|Laagste wintertemperatuur">Lowest winter temperature</span><select id="pickTemp"><option value="">–</option></select></label></div>
+    <div class="fgrp pkzone"><label><span class="fl" data-th="Swedish growing zone|Odlingszon|Zweedse groeizone">Swedish growing zone</span><select id="pickZone"><option value="">–</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><span class="pkor" data-t="and|och|en">and</span><label><span class="fl" data-th="Lowest winter temperature|Lägsta vintertemperatur|Laagste wintertemperatuur">Lowest winter temperature</span><select id="pickTemp"><option value="">–</option></select></label></div>
     <div class="fgrp"><span class="fl" data-th="Plant form|Växtform">Plant form</span><div class="chips" id="pickForm"><button type="button" class="chip sm" data-pf="w"><i></i><span data-t="Woody|Vedartad">Woody</span></button><button type="button" class="chip sm" data-pf="h"><i></i><span data-t="Herbaceous|Örtartad">Herbaceous</span></button></div></div>
     <div class="fgrp"><label class="fl" for="pickScope" data-th="From list|Från lista|Uit lijst">From list</label><select id="pickScope"></select></div>
     <label class="pkopt"><input type="checkbox" id="pickCv" checked> <span data-t="Show cultivars under each species|Visa sorter under varje art|Toon cultivars onder elke soort">Show cultivars under each species</span></label>
@@ -997,4 +999,4 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 <circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
 </svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script><script src="nl.js?v=2.4.6.3"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.6.3"></script></body></html>
+<script src="config.js"></script><script src="nl.js?v=2.4.7"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.7"></script></body></html>

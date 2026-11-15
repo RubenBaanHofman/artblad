@@ -1051,8 +1051,8 @@ function checksOf(s){
     if(!w&&h>0&&h<=3)add('height','Height '+h+' cm: perhaps metres were meant (herbaceous plants are in cm).','Höjd '+h+' cm: kanske menades meter (örtartade anges i cm).','Hoogte '+h+' cm: misschien waren meters bedoeld (kruidachtigen in cm).');
     if(w&&h>60)add('height','Height '+h+' m for a woody plant: centimetres typed as metres?','Höjd '+h+' m för en vedartad växt: centimeter skrivna som meter?','Hoogte '+h+' m voor een houtige plant: centimeters als meters getypt?');
   }
-  const ts=[];if(seTok(m.szone).length)ts.push(hardOf({szone:m.szone}));if(usdaTok(m.usda).length)ts.push(hardOf({usda:m.usda}));if(rhsTok(m.rhs).length)ts.push(hardOf({rhs:m.rhs}));
-  const tv=ts.filter(Boolean).map(x=>x.t);if(tv.length>1&&Math.max.apply(null,tv)-Math.min.apply(null,tv)>10)add('hardy','The hardiness ratings disagree by more than about two zones ('+ts.filter(Boolean).map(x=>x.label+' ≈ '+fmtC(x.t)).join(', ')+').','Härdighetsuppgifterna skiljer sig med mer än ungefär två zoner ('+ts.filter(Boolean).map(x=>x.label+' ≈ '+fmtC(x.t)).join(', ')+').','De winterhardheidsgegevens verschillen meer dan ongeveer twee zones ('+ts.filter(Boolean).map(x=>x.label+' ≈ '+fmtC(x.t)).join(', ')+').');
+  const ts=[];if(usdaTok(m.usda).length)ts.push(hardOf({usda:m.usda}));if(rhsTok(m.rhs).length)ts.push(hardOf({rhs:m.rhs}));
+  const tv=ts.filter(Boolean).map(x=>x.t);if(tv.length>1&&Math.max.apply(null,tv)-Math.min.apply(null,tv)>10)add('hardy','The USDA and RHS ratings disagree by more than about two zones ('+ts.filter(Boolean).map(x=>x.label+' ≈ '+fmtC(x.t)).join(', ')+').','USDA- och RHS-uppgifterna skiljer sig med mer än ungefär två zoner ('+ts.filter(Boolean).map(x=>x.label+' ≈ '+fmtC(x.t)).join(', ')+').','De USDA- en RHS-gegevens verschillen meer dan ongeveer twee zones ('+ts.filter(Boolean).map(x=>x.label+' ≈ '+fmtC(x.t)).join(', ')+').');
   if((m.caut||[]).indexOf('toxic')>=0&&Number(m.edibility)>=4)add('edibility','Marked Toxic but rated very edible.','Markerad som giftig men mycket ätlig.','Als giftig gemarkeerd maar zeer eetbaar.');
   if(!isEmpty(m.edibility)&&Number(m.edibility)===0&&(m.uses||[]).some(u=>FOOD_USES.indexOf(u)>=0))add('edibility','Marked Inedible but has food uses.','Markerad som oätlig men har matanvändning.','Als oneetbaar gemarkeerd maar heeft voedselgebruik.');
   if(m.invasive==='high'&&Number(m.verdict)===5)add('verdict','High invasive risk with the top verdict.','Hög invasionsrisk med högsta omdöme.','Hoog invasierisico met het hoogste oordeel.');
@@ -1344,7 +1344,7 @@ let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;const b=$('#installBtn');if(b)b.hidden=false});
 
 /* ---------- version 2.4.2: section marks, dismissed problems, live updates for admins (setup/v5_live_sections.sql) ---------- */
-const APP_VERSION='2.4.6.3';
+const APP_VERSION='2.4.7';
 // The sheet's sections for verification. Literature sources have their own mark, which also goes grey after two years.
 const RSECS=[{id:'ident',en:'Names & photo',sv:'Namn & foto',f:['latin','en','sv','nl','family','type','status','photo']}]
   .concat(SEC.map(x=>({id:x.id,en:x.en,sv:x.sv,f:x.f.map(d=>d.k).filter(k=>k!=='sources')})))
@@ -1475,112 +1475,7 @@ function sheetCv(s,lang){
 }
 
 {const av=document.getElementById('appVer');if(av)av.textContent=APP_VERSION}
-/* ---------- 2.4.6: Swedish zones calibrated against winter temperatures; Pick a plant filled in from a map position ---------- */
-// Reference places per Swedish growing zone (RST map). Admins can edit the list before running the calibration.
-const SE_REF_DEFAULT=`1; Malmö; 55.605, 13.000
-1; Helsingborg; 56.046, 12.694
-1; Ystad; 55.430, 13.820
-2; Kalmar; 56.663, 16.356
-2; Halmstad; 56.674, 12.857
-2; Karlskrona; 56.161, 15.587
-3; Uppsala; 59.858, 17.639
-3; Örebro; 59.275, 15.213
-3; Linköping; 58.411, 15.622
-3; Västerås; 59.610, 16.545
-4; Gävle; 60.675, 17.142
-4; Borlänge; 60.485, 15.437
-4; Hudiksvall; 61.729, 17.104
-5; Sundsvall; 62.391, 17.307
-5; Härnösand; 62.633, 17.938
-5; Umeå; 63.826, 20.263
-6; Östersund; 63.179, 14.636
-6; Skellefteå; 64.750, 20.951
-6; Luleå; 65.584, 22.155
-7; Lycksele; 64.596, 18.676
-7; Arvidsjaur; 65.592, 19.180
-7; Sveg; 62.034, 14.358
-8; Kiruna; 67.856, 20.225
-8; Gällivare; 67.133, 20.660
-8; Jokkmokk; 66.607, 19.823`;
-const SE_DEF=[1,2,3,4,5,6,7,8].map(z=>z>=8?-50:-10-5*z);   // the old table: the coldest edge of each zone
-// Built-in calibration: empty until a calibration has been accepted (then the lowest edges of zones 1–8 go here).
-const SE_CAL_BUILTIN=null;
-function seCalLocal(){try{const v=JSON.parse(store.get('ab.secal')||'null');return Array.isArray(v)&&v.length===8&&v.every(isFinite)?v:null}catch(e){return null}}
-const seCalNow=()=>seCalLocal()||SE_CAL_BUILTIN;
-function SE_T(z){z=Math.max(1,Math.min(8,Number(z)||1));const c=seCalNow()||SE_DEF;return{lo:c[z-1],hi:z===1?c[0]+5:c[z-2]}}
-const seOfT=t=>{for(let z=1;z<=8;z++)if(t>=SE_T(z).lo)return z;return 8};
-const CALIB={running:false,stop:false,rows:[],res:null,wait:0,txt:store.get('ab.secalref')||SE_REF_DEFAULT};
-function calParse(txt){return String(txt||'').split('\n').map(l=>l.split(';').map(x=>x.trim())).filter(a=>a.length>=3).map(a=>{const g=a[2].split(',').map(Number);return{z:Number(a[0]),name:a[1],lat:g[0],lng:g[1]}}).filter(r=>r.z>=1&&r.z<=8&&isFinite(r.lat)&&isFinite(r.lng))}
-const median=a=>{const s=a.slice().sort((x,y)=>x-y),n=s.length;return n?(n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2):null};
-// Proposed coldest edge of each zone: halfway between the typical winter lows of neighbouring zones (zones without places are interpolated).
-// Proposed coldest edge of each zone. Zones should get colder from 1 to 8; where the places say otherwise (overlapping zones), the
-// typical lows are pooled so the order holds (weighted by the number of places), and the overlap is reported.
-function calPropose(rows){
-  const Z=[1,2,3,4,5,6,7,8],vals=Z.map(z=>rows.filter(r=>r.z===z&&isFinite(r.t)).map(r=>r.t));
-  const med=vals.map(a=>median(a)),spread=vals.map(a=>a.length?[Math.min.apply(null,a),Math.max.apply(null,a)]:null);
-  const known=med.map((m,i)=>[i,m]).filter(x=>x[1]!=null);if(known.length<2)return null;
-  // pool adjacent violators: fitted lows must not get milder from one zone to the next
-  let blocks=known.map(([i,m])=>({ix:[i],v:m,w:vals[i].length}));
-  for(let k=0;k<blocks.length-1;){if(blocks[k+1].v>blocks[k].v){const a=blocks[k],b=blocks[k+1],w=a.w+b.w;blocks.splice(k,2,{ix:a.ix.concat(b.ix),v:(a.v*a.w+b.v*b.w)/w,w});if(k)k--}else k++}
-  const fit=new Array(8).fill(null),overlap=[];
-  blocks.forEach(b=>{b.ix.forEach((i,n)=>{fit[i]=b.v+(b.ix.length>1?((b.ix.length-1)/2-n)*1.0:0)});if(b.ix.length>1)overlap.push(b.ix.map(i=>i+1))});
-  const kn=fit.map((m,i)=>[i,m]).filter(x=>x[1]!=null);
-  const m=fit.map((v,i)=>{if(v!=null)return v;const a=kn.filter(k=>k[0]<i).pop(),b=kn.find(k=>k[0]>i);if(a&&b)return a[1]+(b[1]-a[1])*(i-a[0])/(b[0]-a[0]);const p=a?kn.slice(-2):kn.slice(0,2),s=(p[1][1]-p[0][1])/(p[1][0]-p[0][0])||-3;return p[0][1]+s*(i-p[0][0])});
-  const lo=m.map((v,i)=>i<7?(v+m[i+1])/2:v-(m[6]-v)/2).map(v=>Math.round(v*2)/2);
-  for(let i=1;i<8;i++)if(lo[i]>=lo[i-1])lo[i]=lo[i-1]-0.5;
-  return{med:med.map(v=>v==null?null:Math.round(v*10)/10),spread,lo,overlap};
-}
-// Start over: forget every looked-up value (the place list stays). Open-Meteo's budget record is kept, so the free limit is still respected.
-function calResetData(){
-  ['ab.climcache','ab.omwin','ab.secal'].forEach(k=>store.set(k,''));CALIB.rows=[];CALIB.res=null;CALIB.msg='';CALIB.stop=true;
-  toast(tr('All looked-up values are cleared. Run the calibration again when you are ready.','Alla hämtade värden är rensade. Kör kalibreringen igen när du är redo.','Alle opgezochte waarden zijn gewist. Voer de kalibratie opnieuw uit wanneer je klaar bent.'));calApplied();
-}
-async function calRun(){
-  if(CALIB.running)return;const ta=$('#calRef');if(ta){CALIB.txt=ta.value;store.set('ab.secalref',CALIB.txt)}
-  const rows=calParse(CALIB.txt);if(rows.length<4){toast(tr('Give at least 4 places, one per line: zone; name; lat, long','Ange minst 4 platser, en per rad: zon; namn; lat, long','Geef minstens 4 plaatsen, één per regel: zone; naam; lat, long'),'err');return}
-  // Places already looked up (saved on this device) are not fetched again.
-  rows.forEach(r=>{const c=climCacheGet(r.lat.toFixed(3)+','+r.lng.toFixed(3));if(c)r.t=c.t});
-  CALIB.running=true;CALIB.stop=false;CALIB.rows=rows;CALIB.res=null;CALIB.msg='';updateAdmin();
-  // A first pass over all places, then up to 3 more passes over the ones that failed (after a pause), until the data is complete.
-  outer:for(let pass=0;pass<4;pass++){
-    const todo=rows.filter(r=>!isFinite(r.t)&&r.why!=='nodata');if(!todo.length)break;
-    if(pass){CALIB.retry=pass;const until=Date.now()+6e4*pass*(window.__omBackoff||1);CALIB.wait=until;updateAdmin();while(Date.now()<until&&!CALIB.stop)await new Promise(ok=>setTimeout(ok,1000))}
-    for(const r of todo){
-      if(CALIB.stop)break outer;
-      r.busy=1;updateAdmin();
-      try{r.t=(await climLookup(r.lat,r.lng,true,ms=>{CALIB.wait=Date.now()+ms;updateAdmin()})).t;r.err=0;r.why=''}
-      catch(e){r.t=NaN;r.err=1;r.why=e.limit?'limit':e.why||'error';if(e.limit==='day'){CALIB.msg=omErrMsg(e);r.busy=0;break outer}}
-      r.busy=0;CALIB.wait=0;updateAdmin();
-    }
-  }
-  CALIB.retry=0;
-  CALIB.running=false;CALIB.wait=0;const done=rows.filter(r=>isFinite(r.t)).length;
-  const nod=rows.filter(r=>r.why==='nodata').length;
-  if(done<rows.length&&!CALIB.msg&&nod===rows.length-done)CALIB.msg=tr('Done, except places where Open-Meteo has no land data (sea or the edge of the grid). Move those a little inland and press Run / continue.','Klart, utom platser där Open-Meteo saknar landdata (hav eller rutnätets kant). Flytta dem lite inåt land och tryck Kör / fortsätt.','Klaar, behalve plaatsen waar Open-Meteo geen landgegevens heeft (zee of de rand van het raster). Verplaats ze iets landinwaarts en druk op Uitvoeren / doorgaan.');
-  if(done<rows.length&&!CALIB.msg)CALIB.msg=tr('Not all places are done. Press Run / continue to finish them; the others are kept.','Alla platser är inte klara. Tryck Kör / fortsätt för att göra klart; de andra sparas.','Niet alle plaatsen zijn klaar. Druk op Uitvoeren / doorgaan om ze af te maken; de andere blijven bewaard.');
-  CALIB.res=calPropose(rows);updateAdmin();
-}
-function calibHTML(){
-  const cur=seCalNow(),src=seCalLocal()?tr('calibrated, on this device only (testing)','kalibrerad, bara på den här enheten (test)','gekalibreerd, alleen op dit apparaat (test)'):SE_CAL_BUILTIN?tr('calibrated (built in)','kalibrerad (inbyggd)','gekalibreerd (ingebouwd)'):tr('the old approximate table','den gamla ungefärliga tabellen','de oude benaderde tabel');
-  const band=z=>{const b=SE_T(z);return (z===1?'> ':'')+fmtC(b.lo)+(z===1?'':' … '+fmtC(b.hi))};
-  const rows=CALIB.rows.map(r=>'<tr><td>'+r.z+'</td><td>'+esc(r.name)+'</td><td>'+(r.busy?'…':r.t==null?'':isFinite(r.t)?fmtC(r.t)+' <small class="muted">('+r.t.toFixed(1)+')</small>':'<span class="muted">'+esc(r.why==='nodata'?tr('no land data here: move the position a little inland','ingen landdata här: flytta positionen lite inåt land','geen landgegevens hier: verplaats de positie iets landinwaarts'):r.why==='limit'?tr('waiting for the free limit: will be retried','väntar på den fria gränsen: görs om','wacht op de gratis limiet: wordt opnieuw geprobeerd'):r.why==='timeout'?tr('no answer in time: will be retried','inget svar i tid: görs om','geen antwoord op tijd: wordt opnieuw geprobeerd'):tr('failed: will be retried','misslyckades: görs om','mislukt: wordt opnieuw geprobeerd'))+'</span>')+'</td></tr>').join('');
-  const P=CALIB.res;
-  const miss=CALIB.rows.filter(r=>!isFinite(r.t)).length;
-  const prop=P?(miss&&!CALIB.running?'<p class="admwarn">'+esc(tr('Incomplete: ','Ofullständig: ','Onvolledig: ')+miss+' '+tr('places missing. The proposal below uses only the places that are done; press Run / continue to complete it before sending.','platser saknas. Förslaget nedan bygger bara på de klara platserna; tryck Kör / fortsätt för att göra klart innan du skickar.','plaatsen ontbreken. Het voorstel hieronder gebruikt alleen de klare plaatsen; druk op Uitvoeren / doorgaan om het af te maken voordat je het stuurt.'))+'</p>':'')+'<h3>'+trh('Proposed table','Föreslagen tabell','Voorgestelde tabel')+'</h3><table class="cmpt"><thead><tr><th>'+trh('Zone','Zon','Zone')+'</th><th>'+trh('Typical winter low of the places','Typisk vinterlägsta för platserna','Typisch winterminimum van de plaatsen')+'</th><th>'+trh('Range','Spann','Spreiding')+'</th><th>'+trh('Now','Nu','Nu')+'</th><th>'+trh('Proposed','Förslag','Voorstel')+'</th></tr></thead><tbody>'+
-    [1,2,3,4,5,6,7,8].map(z=>'<tr><td>'+z+'</td><td>'+(P.med[z-1]==null?'<span class="muted">'+esc(tr('no places (estimated)','inga platser (uppskattad)','geen plaatsen (geschat)'))+'</span>':fmtC(P.med[z-1]))+'</td><td>'+(P.spread[z-1]?esc(fmtC(P.spread[z-1][0])+' … '+fmtC(P.spread[z-1][1])):'')+'</td><td>'+esc(band(z))+'</td><td>'+(z===1?'> ':'')+fmtC(P.lo[z-1])+(z===1?'':' … '+fmtC(P.lo[z-2]))+'</td></tr>').join('')+'</tbody></table>'+
-    (P.overlap.length?'<p class="admwarn">'+esc(tr('Zones that overlap in winter lows: ','Zoner som överlappar i vinterlägsta: ','Zones die overlappen in winterminimum: ')+P.overlap.map(g=>g.join('–')).join(', ')+'. '+tr('Their places do not get colder zone by zone, so these zones cannot be told apart by winter lows alone; the proposal keeps them in order 1 °C apart. Check those places and their zones.','Platserna blir inte kallare zon för zon, så zonerna kan inte skiljas åt enbart med vinterlägsta; förslaget håller dem i ordning med 1 °C mellanrum. Kontrollera platserna och deras zoner.','Hun plaatsen worden niet zone na zone kouder, dus deze zones zijn niet alleen op winterminimum te onderscheiden; het voorstel houdt ze op volgorde met 1 °C ertussen. Controleer die plaatsen en hun zones.'))+'</p>':'')+'<div class="acts"><button type="button" class="btn sm primary" data-act="cal-try">'+esc(tr('Try it on this device','Prova på den här enheten','Probeer op dit apparaat'))+'</button></div>'+
-    '<p class="muted" style="font-size:13px">'+esc(tr('Send this line to Claude to make it the built-in table for everyone:','Skicka den här raden till Claude för att göra den till den inbyggda tabellen för alla:','Stuur deze regel naar Claude om hem de ingebouwde tabel voor iedereen te maken:'))+'</p><textarea readonly rows="3" class="caltxt" onclick="this.select()">SE_CAL='+JSON.stringify(P.lo)+' // '+CALIB.rows.map(r=>r.z+' '+r.name+' '+(isFinite(r.t)?r.t.toFixed(1):'x')).join(', ')+'</textarea>':'';
-  return '<p>'+esc(tr('Swedish growing zones come from growers’ experience, not from temperatures. Pick a plant, Proven hardy and the zone shown for map positions need a temperature for each zone. This tool looks up the typical winter low (Open-Meteo, the same method as for encounters) for reference places whose zone you know, and proposes a table from them.','Svenska odlingszoner bygger på odlares erfarenhet, inte på temperaturer. Välj en växt, Bevisat härdig och zonen som visas för kartpositioner behöver en temperatur för varje zon. Verktyget hämtar typisk vinterlägsta (Open-Meteo, samma metod som för fynd) för referensplatser vars zon du känner, och föreslår en tabell utifrån dem.','Zweedse groeizones zijn gebaseerd op ervaring van kwekers, niet op temperaturen. Kies een plant, Bewezen winterhard en de zone bij kaartposities hebben per zone een temperatuur nodig. Dit hulpmiddel zoekt het typische winterminimum op (Open-Meteo, dezelfde methode als bij vondsten) voor referentieplaatsen waarvan je de zone kent, en stelt daaruit een tabel voor.'))+'</p>'+
-    '<p class="muted" style="font-size:13px">'+esc(tr('Table in use: ','Tabell som används: ','Tabel in gebruik: ')+src)+(seCalLocal()?' <button type="button" class="btn sm" data-act="cal-reset">'+esc(tr('Back to the built-in table','Tillbaka till den inbyggda tabellen','Terug naar de ingebouwde tabel'))+'</button>':'')+'</p>'+
-    '<label class="fl" for="calRef">'+trh('Reference places (zone; name; lat, long). Check the zones against the RST zone map and edit freely.','Referensplatser (zon; namn; lat, long). Kontrollera zonerna mot RST:s zonkarta och ändra fritt.','Referentieplaatsen (zone; naam; lat, long). Controleer de zones met de zonekaart van RST en pas vrij aan.')+'</label><textarea id="calRef" rows="8" spellcheck="false">'+esc(CALIB.txt)+'</textarea>'+
-    '<p class="muted" style="font-size:13px">'+esc(tr('Each place costs about 170 of Open-Meteo’s free “calls” (5 000 an hour, 10 000 a day), so the tool paces itself: about 25 places an hour. Keep this page open; results are saved, so you can stop and continue later.','Varje plats kostar ungefär 170 av Open-Meteos fria ”anrop” (5 000 i timmen, 10 000 per dag), så verktyget tar det lugnt: ungefär 25 platser i timmen. Håll sidan öppen; resultaten sparas, så du kan avbryta och fortsätta senare.','Elke plaats kost ongeveer 170 van de gratis “calls” van Open-Meteo (5 000 per uur, 10 000 per dag), dus het hulpmiddel doet het rustig aan: ongeveer 25 plaatsen per uur. Houd deze pagina open; resultaten worden bewaard, dus je kunt stoppen en later doorgaan.'))+'</p>'+
-    (CALIB.running||CALIB.msg?'<p class="admnew" style="font-size:14px">'+(CALIB.running?esc(tr('Done: ','Klart: ','Klaar: ')+CALIB.rows.filter(r=>isFinite(r.t)).length+' / '+CALIB.rows.length+(CALIB.retry?' · '+tr('retrying the places that failed (round ','försöker igen med platserna som misslyckades (omgång ','opnieuw proberen van de mislukte plaatsen (ronde ')+CALIB.retry+')':''))+(CALIB.wait>Date.now()?esc(' · '+tr('waiting for Open-Meteo’s limit until ','väntar på Open-Meteos gräns till ','wachten op de limiet van Open-Meteo tot ')+new Date(CALIB.wait).toLocaleTimeString(state.lang==='sv'?'sv-SE':state.lang==='nl'?'nl-NL':'en-GB',{hour:'2-digit',minute:'2-digit'})):''):esc(CALIB.msg))+'</p>':'')+
-    '<div class="acts"><button type="button" class="btn sm" data-act="cal-run"'+(CALIB.running?' disabled':'')+'>'+esc(CALIB.running?tr('Looking up…','Hämtar…','Opzoeken…'):tr('Run / continue','Kör / fortsätt','Uitvoeren / doorgaan'))+'</button>'+(CALIB.running?'<button type="button" class="btn sm" data-act="cal-stop">'+esc(tr('Stop','Stoppa','Stoppen'))+'</button>':'')+'<button type="button" class="btn sm danger" data-act="cal-reset-data">'+esc(tr('Start over (clear looked-up values)','Börja om (rensa hämtade värden)','Opnieuw beginnen (opgezochte waarden wissen)'))+'</button><button type="button" class="btn sm" data-act="cal-default">'+esc(tr('Restore the suggested places','Återställ de föreslagna platserna','Voorgestelde plaatsen terugzetten'))+'</button></div>'+
-    (rows?'<div class="tbl"><table class="cmpt"><thead><tr><th>'+trh('Zone','Zon','Zone')+'</th><th>'+trh('Place','Plats','Plaats')+'</th><th>'+trh('Typical winter low','Typisk vinterlägsta','Typisch winterminimum')+'</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'')+prop+
-    '<small class="muted">'+esc(tr('Climate: ','Klimat: ','Klimaat: '))+CLIM_CREDIT+'</small>';
-}
-function calApplied(){const h=$('#hardTab');if(h)h.dataset.lang='';const p=$('#pickTemp');if(p)p.dataset.lang='';refresh()}
-
+/* ---------- 2.4.7: Swedish zones and winter temperatures are kept apart (no conversion between them) ---------- */
 /* Pick a plant: fill in cold, soil and moisture from a map position */
 const SGU_SOIL_WMS='https://resource.sgu.se/service/wms/130/jordarter-25-100-tusen',SGU_SOIL_LAYER='jord:SE.GOV.SGU.JORD.GRUNDLAGER.25K';
 const SGU_PERM_API='https://api.sgu.se/oppnadata/genomslapplighet/ogc/features/v1';
@@ -1625,7 +1520,7 @@ async function pickFromMap(){
   const [lat,lng]=v;PKGEO.busy=true;PKGEO.out='<p class="muted">'+esc(tr('Looking up winter climate, soil type and permeability…','Hämtar vinterklimat, jordart och genomsläpplighet…','Winterklimaat, grondsoort en doorlatendheid opzoeken…'))+'</p>';pkGeoShow();
   const [c,s,p]=await Promise.allSettled([climLookup(lat,lng),sguSoil(lat,lng),sguPerm(lat,lng)]);
   const lines=[],ok=x=>x.status==='fulfilled'&&x.value!=null;
-  if(ok(c)){pickState.temp=String(Math.round(c.value.t));pickState.zone='';lines.push('<li><b>'+esc(tr('Lowest winter temperature: ','Lägsta vintertemperatur: ','Laagste wintertemperatuur: '))+esc(fmtC(c.value.t))+'</b> '+esc(tr('(typical winter low, ≈ zone ','(typisk vinterlägsta, ≈ zon ','(typisch winterminimum, ≈ zone ')+seOfT(c.value.t)+')')+' <small class="muted">'+CLIM_CREDIT+'</small></li>')}
+  if(ok(c)){pickState.temp=String(Math.round(c.value.t));lines.push('<li><b>'+esc(tr('Lowest winter temperature: ','Lägsta vintertemperatur: ','Laagste wintertemperatuur: '))+esc(fmtC(c.value.t))+'</b> '+esc(tr('(typical winter low, ≈ USDA ','(typisk vinterlägsta, ≈ USDA ','(typisch winterminimum, ≈ USDA ')+usdaOfT(c.value.t)+')')+' <small class="muted">'+CLIM_CREDIT+'</small></li>')}
   else lines.push('<li class="muted">'+esc(tr('Winter climate: ','Vinterklimat: ','Winterklimaat: ')+omErrMsg(c.reason))+'</li>');
   const sc=ok(s)?soilClass(s.value):null;
   if(ok(s)){if(sc.soil.length)pickState.soil=new Set(sc.soil);
@@ -1743,7 +1638,7 @@ function updateAdmin(){
     '<div class="stack">'+(rows||'<p class="muted">'+esc(tr('Nothing here.','Inget här.','Niets hier.'))+'</p>')+'</div>'+(list.length>admState.n?'<div class="acts"><button type="button" class="btn sm" data-act="adm-more">'+esc(tr('Show more','Visa fler','Meer tonen'))+' ('+(list.length-admState.n)+')</button></div>':'');
   box.innerHTML=note+(REV.on?sec(esc(tr('Verified species','Verifierade arter','Geverifieerde soorten')),bar):'')+
     sec(esc(tr('Artie requests','Artie-förfrågningar','Artie-aanvragen'))+(open.length?' <span class="admcount">'+open.length+'</span>':''),artie)+
-    sec(esc(tr('Possible problems','Möjliga problem','Mogelijke problemen')),problemsHTML())+sec(esc(tr('Charts','Diagram','Grafieken')),chartsHTML())+sec(esc(tr('Swedish zones and winter temperatures','Svenska zoner och vintertemperaturer','Zweedse zones en wintertemperaturen')),calibHTML())+sec(esc(tr('Storage and traffic','Lagring och trafik','Opslag en verkeer')),usageHTML())+
+    sec(esc(tr('Possible problems','Möjliga problem','Mogelijke problemen')),problemsHTML())+sec(esc(tr('Charts','Diagram','Grafieken')),chartsHTML())+sec(esc(tr('Storage and traffic','Lagring och trafik','Opslag en verkeer')),usageHTML())+
     (REV.on?sec(esc(tr('Flagged for review','Flaggade för granskning','Gemeld voor controle'))+(REV.flags.length?' <span class="admcount">'+REV.flags.length+'</span>':''),flags)+sec(esc(tr('Review register','Granskningsregister','Controleregister')),reg):'');
 }
 
@@ -2223,7 +2118,7 @@ function advCheck(x){
 const zoneMax=z=>{const n=String(z||'').match(/\d+/g);return n?Math.max.apply(null,n.map(Number)):null};
 /* ---------- hardiness on one temperature scale ----------
    USDA zones and RHS ratings are defined by the lowest winter temperature. Swedish zones are not (they also reflect
-   the growing season), so their temperatures here are approximate. A range like "2-7" means: grows in zones 2 to 7;
+   the growing season), so they are never converted to temperatures (since 2.4.7). A range like "2-7" means: grows in zones 2 to 7;
    the coldest zone in it (USDA: lowest number, Swedish: highest number) says how hardy the plant is. */
 const usdaLo=(n,h)=>Math.round(((-60+10*(n-1)+(h==='b'?5:0))-32)/1.8*10)/10;   // lower edge in °C
 const usdaTok=z=>[...String(z||'').toLowerCase().matchAll(/(\d{1,2})\s*([ab])?/g)].map(m=>({n:+m[1],h:m[2]||''})).filter(t=>t.n>=1&&t.n<=13);
@@ -2231,10 +2126,9 @@ const seTok=z=>(String(z||'').match(/\d+/g)||[]).map(Number).filter(n=>n>=1&&n<=
 const RHS_K=RHS.map(r=>r.k);
 // RHS ratings with or without the H: "H5", "5", "h1b", "H4-H6", "4-6". A plain 1 is read as H1c.
 const rhsTok=z=>[...String(z||'').toLowerCase().matchAll(/h?\s*([1-7])\s*([abc])?/g)].map(m=>m[1]==='1'?'H1'+(m[2]||'c'):'H'+m[1]).filter(k=>RHS_K.indexOf(k)>=0);
-// SE_T (winter minimum band per Swedish zone) is defined in the 2.4.6 module: calibrated against Open-Meteo, or the old table.
-// The coldest temperature a plant is rated for, from its Swedish zone, USDA zone or RHS rating (in that order).
+// The coldest temperature a plant is rated for, from its USDA zone (leading) or else its RHS rating. Swedish zones are not
+// temperatures and are compared only with a Swedish zone (zoneMax).
 function hardOf(m){
-  const se=seTok(m.szone);if(se.length){const z=Math.max.apply(null,se);return{t:SE_T(z).lo,by:'se',label:tr('zone ','zon ','zone ')+z}}
   const us=usdaTok(m.usda);if(us.length){const c=us.slice().sort((a,b)=>a.n-b.n||(a.h>b.h?1:-1))[0];return{t:usdaLo(c.n,c.h||'a'),by:'usda',label:'USDA '+c.n+c.h,approx:1}}
   const rh=rhsTok(m.rhs);if(rh.length){const k=rh.slice().sort((a,b)=>RHS_K.indexOf(b)-RHS_K.indexOf(a))[0],r=RHS.find(o=>o.k===k);return{t:r.hi==null?r.lo:r.lo==null?r.hi:r.lo,by:'rhs',label:'RHS '+r.k,approx:1,open:r.lo==null}}
   return null;
@@ -2251,9 +2145,10 @@ function zoneHint(d,v){
     return (h.open?tr('Hardy below ','Härdig under ','Winterhard onder '):tr('Hardy to ','Härdig till ','Winterhard tot '))+fmtC(h.t)+' ('+h.label+')';
   }
   if(!String(v||'').trim())return d.zone==='se'?tr('E.g. 1-4: grows in zones 1 to 4. The highest number counts.','T.ex. 1-4: växer i zon 1 till 4. Den högsta siffran räknas.','Bijv. 1-4: groeit in zone 1 tot 4. Het hoogste getal telt.'):tr('E.g. 5, 5b or 2-7: grows in zones 2 to 7. The lowest number counts.','T.ex. 5, 5b eller 2-7: växer i zon 2 till 7. Den lägsta siffran räknas.','Bijv. 5, 5b of 2-7: groeit in zone 2 tot 7. Het laagste getal telt.');
-  const h=hardOf(d.zone==='se'?{szone:v}:{usda:v});
+  if(d.zone==='se'){const t=seTok(v);if(!t.length)return tr('Not understood: use zone numbers 1 to 8, like 4 or 1-4.','Förstås inte: använd zonnummer 1 till 8, som 4 eller 1-4.','Niet begrepen: gebruik zonenummers 1 tot 8, zoals 4 of 1-4.');return tr('Hardy up to zone ','Härdig upp till zon ','Winterhard tot zone ')+Math.max.apply(null,t)}
+  const h=hardOf({usda:v});
   if(!h)return tr('Not understood: use zone numbers like 5, 5b or 2-7.','Förstås inte: använd zonnummer som 5, 5b eller 2-7.','Niet begrepen: gebruik zonenummers zoals 5, 5b of 2-7.');
-  return (d.zone==='se'?tr('Hardy up to ','Härdig upp till ','Winterhard tot ')+h.label+' (≈ '+fmtC(h.t)+')':tr('Hardy to ','Härdig till ','Winterhard tot ')+fmtC(h.t)+' ('+h.label+')');
+  return tr('Hardy to ','Härdig till ','Winterhard tot ')+fmtC(h.t)+' ('+h.label+')';
 }
 // Older data: herbaceous "types" that were not life cycles, and structural roles that sat under ecosystem functions.
 function normFields(f){
@@ -2269,15 +2164,22 @@ function pickEval(x){
   if(pickState.light){const L=m.light||[];res.push({k:'light',st:L.length?(L.indexOf(pickState.light)>=0||(pickState.light==='shade'&&(m.tol||[]).indexOf('shade')>=0)?'ok':'no'):'?'})}
   if(pickState.moist){const v=m.moist,T=m.tol||[];let st='?';if(v){const d=pickState.moist-v;st=Math.abs(d)<=1||(d>0&&T.indexOf('wet')>=0)||(d<0&&T.indexOf('drought')>=0)?'ok':'no';res.push({k:'moist',st,dir:d})}else res.push({k:'moist',st})}
   if(pickState.soil.size){const S=m.soil||[];res.push({k:'soil',st:S.length?(S.some(z=>pickState.soil.has(z))?'ok':'no'):'?'})}
-  if(pickState.temp!==''){const Ts=Number(pickState.temp),h=hardOf(m);
-    if(!h)res.push({k:'zone',st:'?'});else res.push({k:'zone',approx:h.by==='se',temp:1,h,st:h.t<=Ts?'ok':h.open?'?':(h.t<=Ts+5?'edge':'no')})}
-  else if(pickState.zone){const z=Number(pickState.zone),h=hardOf(m);
-    if(!h)res.push({k:'zone',st:'?'});
-    else if(h.by==='se'){const mx=zoneMax(m.szone);res.push({k:'zone',st:mx>=z?'ok':(mx>=z-1?'edge':'no'),h})}
-    else{const Ts=SE_T(z).lo;res.push({k:'zone',approx:1,h,st:h.t<=Ts?'ok':h.open?'?':(h.t<=Ts+5?'edge':'no')})}}
-  {const zi=res.findIndex(r=>r.k==='zone');
-   if(zi>=0&&advState.ann&&isAnnualish(m))res[zi]={k:'zone',st:'ok',ann:1};
-   else if(zi>=0&&res[zi].st!=='ok'){const pv=provenOf(x),Ts=pickState.temp!==''?Number(pickState.temp):SE_T(Number(pickState.zone)).lo;if(pv&&pv.t<=Ts)res[zi]=Object.assign({},res[zi],{st:'ok',proven:pv})}}
+  // Cold: two separate checks that work together. Temperature (from a map position or typed): the species' USDA rating (else RHS)
+  // and its Proven hardy record, whichever is hardier. Swedish zone: only the species' own Swedish zone. Either match is enough;
+  // both together mean a high chance of success (snowflake mark, ranked first).
+  if(pickState.temp!==''||pickState.zone){
+    const r={k:'zone',st:'?'},rank={ok:3,edge:2,no:1,'?':0};
+    if(pickState.temp!==''){const Ts=Number(pickState.temp),h=hardOf(m),pv=provenOf(x),cand=[];
+      if(h&&!h.open)cand.push(h.t);if(pv)cand.push(pv.t);
+      const t=cand.length?Math.min.apply(null,cand):null;
+      r.T={Ts,h,pv,t,st:t==null?'?':t<=Ts?'ok':t<=Ts+5?'edge':'no'}}
+    if(pickState.zone){const z=Number(pickState.zone),mx=zoneMax(m.szone);r.Z={z,mx,st:mx==null?'?':mx>=z?'ok':mx>=z-1?'edge':'no'}}
+    const parts=[r.T,r.Z].filter(Boolean),sts=parts.map(p=>p.st);
+    r.st=sts.indexOf('ok')>=0?'ok':sts.indexOf('edge')>=0?'edge':sts.indexOf('no')>=0?'no':'?';
+    r.both=parts.length===2&&sts.every(v=>v==='ok');
+    if(advState.ann&&isAnnualish(m)){r.st='ok';r.ann=1}
+    res.push(r);
+  }
   if(advCount()){const u=advCheck(x)||[];res.push({k:'adv',st:'ok'});u.forEach(a=>res.push({k:'a:'+a[0],st:'?',lab:a}))}
   return res;
 }
@@ -2286,12 +2188,18 @@ function pickTip(r,x){
   if(r.k==='light'){const L=m.light||[];if(pickState.light==='shade'||(pickState.light==='part'&&L.indexOf('sun')>=0&&L.indexOf('part')<0))return tr('Wants more light: use the sunniest edge of the spot, or thin out the plants that shade it.','Vill ha mer ljus: använd platsens soligaste kant, eller gallra det som skuggar.');return tr('Wants more shade: plant on the north side of taller plants, or under a canopy.','Vill ha mer skugga: plantera norr om högre växter eller under ett krontak.')}
   if(r.k==='moist')return r.dir>0?tr('The spot is wetter than it likes: plant on a mound or raised bed and add grit for drainage.','Platsen är blötare än den vill: plantera på en kulle eller upphöjd bädd och tillsätt grus för dränering.'):tr('The spot is drier than it likes: water while it establishes and mulch thickly; a lower or shadier part helps.','Platsen är torrare än den vill: vattna under etableringen och täckodla tjockt; en lägre eller skuggigare del hjälper.');
   if(r.k==='soil'){const S=m.soil||[],sv=s=>SOIL.filter(o=>S.indexOf(o.k)>=0).map(o=>trs(o.en,o.sv)).join(', ');return tr('Prefers '+sv()+': improve the soil with compost, and grit on heavy clay or organic matter on sand.','Föredrar '+sv()+': förbättra jorden med kompost, och grus på styv lera eller organiskt material på sand.','Geeft de voorkeur aan '+sv()+': verbeter de grond met compost, en met grit bij zware klei of organisch materiaal bij zand.')}
-  if(r.k==='zone'&&(r.approx||r.temp)){const h=r.h,ap=r.approx;return tr('Hardy to about '+fmtC(h.t)+' ('+h.label+(ap?'; converted, so approximate':'')+'): give it the warmest, most sheltered place (south wall, no frost pocket) and winter protection.','Härdig till ungefär '+fmtC(h.t)+' ('+h.label+(ap?'; omräknat, alltså ungefärligt':'')+'): ge den den varmaste, mest skyddade platsen (sydvägg, ingen frostgrop) och vinterskydd.','Winterhard tot ongeveer '+fmtC(h.t)+' ('+h.label+(ap?'; omgerekend, dus bij benadering':'')+'): geef hem de warmste, meest beschutte plek (zuidmuur, geen vorstgat) en winterbescherming.')}
-  if(r.k==='zone')return tr('Hardy to zone '+zoneMax(m.szone)+': give it the warmest, most sheltered place (south wall, no frost pocket) and winter protection.','Härdig till zon '+zoneMax(m.szone)+': ge den den varmaste, mest skyddade platsen (sydvägg, ingen frostgrop) och vinterskydd.','Winterhard tot zone '+zoneMax(m.szone)+': geef hem de warmste, meest beschutte plek (zuidmuur, geen vorstgat) en winterbescherming.');
+  if(r.k==='zone'){const bits=[];
+    if(r.T&&r.T.t!=null&&r.T.st!=='ok')bits.push(tr('hardy to about ','härdig till ungefär ','winterhard tot ongeveer ')+fmtC(r.T.t)+(r.T.h?' ('+r.T.h.label+')':''));
+    if(r.Z&&r.Z.mx!=null&&r.Z.st!=='ok')bits.push(tr('Swedish zone up to ','svensk zon upp till ','Zweedse zone tot ')+r.Z.mx);
+    return (bits.length?bits.join(', ').replace(/^./,c=>c.toUpperCase())+': ':'')+tr('give it the warmest, most sheltered place (south wall, no frost pocket) and winter protection.','ge den den varmaste, mest skyddade platsen (sydvägg, ingen frostgrop) och vinterskydd.','geef hem de warmste, meest beschutte plek (zuidmuur, geen vorstgat) en winterbescherming.')}
   return '';
 }
-const PICK_LAB={light:['Light','Ljus'],moist:['Moisture','Fukt'],soil:['Soil','Jord'],zone:['Zone','Zon']};
-const pkBadges=ev=>['light','moist','soil','zone'].map(k=>{const r=ev.find(z=>z.k===k);if(!r)return '';const cls=r.st==='ok'?'ok':r.st==='?'?'unk':r.st==='edge'?'edge':'no';return '<span class="pk '+cls+'"'+(r.approx&&r.h?' title="'+esc(r.h.label+' ≈ '+fmtC(r.h.t))+'"':'')+'>'+esc(tr(PICK_LAB[k][0],PICK_LAB[k][1]))+(r.approx?' ≈':'')+(r.st==='?'?' ?':'')+'</span>'}).join('')+
+const PICK_LAB={light:['Light','Ljus'],moist:['Moisture','Fukt'],soil:['Soil','Jord'],zone:['Cold','Kyla']};
+const pkCls=st=>st==='ok'?'ok':st==='?'?'unk':st==='edge'?'edge':'no';
+const pkBadges=ev=>['light','moist','soil','zone'].map(k=>{const r=ev.find(z=>z.k===k);if(!r)return '';
+  if(k==='zone'){if(r.ann)return '<span class="pk ok">'+esc(tr('Grown as annual','Odlas som ettårig','Als eenjarige'))+'</span>';
+    return (r.Z?'<span class="pk '+pkCls(r.Z.st)+'" title="'+esc(r.Z.mx==null?tr('No Swedish zone recorded','Ingen svensk zon angiven','Geen Zweedse zone vastgelegd'):tr('Swedish zone up to ','Svensk zon upp till ','Zweedse zone tot ')+r.Z.mx)+'">'+esc(tr('Zone ','Zon ','Zone ')+r.Z.z)+(r.Z.st==='?'?' ?':'')+'</span>':'')+
+      (r.T?'<span class="pk '+pkCls(r.T.st)+'" title="'+esc(r.T.t==null?tr('No USDA/RHS rating or proven hardiness','Ingen USDA/RHS-uppgift eller bevisad härdighet','Geen USDA/RHS-gegevens of bewezen winterhardheid'):tr('Hardy to ','Härdig till ','Winterhard tot ')+fmtC(r.T.t))+'">'+esc(fmtC(r.T.Ts))+(r.T.st==='?'?' ?':'')+'</span>':'')}const cls=r.st==='ok'?'ok':r.st==='?'?'unk':r.st==='edge'?'edge':'no';return '<span class="pk '+cls+'"'+(r.approx&&r.h?' title="'+esc(r.h.label+' ≈ '+fmtC(r.h.t))+'"':'')+'>'+esc(tr(PICK_LAB[k][0],PICK_LAB[k][1]))+(r.approx?' ≈':'')+(r.st==='?'?' ?':'')+'</span>'}).join('')+
   ev.filter(r=>r.lab).map(r=>'<span class="pk unk" title="'+esc(tr('No data for this filter yet','Inga uppgifter för detta filter ännu','Nog geen gegevens voor dit filter'))+'">'+esc(tr(r.lab[1],r.lab[2],r.lab[3]))+' ?</span>').join('');
 // Small signs at the top right of a Pick a plant result: sources recorded, invasive risk, toxic, very edible.
 const PKI={
@@ -2309,24 +2217,33 @@ function pkIcons(x){
   return{n:out.length,html:out.length?'<span class="pkicons">'+out.map(o=>'<span class="pki '+o[0]+'" role="img" title="'+esc(o[1])+'" aria-label="'+esc(o[1])+'">'+PKI[o[0]]+'</span>').join('')+'</span>':''};
 }
 const cmpChk=(x,small)=>'<label class="cmpchk'+(small?'':' pkchk')+'" title="'+esc(tr('Tick to compare this with others','Kryssa för att jämföra med andra','Aanvinken om te vergelijken'))+'"><input type="checkbox" data-cmpsel="'+esc(x.ref)+'"'+(cmp.indexOf(x.ref)>=0?' checked':'')+' aria-label="'+esc(tr('Compare','Jämför')+' '+dispName(x))+'">'+(small?'':'<span>'+esc(tr('Compare','Jämför'))+'</span>')+'</label>';
+// The species' hardiness side by side: Swedish zone, USDA/RHS, proven hardy.
+function pkHard(x,ev){
+  const r=ev.find(z=>z.k==='zone');if(!r)return '';const m=x.m,parts=[];
+  if(m.szone)parts.push(tr('Swedish zone ','Svensk zon ','Zweedse zone ')+esc(m.szone));
+  const h=hardOf(m);if(h)parts.push(esc(h.label)+' ('+(h.open?'> ':'')+esc(fmtC(h.t))+')');
+  const pv=provenOf(x);if(pv)parts.push(esc(provenTxt(pv)));
+  return '<div class="pkhard">'+(r.both?'<span class="pkboth" role="img" title="'+esc(tr('Fits both the Swedish zone and the winter temperature: high chance of success','Passar både den svenska zonen och vintertemperaturen: stor chans att lyckas','Past bij zowel de Zweedse zone als de wintertemperatuur: grote kans op succes'))+'" aria-label="'+esc(tr('Fits zone and temperature','Passar zon och temperatur','Past bij zone en temperatuur'))+'">'+PK_BOTH+'</span> ':'')+(parts.length?parts.join(' · '):'<span class="muted">'+esc(tr('No hardiness data yet','Inga härdighetsuppgifter än','Nog geen winterhardheidsgegevens'))+'</span>')+'</div>';
+}
+const PK_BOTH='<svg viewBox="0 0 20 16" aria-hidden="true"><g stroke="#2a6f9e" stroke-width="1.4" stroke-linecap="round"><path d="M7 1.5v13M1.4 4.75l11.2 6.5M1.4 11.25l11.2-6.5"/><path d="M5.3 2.6L7 4l1.7-1.4M5.3 13.4L7 12l1.7 1.4"/></g><circle cx="15" cy="11" r="4.6" fill="#2f8a43"/><path d="M12.9 11.1l1.5 1.5 2.8-3" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function pickRow(x,ev,tips,extra){
   const nm=names(x),ic=pkIcons(x);
   return '<div class="pickrow'+(ic.n?' hasic" style="--ni:'+ic.n:'')+'">'+ic.html+cmpChk(x)+'<button type="button" class="gapmain" data-open="'+esc(x.ref)+'"><span class="ph" style="--c:'+FCOL[x.form]+'">'+phInner(x,1)+'</span><span style="min-width:0"><span class="lat">'+nm.main+'</span><span class="nm">'+nm.sub+'</span></span></button>'+
-    '<div style="min-width:0"><div class="pks">'+pkBadges(ev)+(Fav.has(x.sid)?'<span class="pk fav">★ '+tr('Favourite','Favorit')+'</span>':'')+'</div>'+(extra||'')+(tips&&tips.length?'<ul class="tips">'+tips.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>':'')+'</div></div>';
+    '<div style="min-width:0"><div class="pks">'+pkBadges(ev)+(Fav.has(x.sid)?'<span class="pk fav">★ '+tr('Favourite','Favorit')+'</span>':'')+'</div>'+pkHard(x,ev)+(extra||'')+(tips&&tips.length?'<ul class="tips">'+tips.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>':'')+'</div></div>';
 }
 // Score one species or cultivar for the spot: fits (ok), could work with help (close), no data (unk) or does not fit (no).
 function pickScore(x){const ev=pickEval(x),no=ev.filter(r=>r.st==='no'||r.st==='edge').length,unk=ev.filter(r=>r.st==='?').length,ok=ev.filter(r=>r.st==='ok').length;
   // More than one zone too cold is a hard no: winter protection will not bridge that.
-  const hard=ev.some(r=>r.k==='zone'&&r.st==='no');
-  return{x,ev,no,unk,ok,cls:no===0&&ok>0?'ok':no===0?'unk':no<=2&&!hard?'close':'no'}}
+  const hard=ev.some(r=>r.k==='zone'&&r.st==='no'),both=ev.some(r=>r.k==='zone'&&r.both);
+  return{x,ev,no,unk,ok,both,cls:no===0&&ok>0?'ok':no===0?'unk':no<=2&&!hard?'close':'no'}}
 const RANK={ok:0,close:1,unk:2,no:3};
-const byFit=(a,b)=>RANK[a.cls]-RANK[b.cls]||a.no-b.no||a.unk-b.unk;
+const byFit=(a,b)=>RANK[a.cls]-RANK[b.cls]||(b.both?1:0)-(a.both?1:0)||a.no-b.no||a.unk-b.unk;
 const cvLabel=x=>x.isCv?esc(cvQ(x.cv)):'<i>'+esc(tr('Species (seed-grown or unnamed cultivar)','Arten (fröodlad eller okänd sort)','Soort (uit zaad of onbekende cultivar)'))+'</i>';
 const failed=r=>r.ev.filter(z=>z.st==='no'||z.st==='edge').map(z=>tr(PICK_LAB[z.k][0],PICK_LAB[z.k][1])).join(', ');
 function cvRow(r){
   const tips=r.cls==='close'?r.ev.filter(z=>z.st==='no'||z.st==='edge').map(z=>pickTip(z,r.x)):[];
   return '<div class="cvrow '+r.cls+'">'+cmpChk(r.x,1)+'<button type="button" class="cvname" data-open="'+esc(r.x.ref)+'"><span class="vd '+r.cls+'" aria-hidden="true">'+(r.cls==='ok'?'✓':'')+'</span>'+cvLabel(r.x)+'</button>'+
-    '<div style="min-width:0"><div class="pks">'+pkBadges(r.ev)+'</div>'+(tips.length?'<ul class="tips">'+tips.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>':'')+'</div></div>';
+    '<div style="min-width:0"><div class="pks">'+pkBadges(r.ev)+'</div>'+pkHard(r.x,r.ev)+(tips.length?'<ul class="tips">'+tips.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>':'')+'</div></div>';
 }
 function cvSummary(g){
   const all=g.cands.filter(r=>r.x.isCv),n=k=>all.filter(r=>r.cls===k).length;
@@ -2341,7 +2258,7 @@ function pickGroup(g){
     return pickRow(s,sr.ev,null,sum+(fit.length?'<span class="pksum">'+esc(tr('Fits: ','Passar: ','Past: '))+fit.map(r=>cvQ(r.x.cv)).join(', ')+'</span>':''))}
   const nm=names(s),ic=pkIcons(s);
   return '<div class="pkgrp"><div class="pickrow'+(ic.n?' hasic" style="--ni:'+ic.n:'')+'">'+ic.html+'<span></span><button type="button" class="gapmain" data-open="'+esc(s.sid)+'"><span class="ph" style="--c:'+FCOL[s.form]+'">'+phInner(s,1)+'</span><span style="min-width:0"><span class="lat">'+nm.main+'</span><span class="nm">'+nm.sub+'</span></span></button>'+
-    '<div style="min-width:0">'+(Fav.has(s.sid)?'<div class="pks"><span class="pk fav">★ '+tr('Favourite','Favorit')+'</span></div>':'')+sum+'</div></div>'+
+    '<div style="min-width:0">'+(Fav.has(s.sid)?'<div class="pks"><span class="pk fav">★ '+tr('Favourite','Favorit')+'</span></div>':'')+sum+pkHard(s,g.cands[0].ev)+'</div></div>'+
     '<div class="cvsub">'+shown.map(cvRow).join('')+
     (no.length?'<div class="cvno"><span class="vd no" aria-hidden="true">✕</span>'+esc(tr(no.length+' do not fit: ',no.length+' passar inte: ',no.length+' passen niet: '))+no.map(r=>cvLabel(r.x)+' <small>('+esc(failed(r))+')</small>').join(', ')+'</div>':'')+
     (unk.length?'<div class="cvno"><span class="vd" aria-hidden="true">?</span>'+esc(tr(unk.length+' without data for this spot: ',unk.length+' utan uppgifter för platsen: ',unk.length+' zonder gegevens voor deze plek: '))+unk.map(r=>cvLabel(r.x)).join(', ')+'</div>':'')+
@@ -2355,12 +2272,12 @@ function buildHardTab(){
   const B=[[-99,-45]];for(let t=-45;t<15;t+=5)B.push([t,t+5]);B.push([15,99]);
   const uz=[];for(let n=1;n<=13;n++)['a','b'].forEach(h=>{const lo=n===1&&h==='a'?-99:usdaLo(n,h),nx=h==='a'?usdaLo(n,'b'):(n===13?99:usdaLo(n+1,'a'));uz.push({k:n+h,lo,hi:nx})});
   const rows=B.slice().reverse().map(([lo,hi])=>{
-    const us=uz.filter(z=>ov(lo,hi,z.lo,z.hi)).map(z=>z.k),rh=RHS.filter(r=>ov(lo,hi,r.lo==null?-99:r.lo,r.hi==null?99:r.hi)).map(r=>r.k),se=[1,2,3,4,5,6,7,8].filter(z=>ov(lo,hi,SE_T(z).lo,SE_T(z).hi));
+    const us=uz.filter(z=>ov(lo,hi,z.lo,z.hi)).map(z=>z.k),rh=RHS.filter(r=>ov(lo,hi,r.lo==null?-99:r.lo,r.hi==null?99:r.hi)).map(r=>r.k);
     const t=lo===-99?'< '+fmtC(hi):hi===99?'> '+fmtC(lo):String(lo).replace('-','−')+' … '+fmtC(hi);
-    return '<tr><th scope="row">'+t+'</th><td>'+esc(us.join(', ')||'–')+'</td><td>'+esc(rh.join(', ')||'–')+'</td><td>'+(se.length?'≈ '+se.join(', '):'–')+'</td></tr>'});
+    return '<tr><th scope="row">'+t+'</th><td>'+esc(us.join(', ')||'–')+'</td><td>'+esc(rh.join(', ')||'–')+'</td></tr>'});
   el.innerHTML='<summary>'+esc(tr('Hardiness zones compared','Härdighetszoner jämförda','Winterhardheidszones vergeleken'))+'</summary>'+
-    '<div class="tbl"><table class="cmpt hardtab"><thead><tr><th scope="col">'+esc(tr('Lowest winter temperature','Lägsta vintertemperatur','Laagste wintertemperatuur'))+'</th><th scope="col">'+esc(tr('USDA zone','USDA-zon','USDA-zone'))+'</th><th scope="col">RHS (UK)</th><th scope="col">'+esc(tr('Swedish zone','Svensk odlingszon','Zweedse zone'))+'</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div>'+
-    '<p class="muted" style="font-size:13px;margin:6px 0 0">'+esc(tr('USDA zones and RHS ratings are defined by the lowest winter temperature (each USDA zone is split into a and b halves of about 3 °C). Swedish zones also reflect the length and warmth of the growing season, so their column is approximate. Pick a plant uses a species’ Swedish zone when it has one, otherwise its USDA zone, otherwise its RHS rating; converted results are marked ≈. In a range such as USDA 2-7 the coldest zone counts.','USDA-zoner och RHS-klasser bestäms av den lägsta vintertemperaturen (varje USDA-zon delas i halvorna a och b, ungefär 3 °C var). Svenska zoner speglar också växtsäsongens längd och värme, så den kolumnen är ungefärlig. Välj en växt använder artens svenska zon om den finns, annars USDA-zonen, annars RHS-klassen; omräknade resultat markeras ≈. I ett intervall som USDA 2-7 räknas den kallaste zonen.','USDA-zones en RHS-klassen worden bepaald door de laagste wintertemperatuur (elke USDA-zone is verdeeld in helften a en b van ongeveer 3 °C). Zweedse zones weerspiegelen ook de lengte en warmte van het groeiseizoen, dus die kolom is bij benadering. Kies een plant gebruikt de Zweedse zone van een soort als die er is, anders de USDA-zone, anders de RHS-klasse; omgerekende resultaten zijn gemarkeerd met ≈. Bij een bereik zoals USDA 2-7 telt de koudste zone.'))+'</p>';
+    '<div class="tbl"><table class="cmpt hardtab"><thead><tr><th scope="col">'+esc(tr('Lowest winter temperature','Lägsta vintertemperatur','Laagste wintertemperatuur'))+'</th><th scope="col">'+esc(tr('USDA zone','USDA-zon','USDA-zone'))+'</th><th scope="col">RHS (UK)</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div>'+
+    '<p class="muted" style="font-size:13px;margin:6px 0 0">'+esc(tr('USDA zones and RHS ratings are defined by the lowest winter temperature (each USDA zone is split into a and b halves of about 3 °C). Swedish growing zones are not: they also reflect the growing season, so they are not converted to temperatures. Pick a plant checks the winter temperature against a species’ USDA zone (or else its RHS rating) and its proven hardiness, and the Swedish zone against its Swedish zone, separately. In a range such as USDA 2-7 the coldest zone counts.','USDA-zoner och RHS-klasser definieras av lägsta vintertemperatur (varje USDA-zon delas i a- och b-halvor på ungefär 3 °C). Svenska odlingszoner gör det inte: de speglar också växtsäsongen, så de räknas inte om till temperaturer. Välj en växt jämför vintertemperaturen med artens USDA-zon (annars RHS-klass) och bevisade härdighet, och den svenska zonen med artens svenska zon, var för sig. I ett spann som USDA 2-7 räknas den kallaste zonen.','USDA-zones en RHS-klassen worden bepaald door de laagste wintertemperatuur (elke USDA-zone is verdeeld in a- en b-helften van ongeveer 3 °C). Zweedse groeizones niet: die weerspiegelen ook het groeiseizoen, dus ze worden niet omgerekend naar temperaturen. Kies een plant vergelijkt de wintertemperatuur met de USDA-zone (anders RHS-klasse) en bewezen winterhardheid van een soort, en de Zweedse zone met zijn Zweedse zone, elk apart. Bij een bereik zoals USDA 2-7 telt de koudste zone.'))+'</p>';
 }
 function updatePick(){
   updateCmpBar();pickScopeSel();buildHardTab();
@@ -2371,7 +2288,7 @@ function updatePick(){
   const pc=$('#pickCv');if(pc)pc.checked=pickState.cv;
   buildPickAdv();
   pickSave();
-  {const ps=$('#pickTemp');if(ps&&ps.dataset.lang!==state.lang){ps.dataset.lang=state.lang;ps.innerHTML='<option value="">–</option>'+[-50,-45,-40,-35,-30,-25,-20,-15,-10,-5,0].map(t=>'<option value="'+t+'">'+fmtC(t)+' ('+esc(tr('≈ Swedish zone ','≈ zon ','≈ Zweedse zone '))+seOfT(t)+')</option>').join('')}if(ps&&pickState.temp!==''&&![...ps.options].some(o=>o.value===String(pickState.temp))){const o=document.createElement('option');o.value=String(pickState.temp);o.textContent=fmtC(Number(pickState.temp))+' ('+tr('≈ Swedish zone ','≈ zon ','≈ Zweedse zone ')+seOfT(Number(pickState.temp))+')';o.dataset.extra='1';ps.appendChild(o)}if(ps)ps.value=pickState.temp;pkGeoShow();const pz=$('#pickZone');if(pz)pz.value=pickState.zone}
+  {const ps=$('#pickTemp');if(ps&&ps.dataset.lang!==state.lang){ps.dataset.lang=state.lang;ps.innerHTML='<option value="">–</option>'+[-50,-45,-40,-35,-30,-25,-20,-15,-10,-5,0].map(t=>'<option value="'+t+'">'+fmtC(t)+' (USDA '+usdaOfT(t)+')</option>').join('')}if(ps&&pickState.temp!==''&&![...ps.options].some(o=>o.value===String(pickState.temp))){const o=document.createElement('option');o.value=String(pickState.temp);o.textContent=fmtC(Number(pickState.temp))+' (USDA '+usdaOfT(Number(pickState.temp))+')';o.dataset.extra='1';ps.appendChild(o)}if(ps)ps.value=pickState.temp;pkGeoShow();const pz=$('#pickZone');if(pz)pz.value=pickState.zone}
   const any=pickState.light||pickState.moist||pickState.soil.size||pickState.zone||pickState.temp!==''||advCount();
   {const j=$('#pickJump');if(j)j.hidden=true}
   if(!any){$('#pickOut').innerHTML='<div class="empty"><p>'+tr('Describe the spot above: light, moisture, soil and zone. Leave out what you do not know. Advanced filters narrow it down further.','Beskriv platsen ovan: ljus, fukt, jord och zon. Hoppa över det du inte vet. Avancerade filter begränsar urvalet ytterligare.','Beschrijf de plek hierboven: licht, vocht, grond en zone. Laat weg wat je niet weet. Geavanceerde filters beperken de keuze verder.')+'</p></div>';return}
@@ -2381,14 +2298,14 @@ function updatePick(){
   // Each species is judged by its best fit: the species itself or any of its cultivars.
   const adv=advCount();
   const groups=pool.map(s=>{const cands=[s].concat(s.cvs).filter(x=>!adv||advCheck(x)).map(pickScore);return cands.length?{s,cands,best:cands.slice().sort(byFit)[0]}:null}).filter(Boolean);
-  const good=groups.filter(g=>g.best.cls==='ok').sort((a,b)=>a.best.unk-b.best.unk||(b.best.x.m.verdict||0)-(a.best.x.m.verdict||0)||byName(a.s,b.s));
+  const good=groups.filter(g=>g.best.cls==='ok').sort((a,b)=>(b.best.both?1:0)-(a.best.both?1:0)||a.best.unk-b.best.unk||(b.best.x.m.verdict||0)-(a.best.x.m.verdict||0)||byName(a.s,b.s));
   const close=groups.filter(g=>g.best.cls==='close'&&(scoped||Fav.has(g.s.sid))).sort((a,b)=>a.best.no-b.best.no||byName(a.s,b.s));
   const sec=(title,rows,empty)=>'<h2 class="hsec">'+title+' <em>'+rows.length+'</em></h2>'+(rows.length?'<div class="splist">'+rows.map(pickGroup).join('')+'</div>':'<p class="muted">'+empty+'</p>');
   const hint='<p class="cmphint"><span class="cmpbox" aria-hidden="true"></span>'+esc(tr('Tick “Compare” on 2 to 4 species or cultivars to see them side by side.','Kryssa i ”Jämför” på 2 till 4 arter eller sorter för att se dem sida vid sida.','Vink “Vergelijken” aan bij 2 tot 4 soorten of cultivars om ze naast elkaar te zien.'))+'</p>';
   {const j=$('#pickJump'),n=good.length+close.length;if(j){j.hidden=!n;j.textContent=tr('Show '+n+' matches ↓','Visa '+n+' träffar ↓','Toon '+n+' resultaten ↓')}}
   $('#pickOut').innerHTML=hint+sec(trh('Good matches','Bra matchningar'),good,tr('No species match everything yet. Try leaving out a condition.','Inga arter matchar allt ännu. Prova att hoppa över ett villkor.'))+
     sec(scoped?trh('Could work with some help','Kan fungera med lite hjälp'):trh('Favourites that could work with some help','Favoriter som kan fungera med lite hjälp'),close,scoped?tr('None of these species are a near miss for this spot.','Ingen av dessa arter är nära att passa här.'):tr('None of your favourites are a near miss for this spot.','Ingen av dina favoriter är nära att passa här.'))+
-    '<p class="muted" style="font-size:13px">'+tr('A “?” means the species has no data for that condition yet; it still counts as a match on the rest. Zone uses the Swedish growing zones (1 south, 8 north). A species with cultivars is listed when the species itself or at least one cultivar fits; each cultivar is judged on its own values plus what it inherits from the species.','Ett ”?” betyder att arten saknar uppgift för det villkoret; den räknas ändå som matchning på resten. Zon avser svenska odlingszoner (1 söder, 8 norr). En art med sorter visas när arten själv eller minst en sort passar; varje sort bedöms på sina egna värden plus det den ärver från arten.','Een “?” betekent dat de soort nog geen gegevens heeft voor die voorwaarde; hij telt op de rest wel mee. Zone gebruikt de Zweedse groeizones (1 zuid, 8 noord). Een soort met cultivars wordt getoond als de soort zelf of minstens één cultivar past; elke cultivar wordt beoordeeld op zijn eigen waarden plus wat hij van de soort erft.')+'</p>';
+    '<p class="muted" style="font-size:13px">'+tr('A “?” means the species has no data for that condition yet; it still counts as a match on the rest. Cold is checked twice, separately: the Swedish zone against the species’ Swedish zone, and the winter temperature against its USDA zone (or RHS rating) and proven hardiness, whichever is hardier. Either match is enough; species that fit both are listed first and get the snowflake mark. A species with cultivars is listed when the species itself or at least one cultivar fits; each cultivar is judged on its own values plus what it inherits from the species.','Ett ”?” betyder att arten saknar uppgift för det villkoret; den räknas ändå som matchning på resten. Kylan kontrolleras två gånger, var för sig: den svenska zonen mot artens svenska zon, och vintertemperaturen mot dess USDA-zon (eller RHS-klass) och bevisade härdighet, det som är härdigast. Det räcker att en av dem passar; arter som passar båda visas först och får snöflingemärket. En art med sorter visas när arten själv eller minst en sort passar; varje sort bedöms på sina egna värden plus det den ärver från arten.','Een “?” betekent dat de soort voor die voorwaarde nog geen gegevens heeft; hij telt dan op de rest als match. Kou wordt twee keer apart gecontroleerd: de Zweedse zone tegen de Zweedse zone van de soort, en de wintertemperatuur tegen zijn USDA-zone (of RHS-klasse) en bewezen winterhardheid, wat het winterhardst is. Eén match is genoeg; soorten die bij beide passen staan bovenaan en krijgen het sneeuwvlokteken. Een soort met cultivars wordt getoond als de soort zelf of minstens één cultivar past; elke cultivar wordt beoordeeld op zijn eigen waarden plus wat hij van de soort erft.')+'</p>';
 }
 /* ---------- planting records ---------- */
 const PSTAT=O('alive:Alive:Lever|struggling:Struggling:Kämpar|dead:Dead:Död|removed:Removed:Borttagen|unknown:Unknown:Okänd');
@@ -2506,7 +2423,7 @@ async function winterMin(lat,lng,y){
 const usdaOfT=t=>{const f=t*1.8+32;if(f<-60)return '1a';const k=Math.floor((f+60)/5),n=Math.min(13,Math.floor(k/2)+1);return n+(k%2?'b':'a')};
 function climTxt(c){
   return tr('Winter low here ≈ ','Vinterlägsta här ≈ ','Winterminimum hier ≈ ')+fmtC(c.t)+' '+tr('on average (coldest ','i snitt (kallast ','gemiddeld (koudst ')+fmtC(c.lo)+', '+c.n+' '+tr('winters','vintrar','winters')+')'+
-    ' · ≈ '+tr('zone ','zon ','zone ')+seOfT(c.t)+' · ≈ USDA '+usdaOfT(c.t);
+    ' · ≈ USDA '+usdaOfT(c.t);
 }
 const CLIM_CREDIT='<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (ERA5-Land, CC BY 4.0)';
 async function plClimFor(doc){
@@ -2879,12 +2796,6 @@ document.addEventListener('click',async e=>{
   else if(act==='pick-clear'){Object.assign(pickState,{light:'',moist:0,soil:new Set(),zone:'',temp:'',form:'',scope:''});ADV.forEach(x=>advState.sets[x[0]].clear());advState.caut.clear();advState.inv='';advState.verdict=0;advState.edib=0;advState.strict=false;updatePick()}
   else if(act==='cmp-mode'){cmpMode=!cmpMode;updateOverview()}
   else if(act==='pl-new')plFormOpen(null,a.dataset.sid);
-  else if(act==='cal-run')calRun();
-  else if(act==='cal-reset-data')arm(a,calResetData);
-  else if(act==='cal-stop'){CALIB.stop=true;toast(tr('Stopping after the current place…','Stoppar efter den aktuella platsen…','Stoppen na de huidige plaats…'))}
-  else if(act==='cal-default'){CALIB.txt=SE_REF_DEFAULT;store.set('ab.secalref','');updateAdmin()}
-  else if(act==='cal-try'&&CALIB.res){store.set('ab.secal',JSON.stringify(CALIB.res.lo));toast(tr('The new table is used on this device. Try Pick a plant.','Den nya tabellen används på den här enheten. Prova Välj en växt.','De nieuwe tabel wordt op dit apparaat gebruikt. Probeer Kies een plant.'));calApplied()}
-  else if(act==='cal-reset'){store.set('ab.secal','');toast(tr('Back to the built-in table','Tillbaka till den inbyggda tabellen','Terug naar de ingebouwde tabel'));calApplied()}
   else if(act==='pk-geo-fill')pickFromMap();
   else if(act==='pk-geo-here'){try{navigator.geolocation.getCurrentPosition(pos=>{$('#pkGeo').value=pos.coords.latitude.toFixed(5)+', '+pos.coords.longitude.toFixed(5)},()=>toast(tr('Location is not available.','Positionen är inte tillgänglig.','Locatie is niet beschikbaar.'),'err'),{enableHighAccuracy:true,timeout:15000})}catch(e){}}
   else if(act==='pl-clim')plClimRetry(a.dataset.id);
@@ -2928,7 +2839,7 @@ document.addEventListener('click',async e=>{
 document.addEventListener('change',e=>{
   if(e.target.id==='cvSel'){const v=e.target.value,sp=bySid.get(slug(canon(draft.latin||'')));if(v==='__new'){draft._cvNew=true;draft.cultivar='';$('#cvNew').value='';$('#cvNew').hidden=false;$('#cvNew').focus()}else{draft._cvNew=false;const c=sp&&sp.cvs.find(x=>x.ck===v);draft.cultivar=c?c.cv:'';$('#cvNew').hidden=true}cvHint();return}
   if(e.target.matches('select[data-cvnew]')){const i=$('#'+e.target.dataset.cvnew);if(i){i.hidden=e.target.value!=='__new';if(!i.hidden)i.focus()}return}
-  if(e.target.matches('[data-addlist]')){const v=e.target.value;e.target.value='';if(v)listAdd(v,e.target.dataset.addlist);return}if(e.target.id==='plShowEnc'){store.set('ab.plenc',e.target.checked?'1':'0');updatePlantings();return}if(e.target.matches('[data-plstat]')){plSetStatus(e.target.dataset.plstat,e.target.value);return}if(e.target.id==='plSp'){plCvFill('');return}if(e.target.id==='plPlaceSel'){plState.place=e.target.value;updatePlantings();return}if(e.target.matches('[data-cmpsel]')){const id=e.target.dataset.cmpsel;if(e.target.checked){if(cmp.length>=CMP_MAX){e.target.checked=false;toast(tr('You can compare up to 4 species.','Du kan jämföra upp till 4 arter.'),'err');return}cmp.push(id)}else cmp=cmp.filter(x=>x!==id);saveCmp();updateCmpBar();return}if(e.target.id==='cmpPick'&&e.target.value){cmpAdd(e.target.value);updateCompare();return}if(e.target.id==='pickZone'){pickState.zone=e.target.value;if(pickState.zone)pickState.temp='';updatePick();return}if(e.target.id==='pickTemp'){pickState.temp=e.target.value;if(pickState.temp!=='')pickState.zone='';updatePick();return}if(e.target.id==='pickScope'){pickState.scope=e.target.value;updatePick();return}if(e.target.id==='advInv'){advState.inv=e.target.value;updatePick();return}if(e.target.id==='advEdib'){advState.edib=Number(e.target.value);updatePick();return}if(e.target.id==='advVerdict'){advState.verdict=Number(e.target.value);updatePick();return}if(e.target.id==='advStrict'){advState.strict=e.target.checked;updatePick();return}if(e.target.id==='advAnn'){advState.ann=e.target.checked;updatePick();return}if(e.target.id==='pickCv'){pickState.cv=e.target.checked;store.set('ab.pickcv',pickState.cv?'1':'0');updatePick();return}if(e.target.id==='calCv'){calState.cv=e.target.checked;store.set('ab.calcv',calState.cv?'1':'0');updateCalendar();return}if(e.target.matches('[data-bulksel]')){const v=e.target.dataset.bulksel;e.target.checked?bulkState.sel.add(v):bulkState.sel.delete(v);$('#bulkBox').innerHTML=bulkBarHTML();return}if(e.target.id==='bulkCal'){bulkState.cal=e.target.value;bulkState.val=null;updateGaps();return}if(e.target.id==='bulkZf'){bulkState.zfield=e.target.value;updateGaps();return}if(e.target.id==='dispCompact'){store.set('ab.compact',e.target.checked?'1':'0');dispApply();return}if(e.target.matches('[data-withcv]')){state.withCv=e.target.checked;store.set('ab.withcv',state.withCv?'1':'0');updateSheet();return}if(e.target.matches('[data-withgenus]')){state.withGenus=e.target.checked;store.set('ab.withgenus',state.withGenus?'1':'0');updateSheet();return}if(e.target.matches('[data-withlog]')){state.withLog=e.target.checked;store.set('ab.withlog',state.withLog?'1':'0');if(!state.withLog)state.side='front';$$('[data-withlog]').forEach(c=>c.checked=state.withLog);updateSheet();return}if(e.target.id==='gapSel'){gapState.only=e.target.value;updateGaps()}});
+  if(e.target.matches('[data-addlist]')){const v=e.target.value;e.target.value='';if(v)listAdd(v,e.target.dataset.addlist);return}if(e.target.id==='plShowEnc'){store.set('ab.plenc',e.target.checked?'1':'0');updatePlantings();return}if(e.target.matches('[data-plstat]')){plSetStatus(e.target.dataset.plstat,e.target.value);return}if(e.target.id==='plSp'){plCvFill('');return}if(e.target.id==='plPlaceSel'){plState.place=e.target.value;updatePlantings();return}if(e.target.matches('[data-cmpsel]')){const id=e.target.dataset.cmpsel;if(e.target.checked){if(cmp.length>=CMP_MAX){e.target.checked=false;toast(tr('You can compare up to 4 species.','Du kan jämföra upp till 4 arter.'),'err');return}cmp.push(id)}else cmp=cmp.filter(x=>x!==id);saveCmp();updateCmpBar();return}if(e.target.id==='cmpPick'&&e.target.value){cmpAdd(e.target.value);updateCompare();return}if(e.target.id==='pickZone'){pickState.zone=e.target.value;updatePick();return}if(e.target.id==='pickTemp'){pickState.temp=e.target.value;updatePick();return}if(e.target.id==='pickScope'){pickState.scope=e.target.value;updatePick();return}if(e.target.id==='advInv'){advState.inv=e.target.value;updatePick();return}if(e.target.id==='advEdib'){advState.edib=Number(e.target.value);updatePick();return}if(e.target.id==='advVerdict'){advState.verdict=Number(e.target.value);updatePick();return}if(e.target.id==='advStrict'){advState.strict=e.target.checked;updatePick();return}if(e.target.id==='advAnn'){advState.ann=e.target.checked;updatePick();return}if(e.target.id==='pickCv'){pickState.cv=e.target.checked;store.set('ab.pickcv',pickState.cv?'1':'0');updatePick();return}if(e.target.id==='calCv'){calState.cv=e.target.checked;store.set('ab.calcv',calState.cv?'1':'0');updateCalendar();return}if(e.target.matches('[data-bulksel]')){const v=e.target.dataset.bulksel;e.target.checked?bulkState.sel.add(v):bulkState.sel.delete(v);$('#bulkBox').innerHTML=bulkBarHTML();return}if(e.target.id==='bulkCal'){bulkState.cal=e.target.value;bulkState.val=null;updateGaps();return}if(e.target.id==='bulkZf'){bulkState.zfield=e.target.value;updateGaps();return}if(e.target.id==='dispCompact'){store.set('ab.compact',e.target.checked?'1':'0');dispApply();return}if(e.target.matches('[data-withcv]')){state.withCv=e.target.checked;store.set('ab.withcv',state.withCv?'1':'0');updateSheet();return}if(e.target.matches('[data-withgenus]')){state.withGenus=e.target.checked;store.set('ab.withgenus',state.withGenus?'1':'0');updateSheet();return}if(e.target.matches('[data-withlog]')){state.withLog=e.target.checked;store.set('ab.withlog',state.withLog?'1':'0');if(!state.withLog)state.side='front';$$('[data-withlog]').forEach(c=>c.checked=state.withLog);updateSheet();return}if(e.target.id==='gapSel'){gapState.only=e.target.value;updateGaps()}});
 document.addEventListener('input',e=>{
   if(e.target.id==='bulkText'){bulkState.val=e.target.value.trim()||null;const b=$('[data-act=bulk-apply]');if(b)b.disabled=!bulkState.sel.size||isEmpty(bulkState.val);return}
   const t=e.target;
@@ -3120,7 +3031,7 @@ addEventListener('resize',dockSize);addEventListener('load',dockSize);
   {const d=$('#dock'),t=$('header.top');if(d&&t)t.after(d)}
   pickLoad();
   seasonApply();dispApply();if(window.__noSplash){const sp=$('#splash');if(sp)sp.hidden=true}
-  if(window.__noSplash)window.__ab={REV,bySid:()=>bySid,seOfT,seCalLocal};  // test hook (tests set __noSplash)
+  if(window.__noSplash)window.__ab={REV,bySid:()=>bySid};  // test hook (tests set __noSplash)
   {const pa=$('#pickAdv');if(pa)pa.addEventListener('toggle',()=>{advState.open=pa.open})}
   applyLang();buildFilters();route();updateOverview();dockSize();
   const bn=$('#banner');
