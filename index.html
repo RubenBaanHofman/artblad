@@ -624,6 +624,9 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 .pill.enc{border-color:#2f6f8f;color:#2f6f8f}
 .plmapkey{display:flex;gap:14px;font-size:13px;color:var(--muted);margin:6px 0 0}.plmapkey .mk{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .plmapkey .mk.own{background:#2f5d3a99;border:2px solid #2f5d3a}.plmapkey .mk.enc{background:#2f6f8f55;border:2px dashed #2f6f8f}
+.pkgeo-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pkgeo-row input{flex:1 1 10rem;min-width:0}.pkgeo-row select{flex:1 1 12rem;min-width:0;width:auto}
+.pkgeo-res{margin:8px 0 0;padding-left:1.1em;font-size:14px}.pkgeo-res li{margin:2px 0}
+.caltxt{width:100%;font:12px/1.4 ui-monospace,monospace}#calRef{width:100%;font:13px/1.4 ui-monospace,monospace}
 .appver{margin:14px 0 0;text-align:center;font-size:12.5px;color:var(--muted)}
 /* shields: a new stage */
 .lad.lvlup{animation:lvlup 1.6s ease-out 1}
@@ -679,7 +682,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <button type="button" class="btn sm" id="installBtn" data-act="install" hidden data-t="Install as an app|Installera som app|Als app installeren">Install as an app</button>
   </div>
   <p id="herbLabel" class="herblabel" aria-hidden="true"></p>
-  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.5.1</span></p>
+  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.4.6</span></p>
 </section>
 
 <section id="v-overview" class="view" hidden>
@@ -745,6 +748,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 <section id="v-pick" class="view plan" hidden>
   <div class="ovhead"><div><h1 data-th="Pick a plant|Välj en växt">Pick a plant <em>Välj en växt</em></h1><p class="muted" style="margin:4px 0 0" data-t="Describe the spot. Species that fit come first; favourites that could work with some help come after.|Beskriv platsen. Arter som passar visas först; favoriter som kan fungera med lite hjälp därefter.">Describe the spot.</p></div></div>
   <div class="pickform">
+    <details class="pkadv pkgeo"><summary data-t="Fill in from a map position|Fyll i från en kartposition|Invullen vanaf een kaartpositie">Fill in from a map position</summary><div class="pkgeo-in"><p class="muted" style="margin:0 0 6px;font-size:13px" data-t="Suggests the lowest winter temperature, soil and moisture for a spot from open maps (Open-Meteo, SGU). Light you set yourself.|Föreslår lägsta vintertemperatur, jord och fukt för en plats från öppna kartor (Open-Meteo, SGU). Ljuset anger du själv.|Stelt de laagste wintertemperatuur, grond en vocht voor een plek voor op basis van open kaarten (Open-Meteo, SGU). Licht stel je zelf in.">Suggests the lowest winter temperature, soil and moisture for a spot from open maps.</p><span class="pkgeo-row"><input id="pkGeo" type="text" inputmode="decimal" placeholder="63.82, 20.26" aria-label="Map position: lat, long"><button type="button" class="btn sm" data-act="pk-geo-here" data-t="Here|Här|Hier">Here</button><button type="button" class="btn sm primary" data-act="pk-geo-fill" data-t="Fill in|Fyll i|Invullen">Fill in</button></span><div id="pkGeoOut"></div></div></details>
     <div class="fgrp"><span class="fl" data-th="Light|Ljus">Light</span><div class="chips" id="pickLight"><button type="button" class="chip sm" data-pl="sun"><i></i><span data-t="Sun|Sol">Sun</span></button><button type="button" class="chip sm" data-pl="part"><i></i><span data-t="Part shade|Halvskugga">Part shade</span></button><button type="button" class="chip sm" data-pl="shade"><i></i><span data-t="Shade|Skugga">Shade</span></button></div></div>
     <div class="fgrp"><span class="fl" data-th="Moisture|Fukt">Moisture</span><div class="chips" id="pickMoist"><button type="button" class="chip sm" data-pm="1"><i></i><span data-t="Dry|Torr">Dry</span></button><button type="button" class="chip sm" data-pm="2"><i></i>2</button><button type="button" class="chip sm" data-pm="3"><i></i><span data-t="Medium|Medel">Medium</span></button><button type="button" class="chip sm" data-pm="4"><i></i>4</button><button type="button" class="chip sm" data-pm="5"><i></i><span data-t="Wet|Blöt">Wet</span></button></div></div>
     <div class="fgrp"><span class="fl" data-th="Soil|Jord">Soil</span><div class="chips" id="pickSoil"><button type="button" class="chip sm" data-ps="sand"><i></i><span data-t="Sand|Sand">Sand</span></button><button type="button" class="chip sm" data-ps="loam"><i></i><span data-t="Loam|Mojord">Loam</span></button><button type="button" class="chip sm" data-ps="clay"><i></i><span data-t="Clay|Lera">Clay</span></button><button type="button" class="chip sm" data-ps="humus"><i></i><span data-t="Humus|Mull">Humus</span></button></div></div>
@@ -993,4 +997,4 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 <circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
 </svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script><script src="nl.js?v=2.4.5.1"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.5.1"></script></body></html>
+<script src="config.js"></script><script src="nl.js?v=2.4.6"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script><script src="app.js?v=2.4.6"></script></body></html>
