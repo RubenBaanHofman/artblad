@@ -1344,7 +1344,7 @@ let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;const b=$('#installBtn');if(b)b.hidden=false});
 
 /* ---------- version 2.4.2: section marks, dismissed problems, live updates for admins (setup/v5_live_sections.sql) ---------- */
-const APP_VERSION='2.4.6.1';
+const APP_VERSION='2.4.6.2';
 // The sheet's sections for verification. Literature sources have their own mark, which also goes grey after two years.
 const RSECS=[{id:'ident',en:'Names & photo',sv:'Namn & foto',f:['latin','en','sv','nl','family','type','status','photo']}]
   .concat(SEC.map(x=>({id:x.id,en:x.en,sv:x.sv,f:x.f.map(d=>d.k).filter(k=>k!=='sources')})))
@@ -1527,23 +1527,32 @@ async function calRun(){
   // Places already looked up (saved on this device) are not fetched again.
   rows.forEach(r=>{const c=climCacheGet(r.lat.toFixed(3)+','+r.lng.toFixed(3));if(c)r.t=c.t});
   CALIB.running=true;CALIB.stop=false;CALIB.rows=rows;CALIB.res=null;CALIB.msg='';updateAdmin();
-  for(const r of rows){
-    if(CALIB.stop)break;if(isFinite(r.t))continue;
-    r.busy=1;updateAdmin();
-    try{r.t=(await climLookup(r.lat,r.lng,true,ms=>{CALIB.wait=Date.now()+ms;updateAdmin()})).t;r.err=0}
-    catch(e){r.t=NaN;r.err=1;if(e.limit==='day'){CALIB.msg=omErrMsg(e);r.busy=0;break}}
-    r.busy=0;CALIB.wait=0;updateAdmin();
+  // A first pass over all places, then up to 3 more passes over the ones that failed (after a pause), until the data is complete.
+  outer:for(let pass=0;pass<4;pass++){
+    const todo=rows.filter(r=>!isFinite(r.t)&&r.why!=='nodata');if(!todo.length)break;
+    if(pass){CALIB.retry=pass;const until=Date.now()+6e4*pass*(window.__omBackoff||1);CALIB.wait=until;updateAdmin();while(Date.now()<until&&!CALIB.stop)await new Promise(ok=>setTimeout(ok,1000))}
+    for(const r of todo){
+      if(CALIB.stop)break outer;
+      r.busy=1;updateAdmin();
+      try{r.t=(await climLookup(r.lat,r.lng,true,ms=>{CALIB.wait=Date.now()+ms;updateAdmin()})).t;r.err=0;r.why=''}
+      catch(e){r.t=NaN;r.err=1;r.why=e.limit?'limit':e.why||'error';if(e.limit==='day'){CALIB.msg=omErrMsg(e);r.busy=0;break outer}}
+      r.busy=0;CALIB.wait=0;updateAdmin();
+    }
   }
+  CALIB.retry=0;
   CALIB.running=false;CALIB.wait=0;const done=rows.filter(r=>isFinite(r.t)).length;
+  const nod=rows.filter(r=>r.why==='nodata').length;
+  if(done<rows.length&&!CALIB.msg&&nod===rows.length-done)CALIB.msg=tr('Done, except places where Open-Meteo has no land data (sea or the edge of the grid). Move those a little inland and press Run / continue.','Klart, utom platser där Open-Meteo saknar landdata (hav eller rutnätets kant). Flytta dem lite inåt land och tryck Kör / fortsätt.','Klaar, behalve plaatsen waar Open-Meteo geen landgegevens heeft (zee of de rand van het raster). Verplaats ze iets landinwaarts en druk op Uitvoeren / doorgaan.');
   if(done<rows.length&&!CALIB.msg)CALIB.msg=tr('Not all places are done. Press Run / continue to finish them; the others are kept.','Alla platser är inte klara. Tryck Kör / fortsätt för att göra klart; de andra sparas.','Niet alle plaatsen zijn klaar. Druk op Uitvoeren / doorgaan om ze af te maken; de andere blijven bewaard.');
   CALIB.res=calPropose(rows);updateAdmin();
 }
 function calibHTML(){
   const cur=seCalNow(),src=seCalLocal()?tr('calibrated, on this device only (testing)','kalibrerad, bara på den här enheten (test)','gekalibreerd, alleen op dit apparaat (test)'):SE_CAL_BUILTIN?tr('calibrated (built in)','kalibrerad (inbyggd)','gekalibreerd (ingebouwd)'):tr('the old approximate table','den gamla ungefärliga tabellen','de oude benaderde tabel');
   const band=z=>{const b=SE_T(z);return (z===1?'> ':'')+fmtC(b.lo)+(z===1?'':' … '+fmtC(b.hi))};
-  const rows=CALIB.rows.map(r=>'<tr><td>'+r.z+'</td><td>'+esc(r.name)+'</td><td>'+(r.busy?'…':r.t==null?'':isFinite(r.t)?fmtC(r.t)+' <small class="muted">('+r.t.toFixed(1)+')</small>':'<span class="muted">'+esc(tr('failed','misslyckades','mislukt'))+'</span>')+'</td></tr>').join('');
+  const rows=CALIB.rows.map(r=>'<tr><td>'+r.z+'</td><td>'+esc(r.name)+'</td><td>'+(r.busy?'…':r.t==null?'':isFinite(r.t)?fmtC(r.t)+' <small class="muted">('+r.t.toFixed(1)+')</small>':'<span class="muted">'+esc(r.why==='nodata'?tr('no land data here: move the position a little inland','ingen landdata här: flytta positionen lite inåt land','geen landgegevens hier: verplaats de positie iets landinwaarts'):r.why==='limit'?tr('waiting for the free limit: will be retried','väntar på den fria gränsen: görs om','wacht op de gratis limiet: wordt opnieuw geprobeerd'):r.why==='timeout'?tr('no answer in time: will be retried','inget svar i tid: görs om','geen antwoord op tijd: wordt opnieuw geprobeerd'):tr('failed: will be retried','misslyckades: görs om','mislukt: wordt opnieuw geprobeerd'))+'</span>')+'</td></tr>').join('');
   const P=CALIB.res;
-  const prop=P?'<h3>'+trh('Proposed table','Föreslagen tabell','Voorgestelde tabel')+'</h3><table class="cmpt"><thead><tr><th>'+trh('Zone','Zon','Zone')+'</th><th>'+trh('Typical winter low of the places','Typisk vinterlägsta för platserna','Typisch winterminimum van de plaatsen')+'</th><th>'+trh('Now','Nu','Nu')+'</th><th>'+trh('Proposed','Förslag','Voorstel')+'</th></tr></thead><tbody>'+
+  const miss=CALIB.rows.filter(r=>!isFinite(r.t)).length;
+  const prop=P?(miss&&!CALIB.running?'<p class="admwarn">'+esc(tr('Incomplete: ','Ofullständig: ','Onvolledig: ')+miss+' '+tr('places missing. The proposal below uses only the places that are done; press Run / continue to complete it before sending.','platser saknas. Förslaget nedan bygger bara på de klara platserna; tryck Kör / fortsätt för att göra klart innan du skickar.','plaatsen ontbreken. Het voorstel hieronder gebruikt alleen de klare plaatsen; druk op Uitvoeren / doorgaan om het af te maken voordat je het stuurt.'))+'</p>':'')+'<h3>'+trh('Proposed table','Föreslagen tabell','Voorgestelde tabel')+'</h3><table class="cmpt"><thead><tr><th>'+trh('Zone','Zon','Zone')+'</th><th>'+trh('Typical winter low of the places','Typisk vinterlägsta för platserna','Typisch winterminimum van de plaatsen')+'</th><th>'+trh('Now','Nu','Nu')+'</th><th>'+trh('Proposed','Förslag','Voorstel')+'</th></tr></thead><tbody>'+
     [1,2,3,4,5,6,7,8].map(z=>'<tr><td>'+z+'</td><td>'+(P.med[z-1]==null?'<span class="muted">'+esc(tr('no places (estimated)','inga platser (uppskattad)','geen plaatsen (geschat)'))+'</span>':fmtC(P.med[z-1]))+'</td><td>'+esc(band(z))+'</td><td>'+(z===1?'> ':'')+fmtC(P.lo[z-1])+(z===1?'':' … '+fmtC(P.lo[z-2]))+'</td></tr>').join('')+'</tbody></table>'+
     '<div class="acts"><button type="button" class="btn sm primary" data-act="cal-try">'+esc(tr('Try it on this device','Prova på den här enheten','Probeer op dit apparaat'))+'</button></div>'+
     '<p class="muted" style="font-size:13px">'+esc(tr('Send this line to Claude to make it the built-in table for everyone:','Skicka den här raden till Claude för att göra den till den inbyggda tabellen för alla:','Stuur deze regel naar Claude om hem de ingebouwde tabel voor iedereen te maken:'))+'</p><textarea readonly rows="3" class="caltxt" onclick="this.select()">SE_CAL='+JSON.stringify(P.lo)+' // '+CALIB.rows.map(r=>r.z+' '+r.name+' '+(isFinite(r.t)?r.t.toFixed(1):'x')).join(', ')+'</textarea>':'';
@@ -1551,7 +1560,7 @@ function calibHTML(){
     '<p class="muted" style="font-size:13px">'+esc(tr('Table in use: ','Tabell som används: ','Tabel in gebruik: ')+src)+(seCalLocal()?' <button type="button" class="btn sm" data-act="cal-reset">'+esc(tr('Back to the built-in table','Tillbaka till den inbyggda tabellen','Terug naar de ingebouwde tabel'))+'</button>':'')+'</p>'+
     '<label class="fl" for="calRef">'+trh('Reference places (zone; name; lat, long). Check the zones against the RST zone map and edit freely.','Referensplatser (zon; namn; lat, long). Kontrollera zonerna mot RST:s zonkarta och ändra fritt.','Referentieplaatsen (zone; naam; lat, long). Controleer de zones met de zonekaart van RST en pas vrij aan.')+'</label><textarea id="calRef" rows="8" spellcheck="false">'+esc(CALIB.txt)+'</textarea>'+
     '<p class="muted" style="font-size:13px">'+esc(tr('Each place costs about 170 of Open-Meteo’s free “calls” (5 000 an hour, 10 000 a day), so the tool paces itself: about 25 places an hour. Keep this page open; results are saved, so you can stop and continue later.','Varje plats kostar ungefär 170 av Open-Meteos fria ”anrop” (5 000 i timmen, 10 000 per dag), så verktyget tar det lugnt: ungefär 25 platser i timmen. Håll sidan öppen; resultaten sparas, så du kan avbryta och fortsätta senare.','Elke plaats kost ongeveer 170 van de gratis “calls” van Open-Meteo (5 000 per uur, 10 000 per dag), dus het hulpmiddel doet het rustig aan: ongeveer 25 plaatsen per uur. Houd deze pagina open; resultaten worden bewaard, dus je kunt stoppen en later doorgaan.'))+'</p>'+
-    (CALIB.running||CALIB.msg?'<p class="admnew" style="font-size:14px">'+(CALIB.running?esc(tr('Done: ','Klart: ','Klaar: ')+CALIB.rows.filter(r=>isFinite(r.t)).length+' / '+CALIB.rows.length)+(CALIB.wait>Date.now()?esc(' · '+tr('waiting for Open-Meteo’s limit until ','väntar på Open-Meteos gräns till ','wachten op de limiet van Open-Meteo tot ')+new Date(CALIB.wait).toLocaleTimeString(state.lang==='sv'?'sv-SE':state.lang==='nl'?'nl-NL':'en-GB',{hour:'2-digit',minute:'2-digit'})):''):esc(CALIB.msg))+'</p>':'')+
+    (CALIB.running||CALIB.msg?'<p class="admnew" style="font-size:14px">'+(CALIB.running?esc(tr('Done: ','Klart: ','Klaar: ')+CALIB.rows.filter(r=>isFinite(r.t)).length+' / '+CALIB.rows.length+(CALIB.retry?' · '+tr('retrying the places that failed (round ','försöker igen med platserna som misslyckades (omgång ','opnieuw proberen van de mislukte plaatsen (ronde ')+CALIB.retry+')':''))+(CALIB.wait>Date.now()?esc(' · '+tr('waiting for Open-Meteo’s limit until ','väntar på Open-Meteos gräns till ','wachten op de limiet van Open-Meteo tot ')+new Date(CALIB.wait).toLocaleTimeString(state.lang==='sv'?'sv-SE':state.lang==='nl'?'nl-NL':'en-GB',{hour:'2-digit',minute:'2-digit'})):''):esc(CALIB.msg))+'</p>':'')+
     '<div class="acts"><button type="button" class="btn sm" data-act="cal-run"'+(CALIB.running?' disabled':'')+'>'+esc(CALIB.running?tr('Looking up…','Hämtar…','Opzoeken…'):tr('Run / continue','Kör / fortsätt','Uitvoeren / doorgaan'))+'</button>'+(CALIB.running?'<button type="button" class="btn sm" data-act="cal-stop">'+esc(tr('Stop','Stoppa','Stoppen'))+'</button>':'')+'<button type="button" class="btn sm" data-act="cal-default">'+esc(tr('Restore the suggested places','Återställ de föreslagna platserna','Voorgestelde plaatsen terugzetten'))+'</button></div>'+
     (rows?'<div class="tbl"><table class="cmpt"><thead><tr><th>'+trh('Zone','Zon','Zone')+'</th><th>'+trh('Place','Plats','Plaats')+'</th><th>'+trh('Typical winter low','Typisk vinterlägsta','Typisch winterminimum')+'</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'')+prop+
     '<small class="muted">'+esc(tr('Climate: ','Klimat: ','Klimaat: '))+CLIM_CREDIT+'</small>';
@@ -2433,8 +2442,12 @@ async function omFetch(lat,lng,a,b,wait,onWait){
     if(ms){if(!wait)throw omErr(q.hour?'hour':'min',ms);if(onWait)onWait(ms);await new Promise(r=>setTimeout(r,Math.min(ms,15000)));continue}
     omNote(w);
     const u='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+a+'&end_date='+b+'&daily=temperature_2m_min&models=era5_land&timezone=GMT';
-    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);let r;
-    try{r=await fetch(u,{signal:ctl.signal})}finally{clearTimeout(to)}
+    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),20000);let r=null,net='';
+    try{r=await fetch(u,{signal:ctl.signal})}catch(e){net=e&&e.name==='AbortError'?'timeout':'connection'}finally{clearTimeout(to)}
+    // Connection problems, time-outs and server errors are retried after a pause (refused limit answers can also look like a lost connection).
+    if(net||r.status>=500){const bf=window.__omBackoff||1,back0=wait?[1e4,3e4,6e4,12e4][tries]:(tries<1?2000:null),back=back0==null?null:back0*bf;
+      if(back==null)throw Object.assign(new Error(net||'HTTP '+r.status),{why:net||'server'});
+      if(onWait)onWait(back);await new Promise(ok=>setTimeout(ok,back));continue}
     if(r.ok){const j=await r.json();return{v:((j.daily||{}).temperature_2m_min||[]).filter(x=>x!=null&&isFinite(x)),elev:j.elevation}}
     let reason='';try{reason=(await r.json()).reason||''}catch(e){}
     if(r.status===429||/limit/i.test(reason)){
@@ -2453,11 +2466,17 @@ function omErrMsg(e){
 function climCacheGet(k){try{return (JSON.parse(store.get('ab.climcache')||'{}'))[k]||null}catch(e){return null}}
 function climCacheSet(k,v){try{const c=JSON.parse(store.get('ab.climcache')||'{}');c[k]=v;const ks=Object.keys(c);if(ks.length>300)delete c[ks[0]];store.set('ab.climcache',JSON.stringify(c))}catch(e){}}
 // The typical winter low of a spot: the mean of the 20 winter minimums (USDA definition), plus the coldest.
+// Each winter's answer is kept on the device too, so a look-up that stops halfway does not fetch the finished winters again.
+function omWinGet(k){try{return (JSON.parse(store.get('ab.omwin')||'{}'))[k]}catch(e){return undefined}}
+function omWinSet(k,v){try{const c=JSON.parse(store.get('ab.omwin')||'{}');c[k]=v;const ks=Object.keys(c);if(ks.length>2500)delete c[ks[0]];store.set('ab.omwin',JSON.stringify(c))}catch(e){}}
 async function climLookup(lat,lng,wait,onWait){
   const k=lat.toFixed(3)+','+lng.toFixed(3),c=climCacheGet(k);if(c)return c;
   const mins=[];let elev=null;
-  for(let y=CLIM_Y0;y<=CLIM_Y1;y++){const r=await omFetch(lat,lng,y+CLIM_SEASON[0],(y+1)+CLIM_SEASON[1],wait,onWait);if(r.elev!=null)elev=r.elev;if(r.v.length>=100)mins.push(Math.min.apply(null,r.v))}
-  if(mins.length<15)throw new Error('too little data');
+  for(let y=CLIM_Y0;y<=CLIM_Y1;y++){
+    const wk=lat.toFixed(4)+','+lng.toFixed(4)+','+y;let got=omWinGet(wk);
+    if(got===undefined){const r=await omFetch(lat,lng,y+CLIM_SEASON[0],(y+1)+CLIM_SEASON[1],wait,onWait);got={m:r.v.length>=100?Math.min.apply(null,r.v):null,e:r.elev!=null?r.elev:null};omWinSet(wk,got)}
+    if(got.e!=null)elev=got.e;if(got.m!=null)mins.push(got.m)}
+  if(mins.length<15)throw Object.assign(new Error('too little data'),{why:'nodata'});
   const mean=mins.reduce((a,b)=>a+b,0)/mins.length;
   const out={t:Math.round(mean*10)/10,lo:Math.round(Math.min.apply(null,mins)*10)/10,n:mins.length,elev:elev!=null?Math.round(elev):null,src:'Open-Meteo ERA5-Land, '+CLIM_Y0+'/'+String(CLIM_Y0+1).slice(2)+'–'+CLIM_Y1+'/'+String(CLIM_Y1+1).slice(2)+', 15 Nov–15 Mar',at:today()};
   climCacheSet(k,out);return out;
