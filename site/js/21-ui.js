@@ -221,7 +221,11 @@ document.addEventListener('click',async e=>{
   else if(act==='cmp-go'){cmpMode=false;go('compare')}
   else if(act==='edit-sheet'&&cp)openAdd({sheet:cp});
   else if(act==='restore'){try{await Data.trash(a.dataset.t2,a.dataset.id,false);toast(tr('Restored','Återställd'));updateTrash()}catch(err){toast(errMsg(err),'err')}}
-  else if(act==='purge')arm(a,async()=>{try{await Data.purge(a.dataset.t2,a.dataset.id);toast(tr('Deleted for good','Raderad för gott'));updateTrash()}catch(err){toast(errMsg(err),'err')}});
+  else if(act==='purge')arm(a,async()=>{
+    // The photo file goes too, once nothing else (live or in the trash) uses it (since 2.5.1).
+    const t2=a.dataset.t2,id=a.dataset.id,doc=t2==='entries'?(state.trashE||[]).find(x=>x.id===id):t2==='obs'?(state.trashO||[]).find(x=>x.id===id):null;
+    const ph=doc&&(t2==='entries'?doc.fields&&doc.fields.photo:doc.photo);
+    try{await Data.purge(t2,id);if(ph)dropPhoto(ph,id);toast(tr('Deleted for good','Raderad för gott'));updateTrash()}catch(err){toast(errMsg(err),'err')}});
   else if(act==='set-name'){mmenu(false);openName()}
   else if(act==='name-save')saveName();
   else if(act==='name-cancel')$('#nameBox').hidden=true;
@@ -231,7 +235,7 @@ document.addEventListener('click',async e=>{
   else if(act==='edit-entry'){const en=state.entries.find(x=>x.id===a.dataset.id);if(en)openAdd({entry:en})}
   else if(act==='del-entry')arm(a,async()=>{const en=state.entries.find(x=>x.id===a.dataset.id);try{await Data.delEntry(a.dataset.id);if(!SB&&en&&en.fields&&en.fields.photo)dropPhoto(en.fields.photo,en.id);toast(SB?tr('Moved to the trash','Flyttad till papperskorgen'):tr('Entry deleted','Post raderad'))}catch(err){toast(errMsg(err),'err')}});
   else if(act==='del-obs')arm(a,async()=>{const o=state.obs.find(x=>x.id===a.dataset.id);try{await Data.delObs(a.dataset.id);if(!SB&&o&&o.photo)dropPhoto(o.photo,o.id);toast(SB?tr('Moved to the trash','Flyttad till papperskorgen'):tr('Observation deleted','Observation raderad'))}catch(err){toast(errMsg(err),'err')}});
-  else if(act==='remove-examples')arm(a,async()=>{try{for(const en of state.entries.filter(x=>x.ex))await Data.delEntry(en.id);toast('Examples removed')}catch(err){toast(errMsg(err),'err')}});
+  else if(act==='remove-examples')arm(a,async()=>{try{for(const en of state.entries.filter(x=>x.ex))await Data.delEntry(en.id);toast(tr('Examples removed','Exemplen borttagna','Voorbeelden verwijderd'))}catch(err){toast(errMsg(err),'err')}});
 });
 document.addEventListener('change',e=>{
   if(e.target.id==='cvSel'){const v=e.target.value,sp=bySid.get(slug(canon(draft.latin||'')));if(v==='__new'){draft._cvNew=true;draft.cultivar='';$('#cvNew').value='';$('#cvNew').hidden=false;$('#cvNew').focus()}else{draft._cvNew=false;const c=sp&&sp.cvs.find(x=>x.ck===v);draft.cultivar=c?c.cv:'';$('#cvNew').hidden=true}cvHint();return}
@@ -287,7 +291,7 @@ $('#form').addEventListener('submit',e=>e.preventDefault());
 $('#obsForm').addEventListener('submit',async e=>{
   e.preventDefault();const s=selected&&bySid.get(selected);if(!s)return;
   const text=$('#obsText').value.trim(),plot=$('#obsPlot').value.trim(),date=$('#obsDate').value||today(),file=$('#obsPhoto').files[0],cv=cvRead('#obsCv','#obsCvNew',s);
-  if(!text&&!file){toast('Add a note or a photo.','err');return}
+  if(!text&&!file){toast(tr('Add a note or a photo.','Lägg till en anteckning eller ett foto.','Voeg een notitie of een foto toe.'),'err');return}
   if(cv===null){toast(tr('Type the cultivar name.','Skriv sortnamnet.','Typ de cultivarnaam.'),'err');return}
   const btn=$('#obsBtn');btn.disabled=true;
   try{

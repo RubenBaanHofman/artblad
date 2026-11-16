@@ -84,6 +84,11 @@ document.addEventListener('click',e=>{if(document.body.classList.contains('mmenu
 addEventListener('resize',dockSize);addEventListener('load',dockSize);
 (async function init(){
   const sty=document.createElement('style');sty.textContent=SHEET_CSS;document.head.appendChild(sty);
+  if(VERSION_MIX){const w=document.createElement('div');w.id='verWarn';w.className='banner';w.setAttribute('role','alert');
+    w.textContent=tr('Files from two versions are mixed (page '+VERSION_MIX+', app '+APP_VERSION+'). Reload the page. If this stays, upload all files of the latest update, including index.html.',
+      'Filer från två versioner blandas (sidan '+VERSION_MIX+', appen '+APP_VERSION+'). Ladda om sidan. Om det kvarstår: ladda upp alla filer i senaste uppdateringen, även index.html.',
+      'Bestanden van twee versies zijn gemengd (pagina '+VERSION_MIX+', app '+APP_VERSION+'). Laad de pagina opnieuw. Blijft dit, upload dan alle bestanden van de laatste update, ook index.html.');
+    document.body.insertBefore(w,document.body.firstChild)}
   $('#obsDate').value=today();
   Fav.loadLocal();
   {const d=$('#dock'),t=$('header.top');if(d&&t)t.after(d)}

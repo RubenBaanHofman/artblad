@@ -6,12 +6,15 @@ const randHex=n=>{const a=new Uint8Array(n);crypto.getRandomValues(a);return [..
 const newId=()=>randHex(10);
 const COLS='id,data,author,updated_by,updated_at,deleted_at,deleted_by,created_at';
 async function fetchAll(t,cols){let out=[],from=0;for(;;){const r=await SB.from(t).select(cols||COLS).order('id').range(from,from+999);if(r.error)throw r.error;out=out.concat(r.data);if(r.data.length<1000)break;from+=1000}return out}
+// Fixed species numbers from the database (update v8, since 2.5.1); null when not available (then the list order is used).
+let SPNO=null;
 async function loadAll(){
   if(!SB)return;
   try{
     const adm=isAdmin(),soft=q=>Promise.resolve(q).then(x=>x,e=>({error:e}));
     const r=await Promise.all([fetchAll('entries'),fetchAll('obs'),SB.from('profiles').select('user_id,display_name'),CANW?fetchAll('plantings').catch(()=>[]):[],CANW?fetchAll('lists').catch(()=>[]):[],fetchAll('comments').catch(()=>[]),
-      adm?soft(SB.rpc('review_state')):null,adm?soft(SB.from('autofill_requests').select('sid,latin,n,status,first_requested_at,last_requested_at,sent_at').order('first_requested_at')):null]);
+      adm?soft(SB.rpc('review_state')):null,adm?soft(SB.from('autofill_requests').select('sid,latin,n,status,first_requested_at,last_requested_at,sent_at').order('first_requested_at')):null,
+      soft(SB.from('species_numbers').select('sid,no'))]);
     META.clear();PROFILES.clear();
     (r[2].data||[]).forEach(p=>PROFILES.set(p.user_id,p.display_name));
     const keep=(rows,kind)=>rows.map(x=>{META.set(x.id,{kind,author:x.author,updatedBy:x.updated_by,updatedAt:x.updated_at,deletedAt:x.deleted_at,deletedBy:x.deleted_by,createdAt:x.created_at});return Object.assign({id:x.id},x.data)});
@@ -19,10 +22,11 @@ async function loadAll(){
     state.entries=E.filter(live);state.obs=O.filter(live);state.trashE=E.filter(x=>!live(x));state.trashO=O.filter(x=>!live(x));
     const Pl=keep(r[3],'planting'),Li=keep(r[4],'list');state.plantings=Pl.filter(live);state.lists=Li.filter(live);state.trashP=Pl.filter(x=>!live(x));state.trashL=Li.filter(x=>!live(x));
     const Cm=keep(r[5],'comment');state.comments=Cm.filter(live);state.trashC=Cm.filter(x=>!live(x));
+    SPNO=r[8]&&!r[8].error&&Array.isArray(r[8].data)&&r[8].data.length?new Map(r[8].data.map(x=>[x.sid,Number(x.no)])):null;
     revSet(adm&&r[6]&&!r[6].error?r[6].data:null);if(adm&&r[7]&&!r[7].error)afRows=r[7].data||[];
     $('#banner').hidden=true;loaded=true;lastLoad=Date.now();renderAcct();refresh();
   }catch(e){
-    loaded=true;const b=$('#banner');b.hidden=false;b.textContent='Could not read the species data ('+((e&&(e.code||e.message))||'error')+'). Check your connection and reload.';refresh();
+    loaded=true;const b=$('#banner');b.hidden=false;b.textContent=tr('Could not read the species data (','Kunde inte läsa artdata (','Kon de soortgegevens niet lezen (')+((e&&(e.code||e.message))||'error')+tr('). Check your connection and reload.','). Kontrollera anslutningen och ladda om.','). Controleer je verbinding en laad opnieuw.');refresh();
   }
 }
 async function loadFav(uid){const r=await SB.from('favorites').select('sids').eq('user_id',uid).maybeSingle();if(!r.error)Fav.set=new Set((r.data&&r.data.sids)||[])}
@@ -97,7 +101,8 @@ const Fav={set:new Set(),ref:null,busy:Promise.resolve(),
 };
 const STAR='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.8l6-.8z"/></svg>';
 const starBtn=sid=>'<button type="button" class="star" data-fav="'+esc(sid)+'" aria-pressed="'+Fav.has(sid)+'" aria-label="'+tr('Favourite','Favorit')+'" title="'+tr('Favourite','Favorit')+'">'+STAR+'</button>';
-const photoUsed=(id,exceptDoc)=>state.entries.some(e=>e.id!==exceptDoc&&e.fields&&e.fields.photo===id)||state.obs.some(o=>o.id!==exceptDoc&&o.photo===id);
+// A photo file is still needed while any live or trashed entry or observation points to it.
+const photoUsed=(id,exceptDoc)=>[state.entries,state.trashE||[]].some(a=>a.some(e=>e.id!==exceptDoc&&e.fields&&e.fields.photo===id))||[state.obs,state.trashO||[]].some(a=>a.some(o=>o.id!==exceptDoc&&o.photo===id));
 function dropPhoto(id,exceptDoc){if(ASSETS&&id&&(!SB||isAdmin())&&!photoUsed(id,exceptDoc))ASSETS.delete(id).catch(()=>{})}
 
 /* ---------- photos ---------- */

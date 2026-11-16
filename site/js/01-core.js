@@ -2,7 +2,7 @@
 // Part 1 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 // The version shown on Home. Also change ?v= on every script tag in index.html (dev/check_version.py checks this).
-const APP_VERSION='2.5.0';
+const APP_VERSION='2.5.1';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
@@ -138,7 +138,24 @@ const FCOL={w:'var(--woody)',h:'var(--herb)'};
 const optsOf=(d,f)=>Array.isArray(d.o)?d.o:(d.o?d.o[f]:[]);
 const unitOf=(d,f)=>d.unit&&typeof d.unit==='object'?d.unit[f]:d.unit;
 const isEmpty=v=>v==null||v===''||(Array.isArray(v)&&!v.length);
-const canon=s=>{const w=String(s||'').trim().replace(/\s+/g,' ').split(' ').filter(Boolean);return w.map((x,i)=>i===0?x.charAt(0).toUpperCase()+x.slice(1).toLowerCase():x.toLowerCase()).join(' ')};
+// Latin names: genus with a capital, species epithet, hybrid sign and ranks (var., subsp., f.) in lower case.
+// Later words keep the capitals they were typed with (cultivar groups, grex, 'Cultivar' in quotes); "group" becomes "Group".
+// Only the display changes: species ids (slug) are lower case anyway.
+const LATIN_RANKS=['var.','subsp.','ssp.','f.','cv.','agg.','s.l.','s.str.','nothosubsp.','nothovar.'];
+const canon=s=>{
+  const w=String(s||'').trim().replace(/\s+/g,' ').split(' ').filter(Boolean);
+  const cap=x=>x.charAt(0).toUpperCase()+x.slice(1).toLowerCase(),hyb=x=>x==='×'||x.toLowerCase()==='x';
+  let g=0;if(w.length>1&&hyb(w[0]))g=1; // a hybrid genus: "× Sorbaronia"
+  let epi=g+1;if(w[epi]&&hyb(w[epi]))epi++; // "Malus × domestica"
+  return w.map((x,i)=>{
+    if(i<g)return x.toLowerCase();
+    if(i===g)return cap(x);
+    if(i<=epi||hyb(x)||LATIN_RANKS.indexOf(x.toLowerCase())>=0||LATIN_RANKS.indexOf(String(w[i-1]).toLowerCase())>=0)return x.toLowerCase();
+    if(/^['"‘’“”]/.test(x))return x;
+    if(x.toLowerCase()==='group')return 'Group';
+    return x;
+  }).join(' ');
+};
 const slug=s=>canon(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 /* ---------- cultivars ----------
    An entry with fields.cultivar belongs to that cultivar. Names, family, type and origin always describe the whole species;

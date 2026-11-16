@@ -1,12 +1,12 @@
-// Artblad: SERVICE: map of planting records (Leaflet from cdnjs, OpenStreetMap tiles).
+// Artblad: SERVICE: map of planting records (Leaflet served from this site, OpenStreetMap tiles).
 // Part 11 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
-/* ---------- map of planting records (Leaflet + OpenStreetMap, loaded only when needed) ---------- */
+/* ---------- map of planting records (Leaflet 1.9.4 from vendor/leaflet since 2.5.1, OpenStreetMap tiles; loaded only when needed) ---------- */
 let plMap=null,plLayer=null,leafletP=null;
 function loadLeaflet(){
   if(window.L)return Promise.resolve();if(leafletP)return leafletP;
-  leafletP=new Promise((res,rej)=>{const c=document.createElement('link');c.rel='stylesheet';c.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(c);
-    const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';sc.onload=res;sc.onerror=()=>{leafletP=null;rej()};document.head.appendChild(sc)});
+  leafletP=new Promise((res,rej)=>{const c=document.createElement('link');c.rel='stylesheet';c.href='vendor/leaflet/leaflet.css?v='+APP_VERSION;document.head.appendChild(c);
+    const sc=document.createElement('script');sc.src='vendor/leaflet/leaflet.js?v='+APP_VERSION;sc.onload=res;sc.onerror=()=>{leafletP=null;rej()};document.head.appendChild(sc)});
   return leafletP;
 }
 async function updatePlMap(list){

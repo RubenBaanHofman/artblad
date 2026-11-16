@@ -137,20 +137,10 @@ const SHIELD_TOTAL=LADDERS.length*5+GRAND.length;
 function updateMe(){
   const box=$('#meBody');if(!box)return;
   if(!SB||!meUid()){box.innerHTML='<p class="muted">'+tr('Sign in to see your contributions.','Logga in för att se dina bidrag.')+'</p>';return}
-  const uids=[...new Set([...META.values()].map(m=>m.author).filter(Boolean))];
-  const board=uids.map(u=>({u,t:statsFor(u)})).filter(x=>x.t.points>0).sort((a,b)=>b.t.points-a.t.points);
-  const t=statsFor(meUid()),rank=board.findIndex(x=>x.u===meUid())+1,myName=PROFILES.get(meUid());
+  // 2.5.1: shields, points, rank and leaderboard are no longer shown (the family does not use them; data and code stay).
+  const t=statsFor(meUid()),myName=PROFILES.get(meUid());
   const nameRow='<p class="meName">'+(myName?esc(trs('Your username: ','Ditt användarnamn: '))+'<b>'+esc(myName)+'</b>':esc(trs('You have no username yet, so others see “a user without a name”.','Du har inget användarnamn än, så andra ser ”en användare utan namn”.')))+' <button type="button" class="btn sm" data-act="set-name">'+esc(myName?trs('Change','Ändra'):trs('Choose a username','Välj ett användarnamn'))+'</button></p>';
   const tile=(n,en,sv,nl)=>'<div class="stat"><b>'+n+'</b><span>'+esc(tr(en,sv,nl))+'</span></div>';
-  const top=board.length?board[0].t.points:1;
-  box.innerHTML=nameRow+'<p class="rank">'+(rank?esc(tr('You are number '+rank+' of '+board.length+' contributors, with '+t.points+' points.','Du är nummer '+rank+' av '+board.length+' bidragsgivare, med '+t.points+' poäng.','Je staat op plaats '+rank+' van '+board.length+' bijdragers, met '+t.points+' punten.')):esc(tr('No contributions yet. Add a species or some information to get started.','Inga bidrag ännu. Lägg till en art eller information för att komma igång.')))+'</p>'+
-    '<div class="stats">'+tile(t.started,'species started','arter startade')+tile(t.expanded,'species or cultivars added to','arter eller sorter du bidragit till','soorten of cultivars aangevuld')+tile(t.facts,'facts filled in','ifyllda uppgifter')+tile(t.obs,'observations','observationer')+tile(t.src,'sources','källor')+tile(t.photos,'photos','foton')+tile(t.month,'this month','denna månad')+'</div>'+
-    '<h2 class="hsec">'+trh('Shields','Sköldar','Schilden')+' <em>'+shieldCount(t)+' / '+SHIELD_TOTAL+'</em></h2>'+
-    '<p class="muted" style="margin:0 0 8px">'+esc(tr('Each kind of contribution grows through five stages: seed, sprout, sapling, tree and forest elder. Reach the same stage on all six to earn the overall shields.','Varje slags bidrag växer genom fem steg: frö, grodd, planta, träd och skogens äldste. Nå samma steg på alla sex för att få de stora sköldarna.','Elke soort bijdrage groeit in vijf stappen: zaad, kiemplant, jong boompje, boom en bosoudste. Bereik dezelfde stap bij alle zes om de grote schilden te verdienen.'))+'</p>'+
-    '<div class="ladders">'+LADDERS.map(L=>ladderHTML(L,t)).join('')+'</div>'+
-    '<h2 class="hsec">'+trh('Overall shields','Stora sköldar','Grote schilden')+'</h2>'+grandHTML(t)+
-    '<h2 class="hsec">'+trh('Leaderboard','Topplista')+'</h2><p class="muted" style="margin:0 0 8px">'+esc(tr('Others are shown without names.','Andra visas utan namn.'))+'</p>'+
-    '<div class="board">'+board.map((x,i)=>'<div class="brow'+(x.u===meUid()?' me':'')+'"><span class="bn2">'+(i+1)+'</span><span class="bl">'+esc(x.u===meUid()?tr('You','Du'):tr('Contributor','Bidragsgivare'))+'</span><span class="bb"><i style="width:'+Math.max(4,Math.round(100*x.t.points/top))+'%"></i></span><span class="bp">'+x.t.points+'</span></div>').join('')+'</div>'+
-    '<p class="muted" style="font-size:13px;margin-top:10px">'+esc(tr('Points: 5 per species you start, 2 per species or cultivar you add to, 1 per observation, source or photo, and 1 per 5 facts.','Poäng: 5 per art du startar, 2 per art eller sort du bidrar till, 1 per observation, källa eller foto, och 1 per 5 uppgifter.','Punten: 5 per soort die je start, 2 per soort of cultivar die je aanvult, 1 per waarneming, bron of foto, en 1 per 5 gegevens.'))+'</p>';
-  shieldCelebrate(t);
+  box.innerHTML=nameRow+
+    '<div class="stats">'+tile(t.started,'species started','arter startade')+tile(t.expanded,'species or cultivars added to','arter eller sorter du bidragit till','soorten of cultivars aangevuld')+tile(t.facts,'facts filled in','ifyllda uppgifter')+tile(t.obs,'observations','observationer')+tile(t.src,'sources','källor')+tile(t.photos,'photos','foton')+tile(t.month,'this month','denna månad')+'</div>';
 }

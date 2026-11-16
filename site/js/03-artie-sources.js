@@ -84,7 +84,10 @@ function derive(){
     s.ref=s.sid;
   });
   species=[...by.values()].sort((a,b)=>a.created-b.created||a.sid.localeCompare(b.sid));
-  species.forEach((s,i)=>{s.no=String(i+1).padStart(3,'0');s.cvs.forEach(c=>c.no=s.no)});
+  // Species numbers: fixed numbers from the database (v8). Without them, the position in the list (as before 2.5.1).
+  // A species saved since the last reload may not have its number yet: it shows the next one until then.
+  {let next=SPNO?Math.max(0,...SPNO.values()):0;
+   species.forEach((s,i)=>{const n=SPNO?(SPNO.get(s.sid)||++next):i+1;s.no=String(n).padStart(3,'0');s.cvs.forEach(c=>c.no=s.no)})}
   bySid=by;
   // After signing in again, the species named in the address comes back (not simply the first one).
   if(!selected||!bySid.has(selected)){const h=/^#s-(.+)$/.exec(location.hash||'');if(h)setSel(decodeURIComponent(h[1]));if(!selected||!bySid.has(selected)){selected=species.length?species[0].sid:null;selCv=''}}

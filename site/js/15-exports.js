@@ -28,8 +28,8 @@ async function printSheets(list){
   f.srcdoc=html;
 }
 async function exportSheets(list,name){
-  if(!list.length){toast('No species to export yet.','err');return}
-  toast('Preparing sheets…');
+  if(!list.length){toast(tr('No species to export yet.','Inga arter att exportera än.','Nog geen soorten om te exporteren.'),'err');return}
+  toast(tr('Preparing sheets…','Förbereder blad…','Bladen worden voorbereid…'));
   const html=docShell('Skogsträdgårdens artblad · '+name,await sheetPages(list));
   await saveFile('artblad_'+name+'.html',html);
 }
@@ -39,7 +39,7 @@ function valText(d,v,form){
   return v;
 }
 function exportCsv(){
-  if(!species.length){toast('No species to export yet.','err');return}
+  if(!species.length){toast(tr('No species to export yet.','Inga arter att exportera än.','Nog geen soorten om te exporteren.'),'err');return}
   const keys=Object.keys(DEF).filter(k=>k!=='photo');
   const q=v=>{v=v==null?'':String(v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const head=['no','latin','form'].concat(keys,['entries','observations']);

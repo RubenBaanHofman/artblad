@@ -28,7 +28,7 @@ function cardHTML(s){
    ['Cautions & sources','Varningar & källor',P(CAUT,'caut')+KV('Sources','Källor',m.sources?T('sources')+smark(s.sid,'sources'):'','sources')]
   ];
   const missing=blocks.filter(b=>!b[2].trim()).map(b=>b[0]);
-  const conf=s.conf.length?'<p class="note"><b>'+L('Entries disagree','Posterna skiljer sig')+'.</b> '+s.conf.map(c=>{const d=DEF[c.k];const f=v=>d.t==='single'?((optsOf(d,s.form).find(o=>o.k===v)||{}).en||v):v;return esc(d.en)+': '+esc(f(c.cur))+' (newest), earlier '+c.olds.map(o=>esc(f(o.v))+' '+esc(o.date||'')).join(', ')}).join('; ')+'. The newest entry is used.</p>':'';
+  const conf=s.conf.length?'<p class="note"><b>'+L('Entries disagree','Posterna skiljer sig')+'.</b> '+s.conf.map(c=>{const d=DEF[c.k];const f=v=>{if(d.t!=='single')return v;const o=optsOf(d,s.form).find(o=>o.k===v);return o?(lang==='sv'?o.sv:lang==='nl'?nl(o.en):o.en):v};return L(d.en,d.sv)+': '+esc(f(c.cur))+' ('+L('newest','nyast')+'), '+L('earlier','tidigare')+' '+c.olds.map(o=>esc(f(o.v))+' '+esc(o.date||'')).join(', ')}).join('; ')+'. '+L('The newest entry is used.','Den nyaste posten används.')+'</p>':'';
   // Outside sources that differ: one closed line (click to open), then one short line per field.
   const sconf=(()=>{const list=s.sconf||[];if(!list.length)return '';
     const f=(d,v)=>Array.isArray(v)?v.map(x=>labOf(d,s.form,x)).join(', '):labOf(d,s.form,v);
@@ -190,7 +190,7 @@ function openAdd(opts){
 }
 async function saveForm(){
   const latin=canon(draft.latin||'');
-  if(latin.split(' ').length<2){toast('Enter genus and species, e.g. Malus domestica.','err');$('#latin').focus();return}
+  if(latin.split(' ').length<2){toast(tr('Enter genus and species, e.g. Malus domestica.','Skriv släkte och art, t.ex. Malus domestica.','Vul geslacht en soort in, bijv. Malus domestica.'),'err');$('#latin').focus();return}
   const fields={};
   Object.keys(DEF).forEach(k=>{const d=DEF[k];if(k==='photo'||k==='latin')return;if(d.only&&d.only!==draftForm)return;let v=draft[k];if(isEmpty(v))return;
     if(d.t==='num'){v=Number(v);if(!isFinite(v))return}else if(d.t==='scale')v=Number(v);else if(d.t==='text')v=d.zone?zoneNorm(v,d.zone):String(v).trim();else if(d.t==='cal'||d.t==='multi')v=v.slice();
@@ -208,7 +208,7 @@ async function saveForm(){
     box.scrollIntoView({block:'nearest'});return;
   }
   $('#nearBox').hidden=true;
-  const btn=$('#saveBtn');btn.disabled=true;$('#saveMsg').textContent='Saving…';
+  const btn=$('#saveBtn');btn.disabled=true;$('#saveMsg').textContent=tr('Saving…','Sparar…','Opslaan…');
   try{
     if(pendingPhoto){fields.photo=await uploadPhoto(pendingPhoto)}
     const now=Date.now(),old=editId&&state.entries.find(e=>e.id===editId);
@@ -217,7 +217,6 @@ async function saveForm(){
     if(old&&old.ex)doc.ex=true;
     if(old&&old.by){doc.by=old.by;if(old.src)doc.src=old.src}
     await Data.saveEntry(editId,doc);
-    if(old&&old.fields&&old.fields.photo&&old.fields.photo!==fields.photo)dropPhoto(old.fields.photo,old.id);
     selected=doc.sid;selCv=fields.cultivar?cvKey(fields.cultivar):'';toast(tr('Saved to ','Sparad till ')+latin+(fields.cultivar?' '+cvQ(fields.cultivar):''));
     draft={};draftBase='{}';editId=null;pendingPhoto=null;draftClear();$('#editBanner').hidden=true;$('#nearBox').hidden=true;buildForm();go('sheet');
   }catch(e){toast(errMsg(e),'err')}

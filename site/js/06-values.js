@@ -120,7 +120,7 @@ function sheetFront(s,lang,src){
   const b4='<div class="bx">'+H('4 Calendar & propagation','Kalender & förökning')+'<div class="calbx">'+calL+calR+'</div></div>';
   const b5='<div class="bx">'+H('5 Uses','Användning')+G('uses',w?USES_W:USES_H,3)+LR('Edibility','Ätlighet','<span class="c'+(m.edibility===0?' on':'')+'"><i></i><span class="t">'+L('No','Nej')+'</span></span>'+dd(m.edibility||0,5))+LR('Yield','Skörd',G('yield',YIELD,3))+F('Edible part / notes','Ätlig del',m.edible)+'</div>';
   const b6='<div class="bx">'+H('6 Ecosystem functions','Ekosystemfunktioner')+G('eco',w?ECO_W:ECO_H,2)+F('Notes','Anteckningar',m.ecoNotes)+'</div>';
-  const b7='<div class="bx">'+H('7 Placement','Placering')+LR('Layer','Skikt',G('layer',LAYER,2))+LR('Role','Roll',G('role',ROLE,2))+LR('Structure','Struktur',G('struct',STRUCT,2))+F('Good with','Passar med',m.goodWith)+F('Avoid near','Undvik nära',m.avoid)+F('Planted at','Planterad vid',m.plantedAt)+'</div>';
+  const b7='<div class="bx">'+H('7 Placement','Placering')+LR('Layer','Skikt',G('layer',LAYER,2))+LR('Role','Roll',G('role',ROLE,2))+LR('Structure','Struktur',G('struct',STRUCT,2))+F('Good with','Passar med',m.goodWith)+F('Avoid near','Undvik nära',m.avoid)+'</div>';
   const ft='<div class="bx ft"><div class="r"><span class="lr"><u>'+L('Use it?','Använda?')+'</u>'+dd(m.verdict||0,5)+'</span>'+
     '<span class="lr" style="flex:1"><u>'+L('Invasive risk (SE)','Invasionsrisk')+'</u>'+G('invasive',INV,3)+'</span><div style="flex:1">'+F('Updated','Uppdaterad',s.updatedDate)+'</div></div>'+
     '<div class="r"><span class="lr" style="flex:1.4"><u>'+L('Cautions','Varningar')+'</u>'+G('caut',CAUT,5)+'</span><div style="flex:1">'+F('Sources','Källor',m.sources)+'</div></div></div>';

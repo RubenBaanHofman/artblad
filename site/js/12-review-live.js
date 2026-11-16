@@ -25,7 +25,8 @@ function revSecCompute(){
     const list=bySidE.get(sid)||[],out=new Map(),nowM=mergeEntries(list.filter(x=>x.live).map(x=>x.e).sort(ord)).m;
     marks.forEach((r,sec)=>{
       const at=new Date(r.at);let chg=null;
-      const late=x=>{const t=new Date(x.m.updatedAt||x.m.createdAt||0);return t>at&&!(x.m.updatedBy&&REV.admins.has(x.m.updatedBy))};
+      // Since 2.5.1 any edit after the mark counts, also by an admin (the whole-species mark still ignores admin edits).
+      const late=x=>new Date(x.m.updatedAt||x.m.createdAt||0)>at;
       const gone=x=>!x.live&&x.m.deletedAt&&new Date(x.m.deletedAt)>at;
       let stale=false;
       if(list.some(x=>late(x)||gone(x))){
@@ -136,4 +137,6 @@ function sheetCv(s,lang){
     '</tbody></table><p class="gnote">'+L('Bold: the cultivar’s own value. Grey: follows the species.','Fetstil: sortens eget värde. Grått: följer arten.')+'</p></div></section>',13)).join('');
 }
 
-{const av=document.getElementById('appVer');if(av)av.textContent=APP_VERSION}
+// The page (index.html) carries its own version number; if it differs, files from two versions are mixed (row 4, since 2.5.1).
+let VERSION_MIX=null;
+{const av=document.getElementById('appVer');if(av){const hv=av.textContent.trim();if(hv&&hv!==APP_VERSION)VERSION_MIX=hv;av.textContent=APP_VERSION}}
