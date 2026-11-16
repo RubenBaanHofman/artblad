@@ -43,9 +43,11 @@ function checksOf(s){
   const m=s.m,w=s.form==='w',out=[],add=(k,en,sv,n)=>out.push({k,txt:tr(en,sv,n),key:k+':'+ckHash(en)});
   const h=Number(m.height);
   if(!isEmpty(m.height)&&isFinite(h)){
-    if(!w&&h>400)add('height','Height '+h+' cm for a herbaceous plant: metres typed as centimetres?','Höjd '+h+' cm för en örtartad växt: meter skrivna som centimeter?','Hoogte '+h+' cm voor een kruidachtige plant: meters als centimeters getypt?');
-    if(!w&&h>0&&h<=3)add('height','Height '+h+' cm: perhaps metres were meant (herbaceous plants are in cm).','Höjd '+h+' cm: kanske menades meter (örtartade anges i cm).','Hoogte '+h+' cm: misschien waren meters bedoeld (kruidachtigen in cm).');
-    if(w&&h>60)add('height','Height '+h+' m for a woody plant: centimetres typed as metres?','Höjd '+h+' m för en vedartad växt: centimeter skrivna som meter?','Hoogte '+h+' m voor een houtige plant: centimeters als meters getypt?');
+    // Since 2.6.0 heights are in centimetres for every plant; the form lets people type cm or m.
+    const L=fmtLen(h);
+    if(!w&&h>400)add('height','Height '+L+' for a herbaceous plant: check the unit (cm or m).','Höjd '+L+' för en örtartad växt: kontrollera enheten (cm eller m).','Hoogte '+L+' voor een kruidachtige plant: controleer de eenheid (cm of m).');
+    if(h>0&&h<=3)add('height','Height '+L+': check the unit (cm or m).','Höjd '+L+': kontrollera enheten (cm eller m).','Hoogte '+L+': controleer de eenheid (cm of m).');
+    if(w&&h>6000)add('height','Height '+L+' for a woody plant: check the unit (cm or m).','Höjd '+L+' för en vedartad växt: kontrollera enheten (cm eller m).','Hoogte '+L+' voor een houtige plant: controleer de eenheid (cm of m).');
   }
   const ts=[];if(usdaTok(m.usda).length)ts.push(hardOf({usda:m.usda}));if(rhsTok(m.rhs).length)ts.push(hardOf({rhs:m.rhs}));
   const tv=ts.filter(Boolean).map(x=>x.t);if(tv.length>1&&Math.max.apply(null,tv)-Math.min.apply(null,tv)>10)add('hardy','The USDA and RHS ratings disagree by more than about two zones ('+ts.filter(Boolean).map(x=>x.label+' ≈ '+fmtC(x.t)).join(', ')+').','USDA- och RHS-uppgifterna skiljer sig med mer än ungefär två zoner ('+ts.filter(Boolean).map(x=>x.label+' ≈ '+fmtC(x.t)).join(', ')+').','De USDA- en RHS-gegevens verschillen meer dan ongeveer twee zones ('+ts.filter(Boolean).map(x=>x.label+' ≈ '+fmtC(x.t)).join(', ')+').');

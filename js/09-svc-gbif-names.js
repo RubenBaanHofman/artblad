@@ -5,10 +5,10 @@
 const GBIF_C=new Map();let gbifT=0;
 function gbifCheck(){
   clearTimeout(gbifT);const el=$('#gbifHint');if(!el)return;
-  const latin=canon(draft.latin||'');if(latin.split(' ').length<2||latin.length<5){el.hidden=true;return}
+  const latin=canon(draft.latin||'');if(!svcOn('gbif')){el.hidden=true;return}if(latin.split(' ').length<2||latin.length<5){el.hidden=true;return}
   gbifT=setTimeout(async()=>{
     let r=GBIF_C.get(latin);
-    if(!r){try{const q=await fetch('https://api.gbif.org/v1/species/match?kingdom=Plantae&name='+encodeURIComponent(latin));if(!q.ok)throw 0;r=await q.json();GBIF_C.set(latin,r)}catch(e){el.hidden=true;return}}
+    if(!r){try{const q=await svcFetch('gbif',svcUrl('gbif')+'/species/match?kingdom=Plantae&name='+encodeURIComponent(latin));if(!q.ok)throw 0;r=await q.json();GBIF_C.set(latin,r)}catch(e){el.hidden=true;return}}
     if(canon(draft.latin||'')!==latin)return;
     const fam=r.family||'',acc=r.species||'',st=r.status||'',mt=r.matchType||'NONE';let h='';
     if(mt==='NONE')h=esc(tr('Not found in GBIF: check the spelling.','Hittades inte i GBIF: kontrollera stavningen.','Niet gevonden in GBIF: controleer de spelling.'));

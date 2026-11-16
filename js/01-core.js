@@ -2,7 +2,7 @@
 // Part 1 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 // The version shown on Home. Also change ?v= on every script tag in index.html (dev/check_version.py checks this).
-const APP_VERSION='2.5.1';
+const APP_VERSION='2.6.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
@@ -137,6 +137,27 @@ const formOf=t=>TYPES_W.some(o=>o.k===t)?'w':'h';
 const FCOL={w:'var(--woody)',h:'var(--herb)'};
 const optsOf=(d,f)=>Array.isArray(d.o)?d.o:(d.o?d.o[f]:[]);
 const unitOf=(d,f)=>d.unit&&typeof d.unit==='object'?d.unit[f]:d.unit;
+/* ---------- lengths (2.6.0): stored in centimetres, shown in cm below 2 m and in metres from 2 m ----------
+   Entries saved since 2.6.0 carry lu:'cm'. Older entries (and Artie's) used metres for woody height and spread and for
+   native size; lenNorm converts those when the data is loaded, so the rest of the app only ever sees centimetres. */
+const LEN_KEYS=['height','spread','nativeH','nativeW','spacing'];
+function lenNorm(e){
+  if(!e||e.lu==='cm'||!e.fields)return e;
+  const f=e.fields,form=e.form||(f.type?formOf(f.type):'h');
+  LEN_KEYS.forEach(k=>{const v=f[k];if(v==null||v==='')return;const n=Number(v);if(!isFinite(n))return;if(unitOf(DEF[k],form)==='m')f[k]=Math.round(n*1000)/10});
+  e.lu='cm';return e;
+}
+const decSep=()=>state.lang==='en'?'.':',';
+const numTxt=n=>String(Math.round(n*10)/10).replace('.',decSep());
+// One length: "80 cm", "2,5 m". Two lengths (height × spread) share one unit, chosen by the larger.
+function fmtLen(cm){const n=Number(cm);if(cm==null||cm===''||!isFinite(n))return '';return Math.abs(n)<200?numTxt(n)+' cm':numTxt(n/100)+' m'}
+function fmtSize(a,b){
+  const x=Number(a),y=Number(b),hx=a!=null&&a!==''&&isFinite(x),hy=b!=null&&b!==''&&isFinite(y);if(!hx&&!hy)return '';
+  const big=Math.max(hx?Math.abs(x):0,hy?Math.abs(y):0)>=200,f=v=>big?numTxt(v/100):numTxt(v);
+  return (hx?f(x):'?')+' × '+(hy?f(y):'?')+(big?' m':' cm');
+}
+// The unit offered first in the form: metres for woody height and spread and for native size, else centimetres.
+const lenUnitDefault=(k,form)=>unitOf(DEF[k],form)==='m'?'m':'cm';
 const isEmpty=v=>v==null||v===''||(Array.isArray(v)&&!v.length);
 // Latin names: genus with a capital, species epithet, hybrid sign and ranks (var., subsp., f.) in lower case.
 // Later words keep the capitals they were typed with (cultivar groups, grex, 'Cultivar' in quotes); "group" becomes "Group".
@@ -173,6 +194,9 @@ const state={plantings:[],lists:[],comments:[],listId:'',withLog:store.get('ab.w
 const cfg=Object.assign({},window.ARTBLAD_CONFIG||{});
 try{cfg.SUPABASE_URL=new URL(String(cfg.SUPABASE_URL||'').trim()).origin}catch(e){}
 cfg.SUPABASE_ANON_KEY=String(cfg.SUPABASE_ANON_KEY||'').trim();
+// 2.6.0: which installation this is. "family" (the default, also when config.js does not say) hides My contributions and
+// Become a contributor, and shows Help fill the gaps only to admins. "public" shows them to everyone.
+const FAMILY=String(cfg.MODE||'family').trim().toLowerCase()!=='public';
 let species=[],bySid=new Map(),selected=null,selCv='',SB=null,SESSION=null,ASSETS=null,CANW=true,MYROLE='viewer',loaded=false,curUid=undefined,RT=null;
 // Row metadata kept by the database (who added, who changed, trash). Kept apart from the documents so exports and saves are unchanged.
 const META=new Map(),PROFILES=new Map();
@@ -182,3 +206,30 @@ const mem={entries:[],obs:[],n:0};
 const errMsg=e=>{const c=e&&(e.code||e.statusCode),m=String((e&&e.message)||'');if(c==='42501'||/row-level security|not authorized|unauthorized|permission/i.test(m))return trs('You do not have permission to change this.','Du har inte behörighet att ändra detta.');if(/exceeded|too large|payload|413|quota/i.test(m))return trs('That file is too large or storage is full.','Filen är för stor eller lagringen är full.');if(/mime|not supported|invalid.*type/i.test(m))return trs('That file type is not supported.','Filtypen stöds inte.');if(c==='23505'&&/profiles/.test(m))return trs('That username is already taken. Choose another.','Användarnamnet är redan upptaget. Välj ett annat.');if(/profiles_reserved/.test(m))return trs('That username is reserved. Choose another.','Användarnamnet är reserverat. Välj ett annat.','Die gebruikersnaam is gereserveerd. Kies een andere.');if(/profiles_not_email/.test(m))return trs('Use a name, not an email address.','Använd ett namn, inte en e-postadress.');return m||trs('Something went wrong.','Något gick fel.')};
 let lastLoad=0;
 let tt;function toast(msg,kind){const t=$('#toast');t.textContent=msg;t.className='toast show'+(kind?' '+kind:'');clearTimeout(tt);tt=setTimeout(()=>{t.className='toast'},3800)}
+/* ---------- outside services (2.6.0): every address in one place, one way to call them ----------
+   Each service can be swapped or switched off in config.js without touching the code, e.g.
+     SERVICES: { tiles: { url: "https://tiles.example.org/{z}/{x}/{y}.png", attr: "© Example" }, gbif: false }
+   svcFetch records the last result per service; the admin page "Service check" shows it and can test each one.
+   The app's core (reading and saving species) needs only Supabase; every service below is optional. */
+const SERVICE_DEFAULTS={
+  gbif:{name:'GBIF name check',url:'https://api.gbif.org/v1',test:'/species/match?kingdom=Plantae&name=Betula%20pendula',for:['Latin name check while typing','Kontroll av latinskt namn']},
+  tiles:{name:'Map tiles (OpenStreetMap)',url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',attr:'© OpenStreetMap',test:'0/0/0',for:['Map of plantings','Karta över planteringar']},
+  climate:{name:'Winter climate (Open-Meteo, ERA5-Land)',url:'https://archive-api.open-meteo.com/v1/archive',test:'?latitude=63.8&longitude=20.3&start_date=2020-01-01&end_date=2020-01-02&daily=temperature_2m_min&models=era5_land&timezone=GMT',for:['Winter climate of a map position','Vinterklimat för en kartposition']},
+  sguSoil:{name:'Soil map (SGU)',url:'https://resource.sgu.se/service/wms/130/jordarter-25-100-tusen',layer:'jord:SE.GOV.SGU.JORD.GRUNDLAGER.25K',test:'?SERVICE=WMS&REQUEST=GetCapabilities',for:['Soil type in Pick a plant','Jordart i Välj en växt']},
+  sguPerm:{name:'Soil permeability (SGU)',url:'https://api.sgu.se/oppnadata/genomslapplighet/ogc/features/v1',test:'/collections?f=json',for:['Moisture guess in Pick a plant','Fuktuppskattning i Välj en växt']}
+};
+const SERVICES={};
+Object.keys(SERVICE_DEFAULTS).forEach(id=>{
+  const o=cfg.SERVICES&&Object.prototype.hasOwnProperty.call(cfg.SERVICES,id)?cfg.SERVICES[id]:undefined;
+  SERVICES[id]=o===false?Object.assign({},SERVICE_DEFAULTS[id],{off:true}):Object.assign({},SERVICE_DEFAULTS[id],o&&typeof o==='object'?o:{},{custom:!!(o&&typeof o==='object')});
+});
+const SVC_ST=new Map(); // id → {ok, at, msg}: the last call of this session
+const svcOn=id=>!!SERVICES[id]&&!SERVICES[id].off;
+const svcUrl=id=>SERVICES[id]?SERVICES[id].url:'';
+function svcNote(id,ok,msg){SVC_ST.set(id,{ok,at:Date.now(),msg:msg||''})}
+async function svcFetch(id,url,opts){
+  if(!svcOn(id)){const e=new Error('service off');e.why='off';throw e}
+  let r;try{r=await fetch(url,opts)}catch(e){svcNote(id,false,e&&e.name==='AbortError'?'timeout':'connection');throw e}
+  svcNote(id,r.ok||r.type==='opaque'||(r.status>=400&&r.status<500&&r.status!==404),r.ok?'':'HTTP '+r.status);
+  return r;
+}

@@ -2,24 +2,80 @@
 // Part 17 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 /* ---------- planning: compare ---------- */
-const CMP_MAX=4;
+const CMP_MAX=40;
 let cmpMode=false;
 function updateCmpBar(){const b=$('#cmpBar');if(!b)return;const n=cmp.filter(x=>byRef(x)).length;b.hidden=!cmpMode;$('#cmpN').textContent=n;$('#cmpGo').disabled=n<2;const pb=$('#pickCmpBar');if(pb){pb.hidden=!n;$('#pickCmpN').textContent=n;$('#pickCmpGo').disabled=n<2}$$('[data-act=cmp-mode]').forEach(x=>x.setAttribute('aria-pressed',cmpMode))}
 let cmp=(()=>{try{const a=JSON.parse(store.get('ab.cmp')||'[]');return Array.isArray(a)?a.slice(0,CMP_MAX):[]}catch(e){return []}})();
 const saveCmp=()=>store.set('ab.cmp',JSON.stringify(cmp));
 function cmpAdd(sid){if(cmp.indexOf(sid)<0){if(cmp.length>=CMP_MAX)cmp.shift();cmp.push(sid);saveCmp()}}
+/* Compare (2.6.0): a table with one row per species, like the genus and cultivar tables, sorted in a few useful ways
+   and with columns to choose; "Side by side" keeps the old view for up to four species. */
+const CMP_SIDE=4;
+const cmpPref={view:store.get('ab.cmpview')==='side'?'side':'table',sort:store.get('ab.cmpsort')||'layer',cols:(()=>{try{const a=JSON.parse(store.get('ab.cmpcols')||'null');return Array.isArray(a)?new Set(a):null}catch(e){return null}})()};
+const layerRank=x=>{const a=[].concat(x.m.layer||[]).map(k=>LAYER.findIndex(o=>o.k===k)).filter(i=>i>=0);return a.length?Math.min.apply(null,a):99};
+const firstMonth=(x,k)=>{const a=[].concat(x.m[k]||[]).map(Number).filter(n=>n>=1&&n<=12);return a.length?Math.min.apply(null,a):99};
+const CMP_SORTS=[
+  ['layer','Forest layer (canopy to roots)','Skikt (krontak till rötter)',(a,b)=>layerRank(a)-layerRank(b)||(Number(b.m.height)||0)-(Number(a.m.height)||0)],
+  ['hardy','Hardiness (hardiest first)','Härdighet (härdigast först)',(a,b)=>{const t=x=>{const h=hardOf(x.m);if(h)return h.t;const z=seTok(x.m.szone);return z.length?500-Math.max.apply(null,z):999};return t(a)-t(b)}],
+  ['height','Mature height (tallest first)','Höjd (högst först)',(a,b)=>(isEmpty(b.m.height)?-1:Number(b.m.height))-(isEmpty(a.m.height)?-1:Number(a.m.height))],
+  ['harvest','Harvest month (earliest first)','Skördemånad (tidigast först)',(a,b)=>firstMonth(a,'cal3')-firstMonth(b,'cal3')],
+  ['flower','Flowering month (earliest first)','Blomningsmånad (tidigast först)',(a,b)=>firstMonth(a,'cal2')-firstMonth(b,'cal2')],
+  ['name','Name','Namn',byName]
+];
+const CMP_COLS=[
+  ['type','Type','Typ',1],['size','Height × spread','Höjd × bredd',1],['layer','Layer','Skikt',1],['hardy','Hardiness','Härdighet',1],
+  ['light','Light','Ljus',1],['moist','Moisture','Fukt',1],['soil','Soil','Jord',0],['cal2','Flowering','Blomning',0],['cal3','Harvest','Skörd',1],
+  ['uses','Uses','Användning',0],['edib','Edibility','Ätlighet',1],['eco','Ecosystem','Ekosystem',0],['verdict','Use it?','Använda?',1]
+];
+const cmpColOn=k=>cmpPref.cols?cmpPref.cols.has(k):!!(CMP_COLS.find(c=>c[0]===k)||[])[3];
+function cmpTableHTML(list){
+  const lang=state.lang,dash='<span class="muted">–</span>';
+  const V=(x,k)=>{const d=DEF[k],v=x.m[k];return isEmpty(v)||!d?'':esc(vtl(d,v,x.form,lang))};
+  const months=(x,k)=>isEmpty(x.m[k])?'':'<span class="cmo">'+MONTHS.map((l,i)=>'<i'+((x.m[k]||[]).indexOf(i+1)>=0?' class="on"':'')+' title="'+MONTH_NAMES[i]+'"></i>').join('')+'</span>';
+  const cell={type:x=>V(x,'type'),size:x=>esc(isEmpty(x.m.spread)?fmtLen(x.m.height):fmtSize(x.m.height,x.m.spread)),layer:x=>V(x,'layer'),
+    hardy:x=>[x.m.szone?'SE '+esc(x.m.szone):'',x.m.usda?'USDA '+esc(x.m.usda):'',x.m.rhs?'RHS '+esc(x.m.rhs):''].filter(Boolean).join(' · '),
+    light:x=>V(x,'light'),moist:x=>x.m.moist?esc(x.m.moist+'/5'):'',soil:x=>V(x,'soil'),cal2:x=>months(x,'cal2'),cal3:x=>months(x,'cal3'),
+    uses:x=>V(x,'uses'),edib:x=>isEmpty(x.m.edibility)?'':Number(x.m.edibility)===0?esc(trs('Inedible','Oätlig')):dots(x.m.edibility,5),eco:x=>V(x,'eco'),verdict:x=>x.m.verdict?dots(x.m.verdict,5):''};
+  const cols=CMP_COLS.filter(c=>cmpColOn(c[0]));
+  const srt=CMP_SORTS.find(z=>z[0]===cmpPref.sort)||CMP_SORTS[0];
+  const rows=list.slice().sort((a,b)=>srt[3](a,b)||byName(a,b));
+  // Sorted by layer: a heading row for each layer, so the table reads from the canopy down.
+  let lastL=null;
+  const body=rows.map(x=>{
+    let h='';if(srt[0]==='layer'){const r=layerRank(x);if(r!==lastL){lastL=r;const o=LAYER[r];h='<tr class="cmpgrp"><th colspan="'+(cols.length+2)+'">'+(o?esc(trs(o.en,o.sv)):esc(tr('No layer recorded','Inget skikt angivet','Geen laag vastgelegd')))+'</th></tr>'}}
+    return h+'<tr><td class="cmpnm"><span class="ph sm" style="--c:'+FCOL[x.form]+'">'+phInner(x,1)+'</span><button type="button" class="lnk" data-open="'+esc(x.ref)+'"><i>'+esc(x.latin)+'</i>'+(x.isCv?' '+esc(cvQ(x.cv)):'')+'</button>'+(commonName(x)?'<br><small>'+esc(commonName(x))+'</small>':'')+'</td>'+
+      cols.map(c=>{const v=cell[c[0]](x);return '<td>'+(v||dash)+'</td>'}).join('')+
+      '<td><button type="button" class="btn sm" data-cmp-del="'+esc(x.ref)+'" aria-label="'+esc(tr('Remove','Ta bort','Verwijderen'))+'">×</button></td></tr>'}).join('');
+  return '<div class="tbl"><table class="cmpt cmptab"><thead><tr><th scope="col">'+esc(tr('Species','Art','Soort'))+'</th>'+cols.map(c=>'<th scope="col">'+esc(trs(c[1],c[2]))+'</th>').join('')+'<th></th></tr></thead><tbody>'+body+'</tbody></table></div>';
+}
 function updateCompare(){
   cmp=cmp.filter(x=>byRef(x));
-  const list=cmp.map(byRef),lang=state.lang;
+  const list=cmp.map(byRef),side=cmpPref.view==='side';
   const opts=species.slice().sort(byName).map(x=>'<option value="'+esc(x.sid)+'">'+esc(dispName(x))+'</option>'+x.cvs.map(c=>'<option value="'+esc(c.ref)+'">'+'\u00a0\u00a0\u00a0'+esc(dispName(c))+'</option>').join('')).join('');
-  $('#cmpPick').innerHTML='<option value="">'+esc(tr('Add a species…','Lägg till en art…'))+'</option>'+opts;
+  $('#cmpPick').innerHTML='<option value="">'+esc(tr('Add a species…','Lägg till en art…','Soort toevoegen…'))+'</option>'+opts;
   $('#cmpPick').disabled=list.length>=CMP_MAX;
-  if(!list.length){$('#cmpTable').innerHTML='<div class="empty"><p>'+tr('Pick two to four species to see them side by side. You can also use “Compare” on a species page, or “Add my favourites”.','Välj två till fyra arter för att se dem sida vid sida. Du kan också använda ”Jämför” på en artsida eller ”Lägg till mina favoriter”.')+'</p></div>';return}
+  const ctl=$('#cmpCtl');
+  if(ctl)ctl.innerHTML='<span class="seg" role="group" aria-label="'+esc(tr('View','Visning','Weergave'))+'"><button type="button" data-cmpview="table" aria-pressed="'+!side+'">'+esc(tr('Table','Tabell','Tabel'))+'</button><button type="button" data-cmpview="side" aria-pressed="'+side+'">'+esc(tr('Side by side','Sida vid sida','Naast elkaar'))+'</button></span>'+
+    (side?'':'<label class="cmpsort">'+esc(tr('Order','Ordning','Volgorde'))+' <select id="cmpSort">'+CMP_SORTS.map(z=>'<option value="'+z[0]+'"'+(z[0]===cmpPref.sort?' selected':'')+'>'+esc(trs(z[1],z[2]))+'</option>').join('')+'</select></label>'+
+    '<span class="chips cmpcols" aria-label="'+esc(tr('Columns','Kolumner','Kolommen'))+'">'+CMP_COLS.map(c=>'<button type="button" class="chip sm" data-cmpcol="'+c[0]+'" aria-pressed="'+cmpColOn(c[0])+'"><i></i><span>'+esc(trs(c[1],c[2]))+'</span></button>').join('')+'</span>');
+  if(ctl)ctl.hidden=!list.length;
+  if(!list.length){$('#cmpTable').innerHTML='<div class="empty"><p>'+tr('Add species to compare them in a table: one at a time, “Add my favourites”, “Compare” on a species page, a list, or the tick boxes in Pick a plant.','Lägg till arter för att jämföra dem i en tabell: en i taget, ”Lägg till mina favoriter”, ”Jämför” på en artsida, en lista eller kryssrutorna i Välj en växt.','Voeg soorten toe om ze in een tabel te vergelijken: één voor één, “Mijn favorieten toevoegen”, “Vergelijken” op een soortpagina, een lijst of de vinkjes in Kies een plant.')+'</p></div>';return}
+  if(side){const sl=list.slice(0,CMP_SIDE);$('#cmpTable').innerHTML=(list.length>CMP_SIDE?'<p class="muted">'+esc(tr('Side by side shows the first '+CMP_SIDE+' of '+list.length+'. The table shows all.','Sida vid sida visar de första '+CMP_SIDE+' av '+list.length+'. Tabellen visar alla.','Naast elkaar toont de eerste '+CMP_SIDE+' van '+list.length+'. De tabel toont alle.'))+'</p>':'')+cmpSideHTML(sl);return}
+  $('#cmpTable').innerHTML=cmpTableHTML(list)+'<p class="muted" style="font-size:13px">'+esc(tr(list.length+' species. Tap a name to open its page.',list.length+' arter. Tryck på ett namn för att öppna sidan.',list.length+' soorten. Tik op een naam om de pagina te openen.'))+'</p>';
+}
+function cmpSet(kind,v){
+  if(kind==='view'){cmpPref.view=v==='side'?'side':'table';store.set('ab.cmpview',cmpPref.view)}
+  else if(kind==='sort'){cmpPref.sort=v;store.set('ab.cmpsort',v)}
+  else if(kind==='col'){if(!cmpPref.cols)cmpPref.cols=new Set(CMP_COLS.filter(c=>c[3]).map(c=>c[0]));if(cmpPref.cols.has(v))cmpPref.cols.delete(v);else cmpPref.cols.add(v);store.set('ab.cmpcols',JSON.stringify([...cmpPref.cols]))}
+  updateCompare();
+}
+function cmpSideHTML(list){
+  const lang=state.lang;
   const V=(x,k)=>{const d=DEF[k],v=x.m[k];return isEmpty(v)||!d?'':esc(vtl(d,v,x.form,lang))};
   const months=(x,k)=>'<span class="cmo">'+MONTHS.map((l,i)=>'<i'+((x.m[k]||[]).indexOf(i+1)>=0?' class="on"':'')+' title="'+MONTH_NAMES[i]+'"></i>').join('')+'</span>';
   const rows=[
     ['Type','Typ',x=>V(x,'type')],['Status','Status',x=>V(x,'status')],
-    ['Height × spread','Höjd × bredd',x=>!isEmpty(x.m.height)?esc(x.m.height+(isEmpty(x.m.spread)?'':' × '+x.m.spread)+' '+(unitOf(DEF.height,x.form)||'')):''],
+    ['Height × spread','Höjd × bredd',x=>!isEmpty(x.m.height)?esc(isEmpty(x.m.spread)?fmtLen(x.m.height):fmtSize(x.m.height,x.m.spread)):''],
     ['Light','Ljus',x=>V(x,'light')],['Moisture','Fukt',x=>V(x,'moist')],['Soil','Jord',x=>V(x,'soil')],['pH','pH',x=>V(x,'ph')],['Tolerates','Tål',x=>V(x,'tol')],
     ['Hardiness','Härdighet',x=>[x.m.usda?'USDA '+esc(x.m.usda):'',x.m.szone?'SE '+esc(x.m.szone):'',x.m.rhs?'RHS '+esc(x.m.rhs):''].filter(Boolean).join(' · ')],
     ['Layer','Skikt',x=>V(x,'layer')],['Role','Roll',x=>V(x,'role')],['Structure','Struktur',x=>V(x,'struct')],
@@ -34,7 +90,7 @@ function updateCompare(){
     const ca=CAL_ACT.find(z=>z[0]===r[0]),lab=ca?trh(ca[1],ca[2]):trh(r[0],r[1]);
     const diff=new Set(cells.map(c=>c.replace(/<[^>]+>/g,''))).size>1;
     return '<tr'+(diff?' class="diff"':'')+'><th scope="row">'+lab+'</th>'+cells.map(c=>'<td>'+(c||'<span class="muted">–</span>')+'</td>').join('')+'</tr>'}).join('');
-  $('#cmpTable').innerHTML='<div class="tbl"><table class="cmpt"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div><p class="muted" style="font-size:13px">'+tr('Rows where the species differ are marked. Empty rows are hidden.','Rader där arterna skiljer sig är markerade. Tomma rader döljs.')+'</p>';
+  return '<div class="tbl"><table class="cmpt"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div><p class="muted" style="font-size:13px">'+tr('Rows where the species differ are marked. Empty rows are hidden.','Rader där arterna skiljer sig är markerade. Tomma rader döljs.')+'</p>';
 }
 
 /* ---------- planning: calendar ---------- */

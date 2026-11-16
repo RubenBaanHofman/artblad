@@ -104,6 +104,73 @@ function updateAdmin(){
     '<div class="stack">'+(rows||'<p class="muted">'+esc(tr('Nothing here.','Inget här.','Niets hier.'))+'</p>')+'</div>'+(list.length>admState.n?'<div class="acts"><button type="button" class="btn sm" data-act="adm-more">'+esc(tr('Show more','Visa fler','Meer tonen'))+' ('+(list.length-admState.n)+')</button></div>':'');
   box.innerHTML=note+(REV.on?sec(esc(tr('Verified species','Verifierade arter','Geverifieerde soorten')),bar):'')+
     sec(esc(tr('Artie requests','Artie-förfrågningar','Artie-aanvragen'))+(open.length?' <span class="admcount">'+open.length+'</span>':''),artie)+
-    sec(esc(tr('Possible problems','Möjliga problem','Mogelijke problemen')),problemsHTML())+sec(esc(tr('Charts','Diagram','Grafieken')),chartsHTML())+sec(esc(tr('Storage and traffic','Lagring och trafik','Opslag en verkeer')),usageHTML())+
+    sec(esc(tr('Possible problems','Möjliga problem','Mogelijke problemen')),problemsHTML())+sec(esc(tr('Charts','Diagram','Grafieken')),chartsHTML())+sec(esc(tr('Storage and traffic','Lagring och trafik','Opslag en verkeer')),usageHTML())+sec(esc(tr('Service check','Tjänstekontroll','Dienstencontrole')),chkHTML())+sec(esc(tr('Unused photo files','Oanvända fotofiler','Ongebruikte fotobestanden')),orphHTML())+
     (REV.on?sec(esc(tr('Flagged for review','Flaggade för granskning','Gemeld voor controle'))+(REV.flags.length?' <span class="admcount">'+REV.flags.length+'</span>':''),flags)+sec(esc(tr('Review register','Granskningsregister','Controleregister')),reg):'');
+}
+
+/* ---------- 2.6.0: service check (queue rows 72 and 3) ----------
+   One button tests the app's own back end (read, save, live updates, photo storage, database functions) and every
+   outside service in SERVICES (01-core.js). Nothing is changed: the save test writes your own display name back
+   unchanged, the photo test uploads a 1-pixel image and removes it again. */
+const CHK={busy:false,res:null,at:0};
+const PIXEL_JPG='/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
+async function chkRun(){
+  if(CHK.busy)return;CHK.busy=true;updateAdmin();
+  const out=[],T=async(id,label,fn)=>{const t0=Date.now();try{const msg=await fn();out.push({id,label,ok:true,msg:msg||'',ms:Date.now()-t0})}catch(e){out.push({id,label,ok:false,msg:(e&&(e.message||e.code))||String(e),ms:Date.now()-t0})}};
+  const sbErr=r=>{if(r&&r.error)throw r.error;return r};
+  await T('read',tr('Read species data','Läsa artdata','Soortgegevens lezen'),async()=>{const r=sbErr(await SB.from('entries').select('id',{count:'exact',head:true}));return (r.count!=null?r.count+' '+tr('entries','poster','invoeren'):'')});
+  await T('rpc',tr('Database functions','Databasfunktioner','Databasefuncties'),async()=>{const r=sbErr(await SB.rpc('my_role'));return String(r.data||'')});
+  await T('save',tr('Save (display name written back unchanged)','Spara (visningsnamnet skrivs tillbaka oförändrat)','Opslaan (weergavenaam ongewijzigd teruggeschreven)'),async()=>{const uid=meUid();const p=sbErr(await SB.from('profiles').select('display_name').eq('user_id',uid).maybeSingle());if(!p.data)return tr('no display name set: skipped','inget visningsnamn: hoppades över','geen weergavenaam: overgeslagen');sbErr(await SB.from('profiles').upsert({user_id:uid,display_name:p.data.display_name,updated_at:new Date().toISOString()}));return ''});
+  await T('live',tr('Live updates','Liveuppdateringar','Live-updates'),async()=>{const st=RT&&RT.state;if(st==='joined')return '';throw new Error(st?'state: '+st:tr('not connected','inte ansluten','niet verbonden'))});
+  await T('photo',tr('Photo storage (upload and remove a test image)','Fotolagring (ladda upp och ta bort en testbild)','Fotoopslag (testafbeelding uploaden en verwijderen)'),async()=>{
+    const bin=atob(PIXEL_JPG),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);
+    const name='check-'+randHex(6)+'.jpg';sbErr(await SB.storage.from('photos').upload(name,new Blob([u8],{type:'image/jpeg'}),{contentType:'image/jpeg'}));sbErr(await SB.storage.from('photos').remove([name]));return ''});
+  for(const id of Object.keys(SERVICES)){
+    const s=SERVICES[id];
+    await T('svc:'+id,s.name,async()=>{
+      if(s.off)return tr('switched off in config.js','avstängd i config.js','uitgeschakeld in config.js');
+      const url=id==='tiles'?s.url.replace('{s}','a').replace('{z}/{x}/{y}',s.test):s.url+(s.test||'');
+      const c=new AbortController(),t=setTimeout(()=>c.abort(),15000);
+      try{const r=await svcFetch(id,url,id==='tiles'?{signal:c.signal,mode:'no-cors'}:{signal:c.signal});if(r.type!=='opaque'&&!r.ok&&r.status!==429)throw new Error('HTTP '+r.status);return (r.status===429?tr('reachable, limit reached for now','nåbar, gränsen nådd just nu','bereikbaar, limiet nu bereikt'):'')+(s.custom?' · '+tr('own address from config.js','egen adress från config.js','eigen adres uit config.js'):'')}
+      finally{clearTimeout(t)}});
+  }
+  CHK.res=out;CHK.at=Date.now();CHK.busy=false;updateAdmin();
+}
+function chkHTML(){
+  const last=[...SVC_ST.entries()];
+  const res=CHK.res?'<table class="cmpt chkt"><tbody>'+CHK.res.map(x=>'<tr class="'+(x.ok?'ok':'bad')+'"><td>'+(x.ok?'✓':'✗')+'</td><th scope="row">'+esc(x.label)+'</th><td>'+esc(x.msg)+'</td><td class="muted">'+x.ms+' ms</td></tr>').join('')+'</tbody></table><p class="muted" style="font-size:13px">'+esc(tr('Checked ','Kontrollerat ','Gecontroleerd '))+esc(new Date(CHK.at).toLocaleTimeString(LOC()))+'. '+esc(tr('Only Supabase is needed for reading and saving; the outside services add extras.','Bara Supabase behövs för att läsa och spara; de externa tjänsterna ger extra funktioner.','Alleen Supabase is nodig voor lezen en opslaan; de externe diensten voegen extra’s toe.'))+'</p>':'';
+  const seen=last.length?'<p class="muted" style="font-size:13px">'+esc(tr('Used this session: ','Använt under sessionen: ','Gebruikt in deze sessie: '))+last.map(([id,v])=>esc((SERVICES[id]||{}).name||id)+' '+(v.ok?'✓':'✗'+(v.msg?' ('+esc(v.msg)+')':''))).join(' · ')+'</p>':'';
+  return '<p class="muted">'+esc(tr('Tests the database, saving, live updates, photo storage and each outside service. Nothing is changed.','Testar databasen, sparande, liveuppdateringar, fotolagring och varje extern tjänst. Inget ändras.','Test de database, opslaan, live-updates, fotoopslag en elke externe dienst. Er verandert niets.'))+'</p>'+
+    '<div class="acts"><button type="button" class="btn sm primary" data-act="chk-run"'+(CHK.busy?' disabled':'')+'>'+esc(CHK.busy?tr('Checking…','Kontrollerar…','Controleren…'):tr('Run the check','Kör kontrollen','Controle uitvoeren'))+'</button></div>'+res+seen;
+}
+
+/* ---------- 2.6.0: photo files that nothing uses any more (queue row 75) ----------
+   Since 2.5.1 a replaced photo stays in storage until the trash is emptied (it could still be restored). This lists files
+   that no entry or observation (live or in the trash) points to and that are older than a day, and can delete them. */
+const ORPH={busy:false,list:null,err:''};
+async function orphFind(){
+  ORPH.busy=true;ORPH.err='';updateAdmin();
+  try{
+    let files=[],off=0;for(;;){const r=await SB.storage.from('photos').list('',{limit:1000,offset:off,sortBy:{column:'name',order:'asc'}});if(r.error)throw r.error;files=files.concat(r.data||[]);if(!r.data||r.data.length<1000)break;off+=1000}
+    const day=Date.now()-864e5,ids=new Map();
+    files.forEach(f=>{const m=/^([0-9a-f]+)(_t)?\.jpg$/.exec(f.name);if(!m)return;const o=ids.get(m[1])||{id:m[1],files:[],size:0,at:0};o.files.push(f.name);o.size+=((f.metadata||{}).size)||0;o.at=Math.max(o.at,new Date(f.created_at||f.updated_at||0).getTime());ids.set(m[1],o)});
+    ORPH.list=[...ids.values()].filter(o=>!photoUsed(o.id)&&o.at&&o.at<day).sort((a,b)=>a.at-b.at);ORPH.total=ids.size;
+  }catch(e){ORPH.err=errMsg(e)}
+  ORPH.busy=false;updateAdmin();
+}
+async function orphDelete(){
+  if(!ORPH.list||!ORPH.list.length)return;ORPH.busy=true;updateAdmin();
+  try{const names=[].concat(...ORPH.list.filter(o=>!photoUsed(o.id)).map(o=>o.files));for(let i=0;i<names.length;i+=100){const r=await SB.storage.from('photos').remove(names.slice(i,i+100));if(r.error)throw r.error}
+    toast(tr('Deleted ','Raderade ','Verwijderd: ')+ORPH.list.length+tr(' unused photos',' oanvända foton',' ongebruikte foto’s'));ORPH.list=[]}
+  catch(e){ORPH.err=errMsg(e)}
+  ORPH.busy=false;updateAdmin();
+}
+function orphHTML(){
+  const kb=n=>n>1048576?(Math.round(n/104857.6)/10)+' MB':Math.max(1,Math.round(n/1024))+' kB';
+  let body='<p class="muted">'+esc(tr('Photo files that no entry or observation uses any more (also not in the trash), older than a day.','Fotofiler som ingen post eller observation använder längre (inte heller i papperskorgen), äldre än ett dygn.','Fotobestanden die geen invoer of waarneming meer gebruikt (ook niet in de prullenbak), ouder dan een dag.'))+'</p>';
+  body+='<div class="acts"><button type="button" class="btn sm" data-act="orph-find"'+(ORPH.busy?' disabled':'')+'>'+esc(ORPH.busy?tr('Working…','Arbetar…','Bezig…'):tr('Look for unused photos','Leta efter oanvända foton','Ongebruikte foto’s zoeken'))+'</button>'+
+    (ORPH.list&&ORPH.list.length?'<button type="button" class="btn sm danger" data-act="orph-del"'+(ORPH.busy?' disabled':'')+'>'+esc(tr('Delete these ','Radera dessa ','Deze verwijderen: ')+ORPH.list.length)+'</button>':'')+'</div>';
+  if(ORPH.err)body+='<p class="admwarn">'+esc(ORPH.err)+'</p>';
+  if(ORPH.list)body+=ORPH.list.length?'<p>'+esc(ORPH.list.length+' '+tr('unused of','oanvända av','ongebruikt van')+' '+ORPH.total+' '+tr('photos','foton','foto’s')+' · '+kb(ORPH.list.reduce((a,o)=>a+o.size,0)))+'</p>':'<p class="muted">'+esc(tr('No unused photos.','Inga oanvända foton.','Geen ongebruikte foto’s.'))+'</p>';
+  return body;
 }

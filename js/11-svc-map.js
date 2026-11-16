@@ -1,4 +1,4 @@
-// Artblad: SERVICE: map of planting records (Leaflet served from this site, OpenStreetMap tiles).
+// Artblad: SERVICE: map of planting records (Leaflet served from this site, map tiles from SERVICES.tiles).
 // Part 11 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 /* ---------- map of planting records (Leaflet 1.9.4 from vendor/leaflet since 2.5.1, OpenStreetMap tiles; loaded only when needed) ---------- */
@@ -13,7 +13,10 @@ async function updatePlMap(list){
   const box=$('#plMap');if(!box)return;const pts=list.filter(p=>isFinite(p.lat)&&isFinite(p.lng)&&p.lat!==''&&p.lng!=='');
   box.hidden=!pts.length;if(!pts.length){const k=$('#plMapKey');if(k)k.hidden=true;return}
   try{await loadLeaflet()}catch(e){box.hidden=true;return}
-  if(!plMap){plMap=L.map(box,{scrollWheelZoom:false});L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(plMap);plLayer=L.layerGroup().addTo(plMap)}
+  if(!plMap){plMap=L.map(box,{scrollWheelZoom:false});
+    // Tile address from SERVICES (01-core.js; can be changed in config.js). Without tiles the points still show on a blank map.
+    if(svcOn('tiles')){const tl=L.tileLayer(svcUrl('tiles'),{maxZoom:19,attribution:SERVICES.tiles.attr||''});tl.on('tileerror',()=>svcNote('tiles',false,'tile error'));tl.on('load',()=>svcNote('tiles',true));tl.addTo(plMap)}
+    plLayer=L.layerGroup().addTo(plMap)}
   plLayer.clearLayers();const b=[];
   {const k=$('#plMapKey');if(k)k.hidden=!pts.some(isEnc)}
   pts.forEach(p=>{const s=bySid.get(p.sid),en=isEnc(p);const mk=L.circleMarker([p.lat,p.lng],en?{radius:6,weight:2,dashArray:'3 3',color:'#2f6f8f',fillColor:'#2f6f8f',fillOpacity:.3}:{radius:7,weight:2,color:p.status==='dead'?'#9a3a2a':p.status==='struggling'?'#b07a12':'#2f5d3a',fillOpacity:.6});

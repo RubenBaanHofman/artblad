@@ -20,6 +20,7 @@ const omErr=(kind,ms)=>Object.assign(new Error('limit'),{limit:kind,ms});
 let OM_LAST_ERR=null;
 // One request for one stretch of days; returns the daily minimums. wait: true = wait for the budget (calibration), else throw.
 async function omFetch(lat,lng,a,b,wait,onWait){
+  if(!svcOn('climate'))throw Object.assign(new Error('service off'),{why:'off'});
   const w=omWeight(a,b);
   for(let tries=0;;tries++){
     const q=omWait(w);
@@ -27,9 +28,9 @@ async function omFetch(lat,lng,a,b,wait,onWait){
     const ms=Math.max(q.min,q.hour);
     if(ms){if(!wait)throw omErr(q.hour?'hour':'min',ms);if(onWait)onWait(ms);await new Promise(r=>setTimeout(r,Math.min(ms,15000)));continue}
     omNote(w);
-    const u='https://archive-api.open-meteo.com/v1/archive?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+a+'&end_date='+b+'&daily=temperature_2m_min&models=era5_land&timezone=GMT';
+    const u=svcUrl('climate')+'?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+a+'&end_date='+b+'&daily=temperature_2m_min&models=era5_land&timezone=GMT';
     const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),20000);let r=null,net='';
-    try{r=await fetch(u,{signal:ctl.signal})}catch(e){net=e&&e.name==='AbortError'?'timeout':'connection'}finally{clearTimeout(to)}
+    try{r=await svcFetch('climate',u,{signal:ctl.signal})}catch(e){net=e&&e.name==='AbortError'?'timeout':'connection'}finally{clearTimeout(to)}
     // Connection problems, time-outs and server errors are retried after a pause (refused limit answers can also look like a lost connection).
     if(net||r.status>=500){const bf=window.__omBackoff||1,back0=wait?[1e4,3e4,6e4,12e4][tries]:(tries<1?2000:null),back=back0==null?null:back0*bf;
       if(back==null)throw Object.assign(new Error(net||'HTTP '+r.status),{why:net||'server'});
@@ -44,6 +45,7 @@ async function omFetch(lat,lng,a,b,wait,onWait){
   }
 }
 function omErrMsg(e){
+  if(e&&e.why==='off')return tr('The climate service is switched off in config.js.','Klimattjänsten är avstängd i config.js.','De klimaatdienst staat uit in config.js.');
   if(!e||!e.limit)return tr('The look-up did not work. Try again later.','Uppslaget fungerade inte. Försök igen senare.','Het opzoeken lukte niet. Probeer het later opnieuw.');
   if(e.limit==='day')return tr('Open-Meteo’s free daily limit is used up on this connection. Try again tomorrow.','Open-Meteos fria dagsgräns är förbrukad på den här anslutningen. Försök igen i morgon.','De gratis daglimiet van Open-Meteo is op voor deze verbinding. Probeer het morgen opnieuw.');
   const m=Math.max(1,Math.ceil((e.ms||6e4)/6e4));

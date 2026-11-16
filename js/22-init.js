@@ -1,10 +1,14 @@
 // Artblad: Loading screen and start-up (runs last).
 // Part 22 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
+document.body.classList.toggle('fam',FAMILY);
 /* ---------- loading screen: the logo grows (spruce, birch, lingonberry), then moves into the header ---------- */
 let splashT0=0,namePrompted=false;
 function splashStart(){
   const el=$('#splash');if(!el||window.__noSplash)return;
+  // 2.6.0: the full growing animation only on the first visit of the day; later the finished logo shows for about a second.
+  const day=today(),full=store.get('ab.splashday')!==day;try{store.set('ab.splashday',day)}catch(e){}
+  el.classList.toggle('quick',!full);splashMs=full?SPLASH_FULL:1000;
   el.classList.remove('out','go');const lg=el.querySelector('.splogo');lg.style.transform='';
   el.hidden=false;splashT0=0;
   const begin=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{el.classList.add('go');splashT0=Date.now()}));
@@ -12,12 +16,12 @@ function splashStart(){
   if(document.hidden){const v=()=>{if(!document.hidden){document.removeEventListener('visibilitychange',v);begin()}};document.addEventListener('visibilitychange',v)}else begin();
   clearTimeout(splashStart.fail);splashStart.fail=setTimeout(()=>{splashT0=1;splashEnd()},12000);
 }
-const SPLASH_MS=matchMedia('(prefers-reduced-motion: reduce)').matches?900:3600;
+const SPLASH_FULL=matchMedia('(prefers-reduced-motion: reduce)').matches?900:3600;let splashMs=SPLASH_FULL;
 function splashEnd(){
   const el=$('#splash');if(!el||el.hidden)return;
   if(!splashT0){setTimeout(splashEnd,200);return}
   clearTimeout(splashStart.fail);
-  const wait=Math.max(0,SPLASH_MS-(Date.now()-splashT0));
+  const wait=Math.max(0,splashMs-(Date.now()-splashT0));
   setTimeout(()=>{
     if(el.hidden||el.classList.contains('out'))return;
     const lg=el.querySelector('.splogo'),to=$('.top .brand .bm');
@@ -112,3 +116,5 @@ addEventListener('resize',dockSize);addEventListener('load',dockSize);
   await applySession(r.data&&r.data.session);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&SB&&(curUid||cfg.PUBLIC_READ))loadAll()});
 })();
+// 2.6.0: offline start (sw.js keeps a copy of the site's own files; network first, so updates are never held back).
+if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(()=>{})}

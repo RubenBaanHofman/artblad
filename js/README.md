@@ -8,7 +8,8 @@ Until 2.4.7 all logic was one file, `app.js`. Since 2.5.0 the same code is split
 - **Order matters only for code that runs while the page loads** (top-level statements and functions they call). That code may only use names from the same or an earlier part. `dev/check_parts.mjs` checks this.
 - Everything runs in strict mode (`'use strict'` at the top of each part).
 - `22-init.js` starts the app and must stay last.
-- Parts whose name starts with `svc-` hold the code that talks to an outside service (see the Dependencies tab in the improvement document). Replacing a service should mean changing that part only.
+- Parts whose name starts with `svc-` hold the code that talks to an outside service (see the Dependencies tab in the improvement document). Since 2.6.0 every address lives in `SERVICE_DEFAULTS` (end of `01-core.js`) and is called through `svcFetch`, so a provider can be swapped or switched off in `config.js` (`SERVICES: { tiles: { url: "…" }, gbif: false }`) without changing code. The admin page has a Service check that tests them all.
+- `sw.js` (next to `index.html`, since 2.6.0) lets the app open without a connection. It always tries the network first, so it never holds back an update.
 
 ## Rules when editing
 
@@ -21,25 +22,25 @@ Until 2.4.7 all logic was one file, `app.js`. Since 2.5.0 the same code is split
 
 | File | Contains | Lines |
 |---|---|---|
-| `01-core.js` | Helpers, option lists, field schema, cultivars, app state | 167 |
-| `02-data.js` | Data layer (Supabase or in-memory demo), favourites, photos, merging entries | 141 |
-| `03-artie-sources.js` | Outside sources pre-filled by Artie (the bot): labels and rules | 96 |
+| `01-core.js` | Helpers, option lists, field schema, lengths (cm/m), cultivars, app state, family/public setting, outside-service registry | 235 |
+| `02-data.js` | Data layer (Supabase or in-memory demo), offline copy on the device, favourites, photos, merging entries | 176 |
+| `03-artie-sources.js` | Outside sources pre-filled by Artie (the bot): labels and rules | 99 |
 | `04-i18n.js` | Labels and language switching | 41 |
 | `05-print.js` | Printable A5 sheet, QR codes and links to a species | 119 |
 | `06-values.js` | Value text in the chosen language | 149 |
-| `07-species.js` | Species card, overview, Add/Edit form and its draft, sheet view | 310 |
-| `08-winter.js` | Winter survival records and sanity checks | 61 |
+| `07-species.js` | Species card, overview, Add/Edit form and its draft, sheet view | 317 |
+| `08-winter.js` | Winter survival records and sanity checks | 63 |
 | `09-svc-gbif-names.js` | SERVICE: Latin name check while typing (GBIF name service) | 21 |
 | `10-visuals.js` | Pictograms, layer diagram, year wheel, genus, grid, display, season, shields, bulk fill, admin extras | 238 |
-| `11-svc-map.js` | SERVICE: map of planting records (Leaflet from cdnjs, OpenStreetMap tiles) | 22 |
-| `12-review-live.js` | Install on home screen; section marks, dismissed problems, live updates for admins | 139 |
-| `13-svc-zones-soil.js` | SERVICE: Swedish zones and winter temperatures; soil permeability (SGU open data) | 62 |
-| `14-review.js` | Verified marks, review flags and admin dashboard | 109 |
+| `11-svc-map.js` | SERVICE: map of planting records (Leaflet from vendor/leaflet, tiles from SERVICES.tiles) | 25 |
+| `12-review-live.js` | Install on home screen; section marks, dismissed problems, live updates for admins | 142 |
+| `13-svc-zones-soil.js` | SERVICE: Swedish zones and winter temperatures; soil permeability (SGU open data) | 63 |
+| `14-review.js` | Verified marks, review flags, admin dashboard, service check, unused photo files | 176 |
 | `15-exports.js` | Exports, picture-slot icons, completeness and gaps, links, near matches, renames, plant sources | 209 |
-| `16-autofill.js` | Auto-fill requests (Artie) and my contributions | 156 |
-| `17-planning.js` | Planning: compare, calendar, pick a plant, hardiness scale | 307 |
+| `16-autofill.js` | Auto-fill requests (Artie) and my contributions | 146 |
+| `17-planning.js` | Planning: compare (table and side by side), calendar, pick a plant, hardiness scale | 363 |
 | `18-plantings.js` | Planting records and comments | 42 |
-| `19-svc-climate.js` | SERVICE: winter climate of a map position (Open-Meteo archive, ERA5-Land) | 160 |
+| `19-svc-climate.js` | SERVICE: winter climate of a map position (Open-Meteo archive, ERA5-Land) | 162 |
 | `20-lists.js` | Shared lists, who and when, trash, display name, manual | 102 |
-| `21-ui.js` | Home, navigation, events, sign-in, roles and realtime | 342 |
-| `22-init.js` | Loading screen and start-up (runs last) | 109 |
+| `21-ui.js` | Home, navigation, events, sign-in, roles and realtime | 354 |
+| `22-init.js` | Loading screen, start-up and the offline service worker (runs last) | 120 |

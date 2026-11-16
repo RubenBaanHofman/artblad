@@ -8,6 +8,31 @@ const COLS='id,data,author,updated_by,updated_at,deleted_at,deleted_by,created_a
 async function fetchAll(t,cols){let out=[],from=0;for(;;){const r=await SB.from(t).select(cols||COLS).order('id').range(from,from+999);if(r.error)throw r.error;out=out.concat(r.data);if(r.data.length<1000)break;from+=1000}return out}
 // Fixed species numbers from the database (update v8, since 2.5.1); null when not available (then the list order is used).
 let SPNO=null;
+/* ---------- offline reading (2.6.0): the last data read is kept on this device (IndexedDB) for the signed-in person.
+   When the database cannot be reached, the app shows that copy, read-only, with a banner saying from when it is.
+   Signing out removes it. Photos are not kept (they come from Supabase Storage). */
+const OFFDB='artblad-offline';
+function offDb(){return new Promise((ok,no)=>{if(!window.indexedDB)return no(new Error('no indexedDB'));const q=indexedDB.open(OFFDB,1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error)})}
+async function offPut(v){const db=await offDb();await new Promise((ok,no)=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,'data');t.oncomplete=ok;t.onerror=()=>no(t.error)});db.close()}
+async function offGet(){const db=await offDb();const v=await new Promise((ok,no)=>{const q=db.transaction('kv').objectStore('kv').get('data');q.onsuccess=()=>ok(q.result||null);q.onerror=()=>no(q.error)});db.close();return v}
+async function offClear(){try{const db=await offDb();await new Promise(ok=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').clear();t.oncomplete=ok;t.onerror=ok});db.close()}catch(e){}}
+let OFFLINE_AT=0; // when the copy on screen was saved; 0 = live data
+function applyRows(r,adm){
+  META.clear();PROFILES.clear();
+  (r[2].data||[]).forEach(p=>PROFILES.set(p.user_id,p.display_name));
+  const keep=(rows,kind)=>rows.map(x=>{META.set(x.id,{kind,author:x.author,updatedBy:x.updated_by,updatedAt:x.updated_at,deletedAt:x.deleted_at,deletedBy:x.deleted_by,createdAt:x.created_at});return Object.assign({id:x.id},x.data)});
+  const E=keep(r[0],'entry').map(e=>e.fields?lenNorm(Object.assign(e,{fields:normFields(e.fields)})):e),O=keep(r[1],'obs'),live=x=>!META.get(x.id).deletedAt;
+  state.entries=E.filter(live);state.obs=O.filter(live);state.trashE=E.filter(x=>!live(x));state.trashO=O.filter(x=>!live(x));
+  const Pl=keep(r[3],'planting'),Li=keep(r[4],'list');state.plantings=Pl.filter(live);state.lists=Li.filter(live);state.trashP=Pl.filter(x=>!live(x));state.trashL=Li.filter(x=>!live(x));
+  const Cm=keep(r[5],'comment');state.comments=Cm.filter(live);state.trashC=Cm.filter(x=>!live(x));
+  SPNO=r[8]&&!r[8].error&&Array.isArray(r[8].data)&&r[8].data.length?new Map(r[8].data.map(x=>[x.sid,Number(x.no)])):null;
+  revSet(adm&&r[6]&&!r[6].error?r[6].data:null);if(adm&&r[7]&&!r[7].error)afRows=r[7].data||[];
+}
+function offBanner(){
+  const b=$('#banner');if(!OFFLINE_AT)return;b.hidden=false;
+  const d=new Date(OFFLINE_AT),when=d.toLocaleDateString(LOC())+' '+d.toLocaleTimeString(LOC(),{hour:'2-digit',minute:'2-digit'});
+  b.textContent=tr('Offline: showing the copy on this device from ','Offline: visar kopian på den här enheten från ','Offline: de kopie op dit apparaat van ')+when+tr('. Changes cannot be saved until the connection is back.','. Ändringar kan inte sparas förrän anslutningen är tillbaka.',' wordt getoond. Wijzigingen kunnen pas worden opgeslagen als de verbinding terug is.');
+}
 async function loadAll(){
   if(!SB)return;
   try{
@@ -15,28 +40,32 @@ async function loadAll(){
     const r=await Promise.all([fetchAll('entries'),fetchAll('obs'),SB.from('profiles').select('user_id,display_name'),CANW?fetchAll('plantings').catch(()=>[]):[],CANW?fetchAll('lists').catch(()=>[]):[],fetchAll('comments').catch(()=>[]),
       adm?soft(SB.rpc('review_state')):null,adm?soft(SB.from('autofill_requests').select('sid,latin,n,status,first_requested_at,last_requested_at,sent_at').order('first_requested_at')):null,
       soft(SB.from('species_numbers').select('sid,no'))]);
-    META.clear();PROFILES.clear();
-    (r[2].data||[]).forEach(p=>PROFILES.set(p.user_id,p.display_name));
-    const keep=(rows,kind)=>rows.map(x=>{META.set(x.id,{kind,author:x.author,updatedBy:x.updated_by,updatedAt:x.updated_at,deletedAt:x.deleted_at,deletedBy:x.deleted_by,createdAt:x.created_at});return Object.assign({id:x.id},x.data)});
-    const E=keep(r[0],'entry').map(e=>e.fields?Object.assign(e,{fields:normFields(e.fields)}):e),O=keep(r[1],'obs'),live=x=>!META.get(x.id).deletedAt;
-    state.entries=E.filter(live);state.obs=O.filter(live);state.trashE=E.filter(x=>!live(x));state.trashO=O.filter(x=>!live(x));
-    const Pl=keep(r[3],'planting'),Li=keep(r[4],'list');state.plantings=Pl.filter(live);state.lists=Li.filter(live);state.trashP=Pl.filter(x=>!live(x));state.trashL=Li.filter(x=>!live(x));
-    const Cm=keep(r[5],'comment');state.comments=Cm.filter(live);state.trashC=Cm.filter(x=>!live(x));
-    SPNO=r[8]&&!r[8].error&&Array.isArray(r[8].data)&&r[8].data.length?new Map(r[8].data.map(x=>[x.sid,Number(x.no)])):null;
-    revSet(adm&&r[6]&&!r[6].error?r[6].data:null);if(adm&&r[7]&&!r[7].error)afRows=r[7].data||[];
+    if(r[2].error)throw r[2].error;
+    // The copy for offline use is taken before applyRows, which adjusts the rows it reads (lengths, field names).
+    {const uid=meUid();if(uid){let copy=null;try{copy=JSON.parse(JSON.stringify([r[0],r[1],{data:r[2].data||[]},r[3],r[4],r[5],null,null,{data:(r[8]&&r[8].data)||[]}]))}catch(x){}if(copy)offPut({uid,at:Date.now(),v:APP_VERSION,r:copy}).catch(()=>{})}}
+    applyRows(r,adm);OFFLINE_AT=0;document.body.classList.remove('offline');
     $('#banner').hidden=true;loaded=true;lastLoad=Date.now();renderAcct();refresh();
   }catch(e){
-    loaded=true;const b=$('#banner');b.hidden=false;b.textContent=tr('Could not read the species data (','Kunde inte läsa artdata (','Kon de soortgegevens niet lezen (')+((e&&(e.code||e.message))||'error')+tr('). Check your connection and reload.','). Kontrollera anslutningen och ladda om.','). Controleer je verbinding en laad opnieuw.');refresh();
+    loaded=true;
+    let c=null;const uid=meUid();if(uid){try{c=await offGet()}catch(x){}}
+    if(c&&c.uid===uid&&Array.isArray(c.r)){applyRows(c.r,false);OFFLINE_AT=c.at;document.body.classList.add('offline');offBanner();renderAcct();refresh();return}
+    const b=$('#banner');b.hidden=false;b.textContent=tr('Could not read the species data (','Kunde inte läsa artdata (','Kon de soortgegevens niet lezen (')+((e&&(e.code||e.message))||'error')+tr('). Check your connection and reload.','). Kontrollera anslutningen och ladda om.','). Controleer je verbinding en laad opnieuw.');refresh();
   }
 }
+// Back online: read the live data again.
+addEventListener('online',()=>{if(OFFLINE_AT&&SB)loadAll()});
 async function loadFav(uid){const r=await SB.from('favorites').select('sids').eq('user_id',uid).maybeSingle();if(!r.error)Fav.set=new Set((r.data&&r.data.sids)||[])}
 const gone=()=>({code:'42501',message:'Nothing was deleted: you may not have permission.'});
+// Entries written by this version store lengths in centimetres (see lenNorm in 01-core.js).
+const luTag=doc=>{if(doc&&doc.fields)doc.lu='cm';return doc};
 const Data={
   async saveEntry(id,doc){
+    luTag(doc);
     if(SB){const r=await SB.from('entries').upsert({id:id||newId(),data:doc});if(r.error)throw r.error;await loadAll()}
     else{const i=id||('local'+(++mem.n));const k=mem.entries.findIndex(x=>x.id===i);const o=Object.assign({id:i},doc);if(k<0)mem.entries.push(o);else mem.entries[k]=o;state.entries=mem.entries.slice();refresh()}
   },
   async saveMany(ents,obs){
+    ents.forEach(x=>luTag(x.data));
     if(SB){
       if(ents.length){const r=await SB.from('entries').upsert(ents);if(r.error)throw r.error}
       if(obs.length){const r=await SB.from('obs').upsert(obs);if(r.error)throw r.error}
@@ -57,6 +86,7 @@ const Data={
   async setName(name){const r=await SB.from('profiles').upsert({user_id:meUid(),display_name:name,updated_at:new Date().toISOString()});if(r.error)throw r.error;await loadAll()},
   async saveRows(table,rows){
     if(!rows.length)return;
+    if(table==='entries')rows.forEach(x=>luTag(x.data));
     if(SB){const r=await SB.from(table).upsert(rows);if(r.error)throw r.error;await loadAll()}
     else{const a=(state[table]||[]).slice();rows.forEach(x=>{const i=a.findIndex(y=>y.id===x.id),o=Object.assign({id:x.id},x.data);if(i<0)a.push(o);else a[i]=o});state[table]=a;refresh()}
   },

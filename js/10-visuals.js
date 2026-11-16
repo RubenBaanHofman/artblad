@@ -80,7 +80,7 @@ function genusTableHTML(s,lang,print,only){
   const opt=(o,v)=>{const a=[].concat(v||[]);return a.length?a.map(k=>{const x=o.find(z=>z.k===k);return x?(lang==='sv'?x.sv:lang==='nl'?nl(x.en):x.en):k}).join(', '):dash};
   const typ=m=>{const o=TYPES_ALL.find(x=>x.k===m.type);return o?(lang==='sv'?o.sv:lang==='nl'?nl(o.en):o.en):dash};
   const cols=[['Species','Art',x=>print?'<i>'+esc(x.latin)+'</i>':'<button type="button" class="lnk" data-open="'+esc(x.sid)+'"><i>'+esc(x.latin)+'</i></button>'+(commonName(x)?'<br><small>'+esc(commonName(x))+'</small>':'')],
-    ['Type','Typ',x=>esc(typ(x.m))],['Height','Höjd',x=>x.m.height!=null?esc(x.m.height+' '+(unitOf(DEF.height,x.form)||'')):dash],['Light','Ljus',x=>esc(opt(LIGHT,x.m.light))],
+    ['Type','Typ',x=>esc(typ(x.m))],['Height','Höjd',x=>x.m.height!=null?esc(fmtLen(x.m.height)):dash],['Light','Ljus',x=>esc(opt(LIGHT,x.m.light))],
     ['Moisture','Fukt',x=>x.m.moist?esc(x.m.moist+'/5'):dash],['Hardiness','Härdighet',x=>esc(zone(x.m))],['Edibility','Ätlighet',x=>isEmpty(x.m.edibility)?dash:Number(x.m.edibility)===0?L('Inedible','Oätlig'):esc(x.m.edibility+'/5')],
     ['Layer','Skikt',x=>esc(opt(LAYER,x.m.layer))],['Use it?','Använda?',x=>x.m.verdict?esc(x.m.verdict+'/5'):dash]];
   return '<table class="'+(print?'gtab':'cmpt gentab')+'"><thead><tr>'+cols.map(c=>'<th scope="col">'+L(c[0],c[1])+'</th>').join('')+'</tr></thead><tbody>'+

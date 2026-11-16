@@ -3,19 +3,20 @@
 'use strict';
 /* ---------- 2.4.7: Swedish zones and winter temperatures are kept apart (no conversion between them) ---------- */
 /* Pick a plant: fill in cold, soil and moisture from a map position */
-const SGU_SOIL_WMS='https://resource.sgu.se/service/wms/130/jordarter-25-100-tusen',SGU_SOIL_LAYER='jord:SE.GOV.SGU.JORD.GRUNDLAGER.25K';
-const SGU_PERM_API='https://api.sgu.se/oppnadata/genomslapplighet/ogc/features/v1';
-async function fetchJ(u,ms){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||12000);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error('HTTP '+r.status);const tx=await r.text();try{return JSON.parse(tx)}catch(e){return{_text:tx}}}finally{clearTimeout(t)}}
+// Addresses come from SERVICES.sguSoil and SERVICES.sguPerm (01-core.js; can be changed in config.js).
+const SGU_SOIL_WMS=svcUrl('sguSoil'),SGU_SOIL_LAYER=SERVICES.sguSoil.layer;
+const SGU_PERM_API=svcUrl('sguPerm');
+async function fetchJ(u,ms,id){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||12000);try{const r=id?await svcFetch(id,u,{signal:c.signal}):await fetch(u,{signal:c.signal});if(!r.ok)throw new Error('HTTP '+r.status);const tx=await r.text();try{return JSON.parse(tx)}catch(e){return{_text:tx}}}finally{clearTimeout(t)}}
 const propStrings=f=>Object.entries((f&&f.properties)||{}).filter(([k,v])=>typeof v==='string'&&v.trim());
 async function sguSoil(lat,lng){
   const d=0.0005,u=SGU_SOIL_WMS+'?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&LAYERS='+encodeURIComponent(SGU_SOIL_LAYER)+'&QUERY_LAYERS='+encodeURIComponent(SGU_SOIL_LAYER)+'&STYLES=&CRS=EPSG:4326&BBOX='+[lat-d,lng-d,lat+d,lng+d].map(v=>v.toFixed(6)).join(',')+'&WIDTH=101&HEIGHT=101&I=50&J=50&INFO_FORMAT=application%2Fjson&FEATURE_COUNT=1';
-  const j=await fetchJ(u);
+  const j=await fetchJ(u,0,'sguSoil');
   if(j._text){const m=/jordart[^:=<>]*[:=>]\s*["']?([^"'<\n,}]+)/i.exec(j._text);return m?m[1].trim():null}
   const f=(j.features||[])[0];if(!f)return null;const p=propStrings(f);const k=p.find(([k])=>/jordart/i.test(k))||p.find(([k,v])=>/morän|lera|sand|grus|torv|silt|berg|gyttja|fyll|mo\b|mjäla/i.test(v));return k?k[1].trim():null;
 }
 async function sguPerm(lat,lng){
-  const c=await fetchJ(SGU_PERM_API+'/collections?f=json');const col=((c.collections||[])[0]||{}).id;if(!col)return null;
-  const d=0.0004,j=await fetchJ(SGU_PERM_API+'/collections/'+encodeURIComponent(col)+'/items?f=json&limit=1&bbox='+[lng-d,lat-d,lng+d,lat+d].map(v=>v.toFixed(6)).join(','));
+  const c=await fetchJ(SGU_PERM_API+'/collections?f=json',0,'sguPerm');const col=((c.collections||[])[0]||{}).id;if(!col)return null;
+  const d=0.0004,j=await fetchJ(SGU_PERM_API+'/collections/'+encodeURIComponent(col)+'/items?f=json&limit=1&bbox='+[lng-d,lat-d,lng+d,lat+d].map(v=>v.toFixed(6)).join(','),0,'sguPerm');
   const f=(j.features||[])[0];if(!f)return null;const v=propStrings(f).map(x=>x[1]).find(v=>/hög|medel|låg|high|medium|low/i.test(v));return v||null;
 }
 // Swedish soil-type names (SGU) → the app's soil classes and a moisture guess (1 dry … 5 wet).

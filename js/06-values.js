@@ -12,7 +12,7 @@ function vtl(d,v,form,lang){
   }
   if(d.t==='single'){const x=optsOf(d,form).find(z=>z.k===v);return x?pick(x):String(v)}
   if(d.t==='scale')return d.none&&Number(v)===0?(lang==='sv'?d.none[1]:lang==='nl'?nl(d.none[0]):d.none[0]):v+'/5';
-  if(d.t==='num'){const u=unitOf(d,form);return v+(u?' '+u:'')}
+  if(d.t==='num'){if(LEN_KEYS.indexOf(d.k)>=0)return fmtLen(v);const u=unitOf(d,form);return v+(u?' '+u:'')}
   return String(v);
 }
 const SIC={
@@ -48,10 +48,10 @@ function sheetCardHTML(s,lang,src,z){
   const m=s.m,w=s.form==='w',L=(en,sv)=>esc(lang==='sv'?sv:lang==='en'?en:lang==='nl'?nl(en):en+' · '+sv);
   const P=(opts,k)=>{const a=[].concat(m[k]==null?[]:m[k]),h=opts.filter(o=>a.indexOf(o.k)>=0);return h.length?'<div class="pl">'+h.map(o=>'<span>'+(k==='light'&&SIC[o.k]?SIC[o.k]:'')+L(o.en,o.sv)+'</span>').join('')+'</div>':''};
   const KV=(en,sv,v)=>v?'<div class="pkv"><u>'+L(en,sv)+'</u><b>'+v+'</b></div>':'';
-  const T=k=>m[k]?esc(m[k]):'',N=(k,u)=>m[k]!=null&&m[k]!==''?esc(m[k])+' '+(u||unitOf(DEF[k],s.form)||''):'';
+  const T=k=>m[k]?esc(m[k]):'',N=(k,u)=>m[k]!=null&&m[k]!==''?(LEN_KEYS.indexOf(k)>=0?esc(fmtLen(m[k])):esc(m[k])+' '+(u||unitOf(DEF[k],s.form)||'')):'';
   const DD=n=>'<span class="pdd">'+[1,2,3,4,5].map(i=>'<i'+(i<=n?' class="on"':'')+'></i>').join('')+'</span>';
-  const size=(m.height!=null||m.spread!=null)?esc(m.height!=null?m.height:'?')+' × '+esc(m.spread!=null?m.spread:'?')+' '+unitOf(DEF.height,s.form):'';
-  const nat=(m.nativeH!=null||m.nativeW!=null)?esc(m.nativeH!=null?m.nativeH:'?')+' × '+esc(m.nativeW!=null?m.nativeW:'?')+' m':'';
+  const size=esc(fmtSize(m.height,m.spread));
+  const nat=esc(fmtSize(m.nativeH,m.nativeW));
   const pv=provenOf(s),zones=[m.usda&&'USDA '+esc(m.usda),m.szone&&'SE '+esc(m.szone),m.rhs&&'RHS '+esc(m.rhs)].filter(Boolean).join(' · ');
   const calRows=['cal1','cal2','cal3','cal4'].filter(k=>(m[k]||[]).length);
   const wheel=calRows.length?'<div class="pwh">'+yearWheel(s,0,true)+'<div class="pwl">'+calRows.map(k=>'<span><i style="background:'+CAL_COL[k]+'"></i>'+L(CAL_LAB[k][s.form][0],CAL_LAB[k][s.form][1])+': '+esc(monthsTxt(m[k],lang==='both'?'en':lang))+'</span>').join('')+'</div></div>':'';
@@ -102,10 +102,10 @@ function sheetFront(s,lang,src){
   const ocr=SEC[1].f;
   const b1='<div class="bx">'+H('1 Origin & native form','Ursprung')+
     LR('Region','Region',G('region',REGIONS,3))+LR('Succession','Succession',G('succession',SUCC,3))+
-    F('Native habitat','Miljö',m.habitat)+'<div class="two">'+F('Native H','Höjd',m.nativeH,'m')+F('Native W','Bredd',m.nativeW,'m')+'</div>'+F('Range / notes','Utbredning',m.range)+'</div>';
+    F('Native habitat','Miljö',m.habitat)+'<div class="two">'+F('Native H','Höjd',fmtLen(m.nativeH))+F('Native W','Bredd',fmtLen(m.nativeW))+'</div>'+F('Range / notes','Utbredning',m.range)+'</div>';
   const b2='<div class="bx">'+H('2 Size & form','Storlek & form')+
     G(w?'crown':'habit',w?CROWN:HABIT,w?3:4)+
-    '<div class="two">'+F('Height','Höjd',m.height,U('height'))+F('Spread','Bredd',m.spread,U('spread'))+(w?'':F('Spacing','Avstånd',m.spacing,'cm'))+'</div>'+
+    '<div class="two">'+F('Height','Höjd',fmtLen(m.height))+F('Spread','Bredd',fmtLen(m.spread))+(w?'':F('Spacing','Avstånd',fmtLen(m.spacing)))+'</div>'+
     LR('Roots','Rötter',G('roots',w?ROOTS_W:ROOTS_H,4))+
     (w?LR('Foliage','Lövverk',G('leaf',LEAF,3)):LR('Dormant','Vilar',G('dormant',DORM,3)))+
     '<div class="two">'+F('Lifespan','Livslängd',m.lifespan,'yr')+(w?F('First yield','Första skörd',m.firstYield,'yr'):F('Sow→harvest','Sådd→skörd',m.sowHarvest,'d'))+'</div>'+F('Main product','Produkt',m.product)+'</div>';

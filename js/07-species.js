@@ -11,11 +11,11 @@ function cardHTML(s){
   const P=(opts,k)=>{const a=arr(k),h=opts.filter(o=>a.indexOf(o.k)>=0);return h.length?'<div class="pills'+(inh(k)?' inh':'')+'">'+h.map(o=>'<span class="pill">'+L(o.en,o.sv)+'</span>').join('')+sTag(k)+'</div>':''};
   const KV=(en,sv,v,k)=>v?'<div class="kv'+(k&&inh(k)?' inh':'')+'"><div class="k">'+L(en,sv)+'</div><div class="v">'+v+sTag(k)+'</div></div>':'';
   const T=k=>m[k]?esc(m[k]):'';
-  const N=(k,u)=>m[k]!=null?esc(m[k])+' '+(u||unitOf(DEF[k],s.form)||''):'';
+  const N=(k,u)=>m[k]!=null?(LEN_KEYS.indexOf(k)>=0?esc(fmtLen(m[k])):esc(m[k])+' '+(u||unitOf(DEF[k],s.form)||'')):'';
   const B=(en,sv,inner,sec)=>inner.trim()?'<section class="blk"><h3>'+L(en,sv)+(sec?smark(s.sid,sec):'')+'</h3>'+inner+'</section>':'';
   const typeO=TYPES_ALL.find(o=>o.k===m.type),statO=STATUS.find(o=>o.k===m.status),invO=INV.find(o=>o.k===m.invasive);
-  const size=(m.height!=null||m.spread!=null)?esc(m.height!=null?m.height:'?')+' × '+esc(m.spread!=null?m.spread:'?')+' '+unitOf(DEF.height,s.form):'';
-  const nat=(m.nativeH!=null||m.nativeW!=null)?esc(m.nativeH!=null?m.nativeH:'?')+' × '+esc(m.nativeW!=null?m.nativeW:'?')+' m':'';
+  const size=esc(fmtSize(m.height,m.spread));
+  const nat=esc(fmtSize(m.nativeH,m.nativeW));
   const pv=provenOf(s);
   const blocks=[
    ['Origin','Ursprung',P(REGIONS,'region')+KV('Native size','Naturlig storlek',nat,['nativeH','nativeW'])+KV('Habitat','Miljö',T('habitat'),'habitat')+P(SUCC,'succession')+KV('Notes','Anm.',T('range'),'range')],
@@ -62,7 +62,7 @@ function matches(s){
 function spRow(s){
   const m=s.m,w=s.form==='w',typeO=TYPES_ALL.find(o=>o.k===m.type);
   const ecoO=(w?ECO_W:ECO_H).filter(o=>(m.eco||[]).indexOf(o.k)>=0);
-  const size=m.height!=null?m.height+(m.spread!=null?'×'+m.spread:'')+' '+unitOf(DEF.height,s.form):'';
+  const size=m.height!=null?(m.spread!=null?fmtSize(m.height,m.spread):fmtLen(m.height)):'';
   const lights=LIGHT.filter(o=>(m.light||[]).indexOf(o.k)>=0).map(o=>trs(o.en,o.sv)).join('/');
   const sel=cmpMode?'<label class="cmpchk" title="'+esc(tr('Select to compare','Välj för jämförelse'))+'"><input type="checkbox" data-cmpsel="'+esc(s.sid)+'"'+(cmp.indexOf(s.sid)>=0?' checked':'')+' aria-label="'+esc(tr('Compare','Jämför')+' '+dispName(s))+'"></label>':'';
   return '<div class="spw'+(cmpMode?' sel':'')+'">'+sel+'<button type="button" class="sp" data-sid="'+esc(s.sid)+'"><div class="ph" style="--c:'+FCOL[s.form]+'">'+phInner(s,1)+'</div>'+
@@ -96,12 +96,19 @@ function updateOverview(){
 
 /* ---------- form ---------- */
 let draft={},draftForm='w',editId=null,pendingPhoto=null,formBuilt=false;
+// Lengths (2.6.0): the draft holds centimetres; each length field has a cm/m switch for typing (lenU: the chosen units).
+let lenU={};
+const lenUnit=k=>lenU[k]||lenUnitDefault(k,draftForm);
+function lenShown(k,v){if(v==null||v==='')return '';const n=Number(v);if(!isFinite(n))return String(v);return String(Math.round(n/(lenUnit(k)==='m'?100:1)*1000)/1000)}
+function lenFromInput(k,raw){const t=String(raw==null?'':raw).trim().replace(',','.');if(t==='')return '';const n=Number(t);return isFinite(n)?String(Math.round(n*(lenUnit(k)==='m'?100:1)*10)/10):String(raw)}
+function lenUnitSet(k,u){lenU[k]=u==='m'?'m':'cm';const i=$('#form input[data-k="'+k+'"]');if(i)i.value=lenShown(k,draft[k])}
 const isOn=(d,k)=>{const v=draft[d.k];return d.t==='multi'||d.t==='cal'?(v||[]).indexOf(k)>=0:v===k};
 const chipBtn=(d,o)=>'<button type="button" class="chip" data-k="'+d.k+'" data-v="'+o.k+'" aria-pressed="'+isOn(d,o.k)+'"><i></i><span>'+labUI(o)+'</span></button>';
 function fieldHTML(d){
   const lbl=trh(d.en,d.sv||d.en),v=draft[d.k],u=unitOf(d,draftForm);
   if(d.t==='text'&&d.zone)return '<label class="f"><span class="fl">'+lbl+'</span><input type="text" data-k="'+d.k+'" value="'+esc(v||'')+'" inputmode="text" autocomplete="off"><span class="hint" data-zh="'+d.k+'">'+esc(zoneHint(d,v))+'</span></label>';
   if(d.t==='text')return d.cat?'<label class="f wide"><span class="fl">'+lbl+'</span><textarea rows="2" data-k="'+d.k+'">'+esc(v||'')+'</textarea></label>':'<label class="f"><span class="fl">'+lbl+'</span><input type="text" data-k="'+d.k+'" value="'+esc(v||'')+'"></label>';
+  if(d.t==='num'&&LEN_KEYS.indexOf(d.k)>=0){const lu=lenUnit(d.k);return '<label class="f"><span class="fl">'+lbl+'</span><span class="lenin"><input type="number" inputmode="decimal" step="any" data-k="'+d.k+'" data-len="1" value="'+esc(lenShown(d.k,v))+'"><select data-lu="'+d.k+'" aria-label="'+esc(tr('Unit','Enhet','Eenheid'))+'"><option value="cm"'+(lu==='cm'?' selected':'')+'>cm</option><option value="m"'+(lu==='m'?' selected':'')+'>m</option></select></span></label>'}
   if(d.t==='num')return '<label class="f"><span class="fl">'+lbl+(u?' <b>('+u+')</b>':'')+'</span><input type="number" inputmode="decimal" step="any" data-k="'+d.k+'" value="'+esc(v==null?'':v)+'">'+(d.unit&&typeof d.unit==='object'?'<span class="hint">'+esc(tr('Woody plants in metres, herbaceous in centimetres.','Vedartade växter i meter, örtartade i centimeter.','Houtige planten in meter, kruidachtige in centimeter.'))+'</span>':'')+'</label>';
   if(d.t==='scale')return '<div class="fg"><div class="fl">'+lbl+'</div><div class="scale">'+[1,2,3,4,5].map(n=>'<button type="button" class="sc" data-k="'+d.k+'" data-v="'+n+'" aria-pressed="'+(Number(v)===n)+'">'+n+'</button>').join('')+(d.none?'<button type="button" class="chip sm scnone" data-k="'+d.k+'" data-v="0" aria-pressed="'+(v!=null&&v!==''&&Number(v)===0)+'"><i></i><span>'+trh(d.none[0],d.none[1])+'</span></button>':'')+'</div><div class="scap"><span>'+trh(d.cap[0][0],d.cap[0][1])+'</span><span>'+trh(d.cap[1][0],d.cap[1][1])+'</span></div></div>';
   if(d.t==='cal'){const lb=d.lab[draftForm];return '<div class="fg"><div class="fl">'+trh(lb[0],lb[1])+'</div><div class="months">'+MONTHS.map((x,i)=>'<button type="button" class="mc" style="--c:'+FCOL[draftForm]+'" data-k="'+d.k+'" data-v="'+(i+1)+'" aria-label="'+MONTH_NAMES[i]+'" aria-pressed="'+((v||[]).indexOf(i+1)>=0)+'">'+x+'</button>').join('')+'</div></div>'}
@@ -154,7 +161,7 @@ function updateHint(){
   const near=nearMatch(sid);
   el.className=near?'hint warn':'hint';el.innerHTML=tr('New species.','Ny art.')+(near?' '+tr('Similar existing name:','Liknande befintligt namn:')+' <button type="button" class="lnk" data-fill="'+esc(near.latin)+'"><i>'+esc(near.latin)+'</i></button>?':'');
 }
-function resetDraft(){draft={};draftBase='{}';draftForm='w';editId=null;pendingPhoto=null;$('#editBanner').hidden=true;draftClear();buildForm()}
+function resetDraft(){lenU={};draft={};draftBase='{}';draftForm='w';editId=null;pendingPhoto=null;$('#editBanner').hidden=true;draftClear();buildForm()}
 /* ---------- the Add-form draft is kept on this device until it is saved or cleared ---------- */
 const DKEY='ab.draft';
 let draftBase='{}';
@@ -162,7 +169,7 @@ const draftFilled=()=>Object.keys(draft).some(k=>k[0]!=='_'&&k!=='latin'&&!isEmp
 // Dirty = something was filled in that differs from how the form was opened.
 const draftDirty=()=>!!pendingPhoto||(draftFilled()&&JSON.stringify(draft)!==draftBase);
 let draftT;
-function draftKeep(){clearTimeout(draftT);draftT=setTimeout(()=>{try{if(draftDirty())store.set(DKEY,JSON.stringify({draft,draftForm,editId,at:Date.now()}));}catch(e){}},300)}
+function draftKeep(){clearTimeout(draftT);draftT=setTimeout(()=>{try{if(draftDirty())store.set(DKEY,JSON.stringify({draft,draftForm,editId,lu:'cm',at:Date.now()}));}catch(e){}},300)}
 function draftClear(){clearTimeout(draftT);try{localStorage.removeItem(DKEY)}catch(e){}$('#draftBox').hidden=true}
 function draftOffer(){
   const box=$('#draftBox');if(!box)return;let d=null;try{d=JSON.parse(store.get(DKEY)||'null')}catch(e){}
@@ -170,11 +177,12 @@ function draftOffer(){
   const nm=canon(d.draft.latin||'')||tr('a species without a name','en art utan namn','een soort zonder naam');
   box.hidden=false;box.innerHTML='<p>'+esc(tr('You have an unsaved draft for ','Du har ett osparat utkast för ','Je hebt een niet-opgeslagen concept voor '))+'<i>'+esc(nm)+'</i> ('+esc(fmtDate(d.at))+').</p><div class="acts"><button type="button" class="btn primary sm" data-act="draft-restore">'+esc(tr('Continue with it','Fortsätt med det','Ga ermee verder'))+'</button><button type="button" class="btn sm" data-act="draft-discard">'+esc(tr('Discard it','Släng det','Weggooien'))+'</button></div>';
 }
-function draftRestore(){let d=null;try{d=JSON.parse(store.get(DKEY)||'null')}catch(e){}if(!d)return;draft=d.draft||{};draftForm=d.draftForm||'w';editId=d.editId&&state.entries.some(e=>e.id===d.editId)?d.editId:null;
+function draftRestore(){let d=null;try{d=JSON.parse(store.get(DKEY)||'null')}catch(e){}if(!d)return;draft=d.draft||{};draftForm=d.draftForm||'w';lenU={};if(d.lu!=='cm'){const tmp=lenNorm({form:draftForm,fields:draft});delete tmp.lu}editId=d.editId&&state.entries.some(e=>e.id===d.editId)?d.editId:null;
   $('#editBanner').hidden=!editId;if(editId){const e=state.entries.find(x=>x.id===editId);$('#editBanner').innerHTML='<span>'+esc(tr('Editing the entry from ','Redigerar posten från ','Bewerkt de invoer van '))+'<b>'+esc(e.date||'')+'</b> · <i>'+esc(e.latin)+'</i>.</span><button class="btn sm" type="button" data-act="cancel-edit">'+tr('Cancel','Avbryt')+'</button>'}
   $('#draftBox').hidden=true;buildForm();toast(tr('Draft restored. A photo has to be chosen again.','Utkastet återställt. Ett foto måste väljas igen.','Concept teruggezet. Een foto moet opnieuw gekozen worden.'))}
 addEventListener('beforeunload',e=>{if(!$('#v-add').hidden&&draftDirty()){e.preventDefault();e.returnValue=''}});
 function openAdd(opts){
+  lenU={};
   opts=opts||{};
   if(opts.entry){const e=opts.entry;draft={latin:e.latin,_date:e.date};draftForm=e.form||'h';editId=e.id;Object.keys(e.fields||{}).forEach(k=>{const v=e.fields[k];draft[k]=DEF[k]&&DEF[k].t==='num'?String(v):v});
     $('#editBanner').hidden=false;$('#editBanner').innerHTML='<span>Editing the entry from <b>'+esc(e.date||'')+'</b> for <i>'+esc(e.latin)+'</i>.</span><button class="btn sm" type="button" data-act="cancel-edit">'+tr('Cancel','Avbryt')+'</button>'}
@@ -218,7 +226,7 @@ async function saveForm(){
     if(old&&old.by){doc.by=old.by;if(old.src)doc.src=old.src}
     await Data.saveEntry(editId,doc);
     selected=doc.sid;selCv=fields.cultivar?cvKey(fields.cultivar):'';toast(tr('Saved to ','Sparad till ')+latin+(fields.cultivar?' '+cvQ(fields.cultivar):''));
-    draft={};draftBase='{}';editId=null;pendingPhoto=null;draftClear();$('#editBanner').hidden=true;$('#nearBox').hidden=true;buildForm();go('sheet');
+    draft={};lenU={};draftBase='{}';editId=null;pendingPhoto=null;draftClear();$('#editBanner').hidden=true;$('#nearBox').hidden=true;buildForm();go('sheet');
   }catch(e){toast(errMsg(e),'err')}
   finally{btn.disabled=false;$('#saveMsg').textContent=''}
 }
