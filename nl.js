@@ -229,5 +229,9 @@ window.ARTBLAD_NL={"All cultivars follow the species.":"Alle cultivars volgen de
 "British hardiness (RHS)":"Britse winterhardheid (RHS)",
 "No":"Nee",
 "Plant type / life cycle":"Planttype / levenscyclus",
-"Hardiness zone":"Winterhardheidszone"
+"Hardiness zone":"Winterhardheidszone",
+"Your username and what you have added.":"Je gebruikersnaam en wat je hebt toegevoegd.",
+"newest":"nieuwste",
+"earlier":"eerder",
+"The newest entry is used.":"De nieuwste invoer wordt gebruikt."
 };
