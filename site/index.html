@@ -30,9 +30,7 @@ body:not(.ro) .ro-only{display:none!important}
 .joinhow{padding:16px 18px;border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:14px;background:var(--surface)}.joinhow h2{margin:0 0 6px}.joinhow ol{margin:0 0 8px;padding-left:1.3em;display:grid;gap:4px}
 .dock .dkic{position:relative;display:inline-flex}.dkdot{position:absolute;top:-2px;right:-4px;width:9px;height:9px;border-radius:50%;background:var(--falu);box-shadow:0 0 0 2px var(--surface)}.dkdot[hidden]{display:none}
 </style><title>Skogsträdgårdens artblad</title><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1f3a2c"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Artblad">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/fonts/fonts.css?v=2.5.1">
 <style>
 /* Layout: sticky top bar with three persistent views (Overview list, Add form, Sheet card + print sheet + photo log). Paper-green neutrals, forest for woody plants, amber for herbaceous. */
 :root{
@@ -667,7 +665,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
   <div class="hgrid">
     <a class="htile" href="#overview"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4"/><path d="M4 6v15h12"/></svg></span><b data-th="Species database|Artdatabas">Species database <em>Artdatabas</em></b><span data-t="Browse, filter, print and export all species.|Bläddra, filtrera, skriv ut och exportera alla arter.">Browse, filter, print and export all species.</span></a>
     <a class="htile w-only" href="#add"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span><b data-th="Add a species|Lägg till art">Add a species <em>Lägg till art</em></b><span data-t="New species, or add an entry to one you already have.|Ny art, eller lägg till en post för en art som redan finns.">New species, or add an entry to one you already have.</span></a>
-    <a class="htile w-only" href="#me"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg></span><b data-th="My contributions|Mina bidrag">My contributions <em>Mina bidrag</em></b><span data-t="Your numbers, badges and place on the leaderboard.|Dina siffror, märken och plats på topplistan.">Your numbers, badges and place on the leaderboard.</span></a>
+    <a class="htile w-only" href="#me"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg></span><b data-th="My contributions|Mina bidrag">My contributions <em>Mina bidrag</em></b><span data-t="Your username and what you have added.|Ditt användarnamn och det du har bidragit med.">Your username and what you have added.</span></a>
     <a class="htile w-only" href="#gaps"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg></span><b data-th="Help fill the gaps|Hjälp till att fylla luckorna">Help fill the gaps <em>Hjälp till att fylla luckorna</em></b><span data-t="See which species miss names, photos or key facts.|Se vilka arter som saknar namn, foton eller viktiga uppgifter.">See which species miss names, photos or key facts.</span></a>
     <a class="htile" href="#pick"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></span><b data-th="Pick a plant|Välj en växt">Pick a plant <em>Välj en växt</em></b><span data-t="Describe a spot (sun, moisture, soil, zone) and see which species fit.|Beskriv en plats (sol, fukt, jord, zon) och se vilka arter som passar.">Describe a spot (sun, moisture, soil, zone) and see which species fit.</span></a>
     <a class="htile" href="#calendar"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h3M14 14h3M7 17h3"/></svg></span><b data-th="Flowering and harvest calendar|Blom- och skördekalender">Flowering and harvest calendar <em>Blom- och skördekalender</em></b><span data-t="When to plant, when it flowers and when to harvest, across species.|När man planterar, när de blommar och när man skördar, för flera arter.">When to plant, when it flowers and when to harvest, across species.</span></a>
@@ -684,7 +682,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <button type="button" class="btn sm" id="installBtn" data-act="install" hidden data-t="Install as an app|Installera som app|Als app installeren">Install as an app</button>
   </div>
   <p id="herbLabel" class="herblabel" aria-hidden="true"></p>
-  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.5.0</span></p>
+  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.5.1</span></p>
 </section>
 
 <section id="v-overview" class="view" hidden>
@@ -843,7 +841,6 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <div class="jcard"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg></span><b data-t="Shared lists|Delade listor|Gedeelde lijsten">Shared lists</b><span data-t="Make lists for a bed, a project or a wish list, shared with everyone.|Gör listor för en bädd, ett projekt eller en önskelista, delade med alla.|Maak lijsten voor een bed, een project of een verlanglijst, gedeeld met iedereen.">Make lists shared with everyone.</span></div>
     <div class="jcard"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></span><b data-t="Comments|Kommentarer|Opmerkingen">Comments</b><span data-t="Ask questions and share experience on each species page.|Ställ frågor och dela erfarenheter på varje artsida.|Stel vragen en deel ervaring op elke soortpagina.">Join the discussion on each species.</span></div>
     <div class="jcard"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M10 16h4"/></svg></span><b data-t="Ask Artie|Fråga Artie|Vraag Artie">Ask Artie</b><span data-t="Ask the auto-fill bot to pre-fill a new species from public sources.|Be förifyllningsboten fylla i en ny art från öppna källor.|Vraag de invulbot een nieuwe soort vooraf in te vullen uit openbare bronnen.">Have a new species pre-filled.</span></div>
-    <div class="jcard"><span class="hi"><svg viewBox="0 0 48 56" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" aria-hidden="true"><path d="M24 2 L44 9 V27 C44 40.5 35.5 49.5 24 54 C12.5 49.5 4 40.5 4 27 V9 Z"/></svg></span><b data-t="Grow your shields|Låt dina sköldar växa|Laat je schilden groeien">Grow your shields</b><span data-t="Earn shields from Seed to Forest elder, and a place on the leaderboard.|Samla sköldar från Frö till Skogens äldste, och en plats på topplistan.|Verdien schilden van Zaad tot Bosoudste, en een plaats op de ranglijst.">From Seed to Forest elder.</span></div>
   </div>
   <div class="joinhow">
     <h2 data-th="How to get access|Så får du tillgång|Zo krijg je toegang">How to get access</h2>
@@ -999,28 +996,30 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 <circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
 </svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script><script src="nl.js?v=2.5.0"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script>
+<script src="config.js"></script><script src="nl.js?v=2.5.1"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script>
+<script>/* If a part of the app cannot be loaded (missing or incomplete upload), say so instead of showing a broken page. */
+window.__abMiss=[];function abMissing(el){window.__abMiss.push(el.getAttribute('src').split('?')[0]);var b=document.getElementById('banner');if(b){b.hidden=false;b.textContent='Part of the app did not load ('+window.__abMiss.join(', ')+'). Reload the page. If this message stays, the site files on GitHub are incomplete: upload all files of the latest update.'}}</script>
 <!-- The app in parts, loaded in this order; they share one scope (see js/README.md). Keep ?v= the same as APP_VERSION in js/01-core.js. -->
-<script src="js/01-core.js?v=2.5.0"></script>
-<script src="js/02-data.js?v=2.5.0"></script>
-<script src="js/03-artie-sources.js?v=2.5.0"></script>
-<script src="js/04-i18n.js?v=2.5.0"></script>
-<script src="js/05-print.js?v=2.5.0"></script>
-<script src="js/06-values.js?v=2.5.0"></script>
-<script src="js/07-species.js?v=2.5.0"></script>
-<script src="js/08-winter.js?v=2.5.0"></script>
-<script src="js/09-svc-gbif-names.js?v=2.5.0"></script>
-<script src="js/10-visuals.js?v=2.5.0"></script>
-<script src="js/11-svc-map.js?v=2.5.0"></script>
-<script src="js/12-review-live.js?v=2.5.0"></script>
-<script src="js/13-svc-zones-soil.js?v=2.5.0"></script>
-<script src="js/14-review.js?v=2.5.0"></script>
-<script src="js/15-exports.js?v=2.5.0"></script>
-<script src="js/16-autofill.js?v=2.5.0"></script>
-<script src="js/17-planning.js?v=2.5.0"></script>
-<script src="js/18-plantings.js?v=2.5.0"></script>
-<script src="js/19-svc-climate.js?v=2.5.0"></script>
-<script src="js/20-lists.js?v=2.5.0"></script>
-<script src="js/21-ui.js?v=2.5.0"></script>
-<script src="js/22-init.js?v=2.5.0"></script>
+<script src="js/01-core.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/02-data.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/03-artie-sources.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/04-i18n.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/05-print.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/06-values.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/07-species.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/08-winter.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/09-svc-gbif-names.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/10-visuals.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/11-svc-map.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/12-review-live.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/13-svc-zones-soil.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/14-review.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/15-exports.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/16-autofill.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/17-planning.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/18-plantings.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/19-svc-climate.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/20-lists.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/21-ui.js?v=2.5.1" onerror="abMissing(this)"></script>
+<script src="js/22-init.js?v=2.5.1" onerror="abMissing(this)"></script>
 </body></html>
