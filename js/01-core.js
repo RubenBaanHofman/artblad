@@ -2,7 +2,7 @@
 // Part 1 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 // The version shown on Home. Also change ?v= on every script tag in index.html (dev/check_version.py checks this).
-const APP_VERSION='2.6.1';
+const APP_VERSION='2.7.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
@@ -67,7 +67,7 @@ const IDENT=[
   D('family','text','Family','Familj'),
   D('cultivar','text','Cultivar / variety','Sort'),
   D('type','single','Type','Typ',{o:TYPES_ALL}),
-  D('status','single','Status','Status',{o:STATUS})
+  D('status','single','Status','Status',{o:STATUS,hide:1}) // retired in 2.7.0 (row 7): not shown or asked any more; old values stay stored
 ];
 const SEC=[
  {id:'origin',en:'Origin & native form',sv:'Ursprung & naturlig form',f:[
@@ -190,7 +190,7 @@ const lev=(a,b)=>{const m=[];for(let i=0;i<=a.length;i++){m[i]=[i]}for(let j=1;j
 
 /* ---------- state ---------- */
 const LAYOUTS_OK=v=>['card','form'].indexOf(v)>=0?v:'card';
-const state={plantings:[],lists:[],comments:[],listId:'',withLog:store.get('ab.withlog')!=='0',withGenus:store.get('ab.withgenus')==='1',withCv:store.get('ab.withcv')==='1',entries:[],obs:[],layout:LAYOUTS_OK(store.get('ab.layout')),lang:(['en','sv','nl'].indexOf(store.get('ab.lang'))>=0?store.get('ab.lang'):'en'),side:'front',q:'',fForm:'',flt:new Set(),favOnly:false,sort:'name'};
+const state={plantings:[],lists:[],comments:[],projects:[],trashPj:[],members:[],listId:'',withLog:store.get('ab.withlog')!=='0',withGenus:store.get('ab.withgenus')==='1',withCv:store.get('ab.withcv')==='1',entries:[],obs:[],layout:LAYOUTS_OK(store.get('ab.layout')),lang:(['en','sv','nl'].indexOf(store.get('ab.lang'))>=0?store.get('ab.lang'):'en'),side:'front',q:'',fForm:'',flt:new Set(),favOnly:false,sort:'name'};
 const cfg=Object.assign({},window.ARTBLAD_CONFIG||{});
 try{cfg.SUPABASE_URL=new URL(String(cfg.SUPABASE_URL||'').trim()).origin}catch(e){}
 cfg.SUPABASE_ANON_KEY=String(cfg.SUPABASE_ANON_KEY||'').trim();
@@ -201,7 +201,10 @@ let species=[],bySid=new Map(),selected=null,selCv='',SB=null,SESSION=null,ASSET
 // Row metadata kept by the database (who added, who changed, trash). Kept apart from the documents so exports and saves are unchanged.
 const META=new Map(),PROFILES=new Map();
 const isAdmin=()=>MYROLE==='admin',meUid=()=>SESSION&&SESSION.user?SESSION.user.id:null;
-const canEdit=id=>!SB?true:isAdmin()||(CANW&&!!meUid()&&(META.get(id)||{}).author===meUid());
+// A record in a project (v9) is changed by that project's owner and editors, admins included only when they are members.
+const projRole=pid=>{const u=meUid(),m=(state.members||[]).find(x=>x.project_id===pid&&x.user_id===u);return m?m.role:''};
+const projCanEdit=pid=>['owner','editor'].indexOf(projRole(pid))>=0;
+const canEdit=id=>{if(!SB)return true;const m=META.get(id)||{};if(m.project)return projCanEdit(m.project);if(m.kind==='project')return projCanEdit(id);return isAdmin()||(CANW&&!!meUid()&&m.author===meUid())};
 const mem={entries:[],obs:[],n:0};
 const errMsg=e=>{const c=e&&(e.code||e.statusCode),m=String((e&&e.message)||'');if(c==='42501'||/row-level security|not authorized|unauthorized|permission/i.test(m))return trs('You do not have permission to change this.','Du har inte behörighet att ändra detta.');if(/exceeded|too large|payload|413|quota/i.test(m))return trs('That file is too large or storage is full.','Filen är för stor eller lagringen är full.');if(/mime|not supported|invalid.*type/i.test(m))return trs('That file type is not supported.','Filtypen stöds inte.');if(c==='23505'&&/profiles/.test(m))return trs('That username is already taken. Choose another.','Användarnamnet är redan upptaget. Välj ett annat.');if(/profiles_reserved/.test(m))return trs('That username is reserved. Choose another.','Användarnamnet är reserverat. Välj ett annat.','Die gebruikersnaam is gereserveerd. Kies een andere.');if(/profiles_not_email/.test(m))return trs('Use a name, not an email address.','Använd ett namn, inte en e-postadress.');return m||trs('Something went wrong.','Något gick fel.')};
 let lastLoad=0;

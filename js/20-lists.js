@@ -18,16 +18,17 @@ let openList='';
 function updateLists(){
   const L=openList&&listById(openList);
   $('#listsAll').hidden=!!L;$('#listOne').hidden=!L;
+  {const s=$('#newListProj');if(s){const ed=PROJ_ON&&pjEditable().length;const w=s.closest('.f');if(w)w.hidden=!ed;if(ed){const v=s.value||(pjActive()&&projCanEdit(PJ)?PJ:'');s.innerHTML=pjOptions(v,tr('Shared with everyone signed in','Delad med alla inloggade','Gedeeld met iedereen die is ingelogd'))}}}
   if(!L){
     const ls=(state.lists||[]).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name)));
-    $('#listsGrid').innerHTML=ls.length?ls.map(l=>'<a class="htile" href="#l-'+esc(l.id)+'"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></span><b>'+esc(l.name)+'</b><span>'+esc(l.description||'')+(l.description?' · ':'')+(l.sids||[]).length+' '+tr('species','arter')+(SB?' · '+esc(trs('by ','av '))+esc(who((META.get(l.id)||{}).author)):'')+'</span></a>').join('')
+    $('#listsGrid').innerHTML=ls.length?ls.map(l=>'<a class="htile" href="#l-'+esc(l.id)+'"><span class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></span><b>'+esc(l.name)+'</b><span>'+(l.project?pjPill(l.project)+' ':'')+esc(l.description||'')+(l.description?' · ':'')+(l.sids||[]).length+' '+tr('species','arter')+(SB?' · '+esc(trs('by ','av '))+esc(who((META.get(l.id)||{}).author)):'')+'</span></a>').join('')
       :'<div class="empty"><p>'+tr('No lists yet.','Inga listor ännu.')+'</p></div>';
     return;
   }
   const ed=canEdit(L.id),sp=(L.sids||[]).map(x=>bySid.get(x)).filter(Boolean).sort(byName);
   $('#listHead').innerHTML=ed?'<input id="listName" class="lname" value="'+esc(L.name)+'" aria-label="'+esc(tr('List name','Listans namn'))+'"><textarea id="listDesc" rows="2" placeholder="'+esc(tr('Description (optional)','Beskrivning (valfri)'))+'">'+esc(L.description||'')+'</textarea><div class="acts"><button class="btn sm primary" data-act="list-save">'+tr('Save name and description','Spara namn och beskrivning')+'</button><button class="btn sm danger" data-act="list-del">'+tr('Delete list','Radera lista')+'</button></div>'
     :'<h1>'+esc(L.name)+'</h1>'+(L.description?'<p>'+esc(L.description)+'</p>':'');
-  $('#listInfo').textContent=sp.length+' '+tr('species','arter')+(SB?' · '+trs('by ','av ')+who((META.get(L.id)||{}).author):'');
+  $('#listInfo').innerHTML=(L.project?pjPill(L.project)+' ':'')+esc(sp.length+' '+tr('species','arter')+(SB?' · '+trs('by ','av ')+who((META.get(L.id)||{}).author):''));
   $('#listSp').innerHTML=sp.length?sp.map(x=>{const nm=names(x);return '<div class="gaprow"><button type="button" class="gapmain" data-open="'+esc(x.sid)+'"><span class="ph" style="--c:'+FCOL[x.form]+'">'+phInner(x,1)+'</span><span style="min-width:0"><span class="lat">'+nm.main+'</span><span class="nm">'+nm.sub+'</span></span></button><span></span>'+(ed?'<button class="btn sm" data-act="list-rm" data-sid="'+esc(x.sid)+'">'+tr('Remove','Ta bort')+'</button>':'<span></span>')+'</div>'}).join('')
     :'<div class="empty"><p>'+tr('This list is empty. Add species with “Add to list” on a species page or in Compare.','Listan är tom. Lägg till arter med ”Lägg till i lista” på en artsida eller i Jämför.')+'</p></div>';
 }
@@ -63,9 +64,12 @@ function trashItems(){
   (state.trashP||[]).forEach(p=>rows.push({t:'plantings',id:p.id,latin:p.latin,what:trs('Planting','Plantering')+': '+(p.place||'')+' '+(p.date||''),m:META.get(p.id)}));
   (state.trashC||[]).forEach(c=>rows.push({t:'comments',id:c.id,latin:(bySid.get(c.sid)||{}).latin||c.sid,what:trs('Comment','Kommentar')+': '+String(c.text||'').slice(0,80),m:META.get(c.id)}));
   (state.trashL||[]).forEach(l=>rows.push({t:'lists',id:l.id,latin:'',what:trs('List','Lista')+': '+(l.name||''),m:META.get(l.id)}));
+  (state.trashPj||[]).forEach(x=>rows.push({t:'projects',id:x.id,latin:'',what:trs('Project','Projekt')+': '+(x.name||''),m:META.get(x.id)}));
   (state.trashO||[]).forEach(o=>rows.push({t:'obs',id:o.id,latin:o.latin,what:(o.kind==='source'?trs('Source','Källa')+': '+(o.supplier||''):trs('Observation','Observation'))+' '+(o.date||'')+(o.text?': '+String(o.text).slice(0,80):''),m:META.get(o.id)}));
   return rows.sort((a,b)=>String(b.m.deletedAt).localeCompare(String(a.m.deletedAt)));
 }
+// Deleting for good: admins for shared records; the project's owner for a project and its records (v9).
+const mayPurge=r=>r.t==='projects'?projRole(r.id)==='owner':(r.m&&r.m.project)?projRole(r.m.project)==='owner':isAdmin();
 async function openTrash(){if(SB&&isAdmin()){try{const r=await SB.rpc('purge_trash');if(!r.error&&r.data)await loadAll()}catch(e){}}updateTrash()}
 function updateTrash(){
   const rows=trashItems();
@@ -75,7 +79,7 @@ function updateTrash(){
     const left=Math.max(0,TRASH_DAYS-Math.floor((Date.now()-new Date(r.m.deletedAt))/864e5));
     return '<div class="ent trow2"><span style="min-width:0"><b><i>'+esc(r.latin||'')+'</i></b> · '+esc(r.what)+'<br><small class="muted">'+esc(trs('Deleted ','Raderad '))+esc(fmtDate(r.m.deletedAt))+esc(trs(' by ',' av '))+esc(who(r.m.deletedBy))+' · '+esc(trs(left+' days left',left+' dagar kvar',left+' dagen over'))+'</small></span>'+
       '<span class="acts">'+(canEdit(r.id)?'<button class="btn sm" data-act="restore" data-t2="'+r.t+'" data-id="'+esc(r.id)+'">'+trs('Restore','Återställ')+'</button>':'')+
-      (isAdmin()?'<button class="btn sm danger" data-act="purge" data-t2="'+r.t+'" data-id="'+esc(r.id)+'">'+trs('Delete for good','Radera för gott')+'</button>':'')+'</span></div>'}).join('')
+      (mayPurge(r)?'<button class="btn sm danger" data-act="purge" data-t2="'+r.t+'" data-id="'+esc(r.id)+'">'+trs('Delete for good','Radera för gott')+'</button>':'')+'</span></div>'}).join('')
     :'<div class="empty"><p>'+trs('The trash is empty.','Papperskorgen är tom.')+'</p></div>';
 }
 

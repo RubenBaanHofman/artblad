@@ -67,12 +67,13 @@ function show(v){
   if(v==='calendar')updateCalendar();
   if(v==='pick')updatePick();
   if(v==='plantings')updatePlantings();
+  if(v==='projects')updateProjects();
   if(v==='lists')updateLists();
   if(v==='help')updateHelp();
   if(v==='autofill')updateAutofill();
   if(v==='admin')updateAdmin();
   if(v==='add'&&document.body.classList.contains('ro')){location.hash='home';return}
-  if(['gaps','plantings','lists'].indexOf(v)>=0&&document.body.classList.contains('ro')&&SESSION){location.hash='join';return}
+  if(['gaps','plantings','lists','projects'].indexOf(v)>=0&&document.body.classList.contains('ro')&&SESSION){location.hash='join';return}
   if(v==='join')updateJoin();
   if(v!=='sheet'&&$('#renBox'))$('#renBox').hidden=true;
   window.scrollTo(0,0);
@@ -81,9 +82,9 @@ function route(){const h=(location.hash||'#home').slice(1);
   if(h.indexOf('s-')===0){setSel(h.slice(2));show('sheet');return}
   if(h.indexOf('l-')===0){openList=h.slice(2);show('lists');return}
   if(h==='lists')openList='';
- show(['home','overview','add','sheet','gaps','trash','me','compare','calendar','pick','plantings','lists','help','autofill','admin','join'].indexOf(h)>=0?h:'home')}
+ show(['home','overview','add','sheet','gaps','trash','me','compare','calendar','pick','plantings','projects','lists','help','autofill','admin','join'].indexOf(h)>=0?h:'home')}
 function go(v){if(location.hash==='#'+v)show(v);else location.hash=v}
-function refresh(){derive();revCompute();updateAdminBadge();if(!$('#v-admin').hidden)updateAdmin();updateOverview();if(!$('#v-home').hidden)updateHome();if(!$('#v-gaps').hidden)updateGaps();if(!$('#v-me').hidden)updateMe();if(!$('#v-compare').hidden)updateCompare();if(!$('#v-calendar').hidden)updateCalendar();if(!$('#v-pick').hidden)updatePick();if(!$('#v-plantings').hidden)updatePlantings();if(!$('#v-lists').hidden)updateLists();if(!$('#v-help').hidden)updateHelp();updateTrash();if(!$('#v-sheet').hidden)updateSheet();
+function refresh(){derive();revCompute();updateAdminBadge();if(!$('#v-admin').hidden)updateAdmin();updateOverview();if(!$('#v-home').hidden)updateHome();if(!$('#v-gaps').hidden)updateGaps();if(!$('#v-me').hidden)updateMe();if(!$('#v-compare').hidden)updateCompare();if(!$('#v-calendar').hidden)updateCalendar();if(!$('#v-pick').hidden)updatePick();if(!$('#v-plantings').hidden)updatePlantings();if(!$('#v-projects').hidden)updateProjects();if(!$('#v-lists').hidden)updateLists();if(!$('#v-help').hidden)updateHelp();updateTrash();if(!$('#v-sheet').hidden)updateSheet();
   $('#spNames').innerHTML=species.map(s=>'<option value="'+esc(s.latin)+'"></option>').join('');updateHint()}
 function arm(btn,run){
   if(btn.dataset.armed){clearTimeout(btn._t);delete btn.dataset.armed;btn.textContent=btn.dataset.label;run();return}
@@ -108,6 +109,7 @@ document.addEventListener('click',async e=>{
   const vb=t.closest('[data-view]');if(vb){store.set('ab.view',vb.dataset.view);dispApply();updateOverview();return}
   const fo=t.closest('[data-favonly]');if(fo){state.favOnly=!state.favOnly;updateOverview();return}
   const cc=t.closest('[data-cmpcol]');if(cc){cmpSet('col',cc.dataset.cmpcol);return}
+  const pj=t.closest('[data-pj]');if(pj){pjSet(pj.dataset.pj);pjState.edit=false;updateProjects();return}
   const cd=t.closest('[data-cmp-del]');if(cd){cmp=cmp.filter(x=>x!==cd.dataset.cmpDel);saveCmp();updateCompare();return}
   const cs=t.closest('[data-calset]');if(cs){calState.set=cs.dataset.calset;updateCalendar();return}
   const ca=t.closest('[data-calact]');if(ca){const k=ca.dataset.calact;if(calState.acts.has(k)&&calState.acts.size>1)calState.acts.delete(k);else calState.acts.add(k);updateCalendar();return}
@@ -166,6 +168,22 @@ document.addEventListener('click',async e=>{
   else if(act==='af-sent')arm(a,afMarkSent);
   else if(act==='af-del')arm(a,()=>afDelete(a.dataset.sid));
   else if(act==='signin'){$('#auth').hidden=false;$('#authEmail').focus()}
+  else if(act==='pj-new'){pjCreate()}
+  else if(act==='pj-edit'){pjState.edit=true;updateProjects()}
+  else if(act==='pj-cancel'){pjState.edit=false;updateProjects()}
+  else if(act==='pj-save'){pjSaveSite()}
+  else if(act==='pj-geo'){if(navigator.geolocation)navigator.geolocation.getCurrentPosition(g=>{const i=$('#pjGeo');if(i)i.value=g.coords.latitude.toFixed(5)+', '+g.coords.longitude.toFixed(5)},()=>toast(tr('Position not available.','Positionen är inte tillgänglig.','Positie niet beschikbaar.'),'err'),{enableHighAccuracy:true,timeout:15000})}
+  else if(act==='pj-place-add'){const p=pjActive(),n=($('#pjPlName')||{}).value||'';if(p&&n.trim())pjSaveDoc(p,{places:(p.places||[]).concat([{id:newId(),name:n.trim().slice(0,60),kind:$('#pjPlKind').value}])},tr('Place added','Plats tillagd','Plek toegevoegd'))}
+  else if(act==='pj-place-ren'){const p=pjActive(),x=p&&(p.places||[]).find(y=>y.id===a.dataset.id);if(x){const n=prompt(tr('New name','Nytt namn','Nieuwe naam'),x.name);if(n&&n.trim())pjSaveDoc(p,{places:p.places.map(y=>y.id===x.id?Object.assign({},y,{name:n.trim().slice(0,60)}):y)})}}
+  else if(act==='pj-place-del'){const p=pjActive();if(p)arm(a,()=>pjSaveDoc(p,{places:(p.places||[]).filter(y=>y.id!==a.dataset.id)},tr('Place removed; its records keep their text place','Platsen borttagen; dess poster behåller sin textplats','Plek verwijderd; de records houden hun tekstplek')))}
+  else if(act==='pj-mem-add'){pjMemberAdd()}
+  else if(act==='pj-mem-del'){arm(a,()=>pjMemberDel(a.dataset.uid))}
+  else if(act==='pj-leave'){arm(a,()=>pjMemberDel(meUid()))}
+  else if(act==='pj-cmt'){const p=pjActive(),t=($('#pjCmt')||{}).value||'';if(p&&t.trim()){Data.saveRow('comments',null,{text:t.trim(),createdAt:Date.now(),project:p.id}).then(()=>toast(tr('Note posted','Anteckning skickad','Notitie geplaatst')),e=>toast(errMsg(e),'err'))}}
+  else if(act==='pj-list-new'){const p=pjActive();if(p)Data.saveRow('lists',null,{name:tr('Plant list','Växtlista','Plantenlijst')+' '+pjName(p.id),description:'',sids:[],createdAt:Date.now(),project:p.id}).then(id=>{location.hash='l-'+id},e=>toast(errMsg(e),'err'))}
+  else if(act==='pj-goto'){const p=pjActive();if(!p)return;if(a.dataset.to==='plantings'){plState.proj=p.id;go('plantings')}else{calState.set='proj';go('calendar')}}
+  else if(act==='pj-pick'){pjToPick()}
+  else if(act==='pj-trash'){const p=pjActive();if(p)arm(a,async()=>{try{await Data.trash('projects',p.id,true);pjSet('');toast(tr('Project moved to the trash','Projektet flyttat till papperskorgen','Project naar de prullenbak'))}catch(e){toast(errMsg(e),'err')}})}
   else if(act==='chk-run'){chkRun()}
   else if(act==='orph-find'){orphFind()}
   else if(act==='orph-del'){arm(a,orphDelete)}
@@ -216,7 +234,7 @@ document.addEventListener('click',async e=>{
   else if(act==='pl-cancel'){$('#plForm').hidden=true;plState.edit=null}
   else if(act==='pl-geo'){try{navigator.geolocation.getCurrentPosition(pos=>{$('#plGeo').value=pos.coords.latitude.toFixed(5)+', '+pos.coords.longitude.toFixed(5)},()=>toast(tr('Location is not available here.','Platsen är inte tillgänglig här.'),'err'))}catch(e){toast(tr('Location is not available here.','Platsen är inte tillgänglig här.'),'err')}}
   else if(act==='pl-del')arm(a,async()=>{try{await Data.trash('plantings',a.dataset.id,true);toast(tr('Moved to the trash','Flyttad till papperskorgen'))}catch(err){toast(errMsg(err),'err')}});
-  else if(act==='list-new'){const n=$('#newListName').value.trim();if(!n){toast(tr('Give the list a name.','Ge listan ett namn.'),'err');return}try{const id=await Data.saveRow('lists',null,{name:n,description:$('#newListDesc').value.trim(),sids:[],createdAt:Date.now()});$('#newListName').value='';$('#newListDesc').value='';location.hash='l-'+id}catch(err){toast(errMsg(err),'err')}}
+  else if(act==='list-new'){const n=$('#newListName').value.trim();if(!n){toast(tr('Give the list a name.','Ge listan ett namn.'),'err');return}try{const lp=($('#newListProj')||{}).value||'',doc={name:n,description:$('#newListDesc').value.trim(),sids:[],createdAt:Date.now()};if(lp)doc.project=lp;const id=await Data.saveRow('lists',null,doc);$('#newListName').value='';$('#newListDesc').value='';location.hash='l-'+id}catch(err){toast(errMsg(err),'err')}}
   else if(act==='list-save'){const L=listById(openList);if(L){const doc=Object.assign({},L);delete doc.id;doc.name=$('#listName').value.trim()||L.name;doc.description=$('#listDesc').value.trim();try{await Data.saveRow('lists',L.id,doc);toast(tr('List saved','Lista sparad'))}catch(err){toast(errMsg(err),'err')}}}
   else if(act==='list-rm'){const L=listById(openList);if(L){const doc=Object.assign({},L);delete doc.id;doc.sids=(L.sids||[]).filter(x=>x!==a.dataset.sid);try{await Data.saveRow('lists',L.id,doc)}catch(err){toast(errMsg(err),'err')}}}
   else if(act==='list-del')arm(a,async()=>{try{await Data.trash('lists',openList,true);location.hash='lists';toast(tr('Moved to the trash','Flyttad till papperskorgen'))}catch(err){toast(errMsg(err),'err')}});
@@ -244,6 +262,10 @@ document.addEventListener('click',async e=>{
 });
 document.addEventListener('change',e=>{
   if(e.target.id==='cmpSort'){cmpSet('sort',e.target.value);return}
+  if(e.target.id==='plProjSel'){plState.proj=e.target.value;plState.place='';updatePlantings();return}
+  if(e.target.id==='plProj'){plPlaceFill(e.target.value,'');return}
+  if(e.target.matches('[data-pjrole]')){pjMemberRole(e.target.dataset.pjrole,e.target.value);return}
+  if(e.target.matches('[data-pjmove]')){const v=e.target.value;if(v)pjMove(e.target.dataset.pjmove,v);return}
   if(e.target.matches('select[data-lu]')){lenUnitSet(e.target.dataset.lu,e.target.value);return}
   if(e.target.id==='cvSel'){const v=e.target.value,sp=bySid.get(slug(canon(draft.latin||'')));if(v==='__new'){draft._cvNew=true;draft.cultivar='';$('#cvNew').value='';$('#cvNew').hidden=false;$('#cvNew').focus()}else{draft._cvNew=false;const c=sp&&sp.cvs.find(x=>x.ck===v);draft.cultivar=c?c.cv:'';$('#cvNew').hidden=true}cvHint();return}
   if(e.target.matches('select[data-cvnew]')){const i=$('#'+e.target.dataset.cvnew);if(i){i.hidden=e.target.value!=='__new';if(!i.hidden)i.focus()}return}
@@ -338,7 +360,9 @@ function startRealtime(uid){
     .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},kick)
     .on('postgres_changes',{event:'*',schema:'public',table:'plantings'},kick)
     .on('postgres_changes',{event:'*',schema:'public',table:'lists'},kick)
-    .on('postgres_changes',{event:'*',schema:'public',table:'comments'},kick);
+    .on('postgres_changes',{event:'*',schema:'public',table:'comments'},kick)
+    .on('postgres_changes',{event:'*',schema:'public',table:'projects'},kick)
+    .on('postgres_changes',{event:'*',schema:'public',table:'project_members'},kick);
   if(uid)RT.on('postgres_changes',{event:'*',schema:'public',table:'favorites',filter:'user_id=eq.'+uid},async()=>{await loadFav(uid);refresh()});
   // Admins (database update v5): flags, marks and Artie requests arrive live. Others receive nothing from these tables.
   if(isAdmin())['review_flags','reviews','review_sections','review_dismissed','autofill_requests'].forEach(t=>RT.on('postgres_changes',{event:'*',schema:'public',table:t},revLive));

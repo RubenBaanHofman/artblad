@@ -103,11 +103,18 @@ function encInfo(p){
 function plRow(p,showSpecies){
   const x=bySid.get(p.sid),last=(p.checks||[]).slice(-1)[0];
   return '<div class="ent plrow"><span style="min-width:0">'+(showSpecies?'<button type="button" class="lnk" data-open="'+esc(p.sid+(p.cultivar?'--'+cvKey(p.cultivar):''))+'"><b>'+esc(x?dispName(x):p.latin||p.sid)+(p.cultivar?' '+cvQ(cvNorm(p.cultivar)):'')+'</b></button> · ':(p.cultivar&&!(cur()||{}).isCv?cvPill(p)+' · ':''))+
-    (isEnc(p)?'<span class="pill enc">'+esc(tr('Encounter','Fynd','Vondst'))+'</span> ':'')+'<b>'+esc(p.place||tr('No place given','Ingen plats angiven'))+'</b>'+(p.count&&!isEnc(p)?' · '+esc(p.count)+' '+tr('plants','plantor'):'')+' · '+esc(p.date||'')+' '+pstatPill(p.status)+
+    (isEnc(p)?'<span class="pill enc">'+esc(tr('Encounter','Fynd','Vondst'))+'</span> ':'')+'<b>'+esc(plPlaceName(p)||tr('No place given','Ingen plats angiven'))+'</b>'+(p.project&&plState.proj!==p.project?' '+pjPill(p.project):'')+(p.count&&!isEnc(p)?' · '+esc(p.count)+' '+tr('plants','plantor'):'')+' · '+esc(p.date||'')+' '+pstatPill(p.status)+
     (p.source?'<br><small class="muted">'+tr('Source','Källa')+': '+esc(p.source)+'</small>':'')+(p.notes?'<br>'+esc(p.notes):'')+encInfo(p)+
     (last?'<br><small class="muted">'+tr('Last check','Senaste kontroll')+' '+esc(last.date)+(last.note?': '+esc(last.note):'')+'</small>':'')+
     (SB?'<br><small class="muted">'+rowStamp(p.id).slice(3)+'</small>':'')+((p.winters||[]).length?'<br>'+winterRows(p):'')+(canEdit(p.id)?winterForm(p):'')+'</span>'+
     (canEdit(p.id)?'<span class="acts w-only"><button class="btn sm" data-act="pl-winter" data-id="'+esc(p.id)+'">'+tr('Log a winter','Notera en vinter','Winter noteren')+'</button><select data-plstat="'+esc(p.id)+'" aria-label="'+esc(tr('Update status','Uppdatera status'))+'"><option value="">'+esc(tr('Update status…','Uppdatera status…'))+'</option>'+PSTAT.map(o=>'<option value="'+o.k+'">'+esc(trs(o.en,o.sv))+'</option>').join('')+'</select><button class="btn sm" data-act="pl-edit" data-id="'+esc(p.id)+'">'+tr('Edit','Redigera')+'</button><button class="btn sm danger" data-act="pl-del" data-id="'+esc(p.id)+'">'+tr('Delete','Radera')+'</button></span>':'')+'</div>';
+}
+// The place of a record: a named place of its project (2.7.0), else the free text typed before.
+function plPlaceName(p){if(p.placeId&&p.project){const q=pjById(p.project),x=q&&(q.places||[]).find(y=>y.id===p.placeId);if(x)return x.name}return p.place||''}
+function plPlaceFill(pid,sel){
+  const q=pid&&pjById(pid),ps=q?(q.places||[]).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))):[];
+  const s=$('#plPlaceId');if(!s)return;const w=s.closest('.f');if(w)w.hidden=!ps.length;
+  s.innerHTML='<option value="">'+esc(tr('– none –','– ingen –','– geen –'))+'</option>'+ps.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('');
 }
 function plCvFill(ck){const s=bySid.get($('#plSp').value);$('#plCv').innerHTML=cvOptions(s,ck,tr('Species / unknown cultivar','Arten / okänd sort','Soort / onbekende cultivar'));$('#plCv').value=ck&&s&&s.cvs.some(c=>c.ck===ck)?ck:'';$('#plCvNew').hidden=true;$('#plCvNew').value=''}
 function plFormOpen(p,sid,cv,kind){
@@ -115,7 +122,10 @@ function plFormOpen(p,sid,cv,kind){
   $('#plSp').innerHTML=species.slice().sort(byName).map(x=>'<option value="'+esc(x.sid)+'">'+esc(dispName(x))+(commonName(x)?' ('+esc(x.latin)+')':'')+'</option>').join('');
   $('#plSp').value=p?p.sid:(sid||selected||'');$('#plSp').disabled=!!p;
   plCvFill(p?cvKey(p.cultivar):(cv!=null?cv:((sid||selected)===selected?selCv:'')));
-  $('#plPlace').value=p?p.place||'':'';$('#plDate').value=p?p.date||today():today();$('#plCount').value=p&&p.count?p.count:'';
+  $('#plPlace').value=p?p.place||'':'';
+  {const s=$('#plProj');if(s){const ed=PROJ_ON&&pjEditable().length,w=s.closest('.f');if(w)w.hidden=!ed;
+    const def=p?(p.project||''):(plState.proj&&plState.proj!=='__none'&&projCanEdit(plState.proj)?plState.proj:(pjActive()&&projCanEdit(PJ)&&kind!=='encounter'?PJ:''));
+    s.innerHTML=pjOptions(def);s.value=def;plPlaceFill(def,p&&p.placeId)}}$('#plDate').value=p?p.date||today():today();$('#plCount').value=p&&p.count?p.count:'';
   $('#plSource').value=p?p.source||'':'';$('#plStatus').value=p?p.status||'alive':'alive';$('#plNotes').value=p?p.notes||'':'';
   $('#plGeo').value=p&&p.lat!=null?p.lat+', '+p.lng:'';{const c=$('#plEstab');if(c)c.checked=!!(p&&p.established)}
   $('#plTitle').textContent=plState.kind==='encounter'?(p?tr('Edit encounter','Redigera fynd','Vondst bewerken'):tr('New encounter','Nytt fynd','Nieuwe vondst')):(p?tr('Edit planting','Redigera plantering'):tr('New planting','Ny plantering'));
@@ -136,6 +146,8 @@ async function plSave(){
     :{sid,latin:x.latin,place:$('#plPlace').value.trim(),date:$('#plDate').value||today(),count:$('#plCount').value?Number($('#plCount').value):null,
     source:$('#plSource').value.trim(),status:st,notes:$('#plNotes').value.trim(),checks:old&&old.checks?old.checks.slice():[],createdAt:old?old.createdAt:Date.now()};
   if(old&&old.winters)doc.winters=old.winters;
+  // Project and named place (2.7.0). The project decides who sees the record (D7).
+  {const s=$('#plProj');if(s&&PROJ_ON){doc.project=s.value||'';const pi=($('#plPlaceId')||{}).value||'';if(pi&&doc.project){doc.placeId=pi;if(!doc.place)doc.place=plPlaceName(Object.assign({},doc))}}}
   if(geo.length===2&&geo.every(isFinite)){doc.lat=geo[0];doc.lng=geo[1]}
   if(old&&old.fromV1)doc.fromV1=true;
   if(cv)doc.cultivar=cv;
@@ -150,12 +162,14 @@ async function plSetStatus(id,st,note){
   try{await Data.saveRow('plantings',id,doc);toast(tr('Status updated','Status uppdaterad'))}catch(e){toast(errMsg(e),'err')}
 }
 function updatePlantings(){
-  const all=(state.plantings||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const places=[...new Set(all.map(p=>p.place).filter(Boolean))].sort();
+  {const s=$('#plProjSel');if(s){const ps=state.projects||[];s.hidden=!PROJ_ON||!ps.length;if(plState.proj&&plState.proj!=='__none'&&!pjById(plState.proj))plState.proj='';
+    s.innerHTML='<option value="">'+esc(tr('All projects','Alla projekt','Alle projecten'))+'</option>'+ps.map(q=>'<option value="'+esc(q.id)+'"'+(q.id===plState.proj?' selected':'')+'>'+esc(pjName(q.id))+'</option>').join('')+'<option value="__none"'+(plState.proj==='__none'?' selected':'')+'>'+esc(tr('Without a project','Utan projekt','Zonder project'))+'</option>'}}
+  const all=(state.plantings||[]).filter(p=>!plState.proj||(plState.proj==='__none'?!p.project:p.project===plState.proj)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const places=[...new Set(all.map(plPlaceName).filter(Boolean))].sort();
   $('#plPlaceSel').innerHTML='<option value="">'+esc(tr('All places','Alla platser'))+'</option>'+places.map(x=>'<option'+(x===plState.place?' selected':'')+'>'+esc(x)+'</option>').join('');
   $$('#plStatSeg [data-plst]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.plst===plState.status));
   const se=plShowEnc();{const c=$('#plShowEnc');if(c)c.checked=se;const lb=c&&c.closest('label');if(lb)lb.style.display=all.some(isEnc)?'':'none'}
-  const list=all.filter(p=>(!plState.status||p.status===plState.status)&&(!plState.place||p.place===plState.place)&&(se||!isEnc(p)));
+  const list=all.filter(p=>(!plState.status||p.status===plState.status)&&(!plState.place||plPlaceName(p)===plState.place)&&(se||!isEnc(p)));
   $('#plStats').textContent=plSummary(all)||tr('No planting records yet.','Inga planteringar ännu.');
   $('#plList').innerHTML=list.length?list.map(p=>plRow(p,true)).join(''):'<div class="empty"><p>'+tr('No planting records match.','Inga planteringar matchar.')+'</p></div>';
   updatePlMap(list);

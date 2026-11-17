@@ -70,7 +70,11 @@ const calState={set:'all',acts:new Set(['cal1','cal2','cal3','cal4']),cv:store.g
 const CAL_ACT=[['cal1','Plant / sow','Plantera / så'],['cal2','Flower','Blomning'],['cal3','Harvest','Skörd'],['cal4','Prune / cut','Beskär / skär']];
 function updateCalendar(){
   const lang=state.lang,mo=new Date().getMonth();
-  let pool=calState.set==='fav'?species.filter(x=>Fav.has(x.sid)):calState.set==='cmp'?cmp.map(byRef).filter(Boolean):calState.set==='list'?listInView():species;
+  // 2.7.0: "Project" = the species with planting records in the active project (not dead or removed).
+  const pjNow=calState.set==='proj'&&pjActive();if(calState.set==='proj'&&!pjNow)calState.set='all';
+  const pjSp=pjNow?new Set(pjPlantings(pjNow.id).filter(p=>['dead','removed'].indexOf(p.status)<0).map(p=>p.sid)):null;
+  {const b=$('#calSet [data-calset=proj]');if(b){b.hidden=!PROJ_ON||!(state.projects||[]).length;const q=pjActive();b.textContent=q?pjName(q.id):tr('Project','Projekt','Project')}}
+  let pool=pjSp?species.filter(x=>pjSp.has(x.sid)):calState.set==='fav'?species.filter(x=>Fav.has(x.sid)):calState.set==='cmp'?cmp.map(byRef).filter(Boolean):calState.set==='list'?listInView():species;
   const acts=CAL_ACT.filter(a=>calState.acts.has(a[0]));
   const list=pool.filter(x=>acts.some(a=>!isEmpty(x.m[a[0]]))||(calState.cv&&(x.cvs||[]).some(c=>acts.some(a=>!isEmpty(c.own[a[0]]))))).sort(byName);
   $$('#calSet button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.calset===calState.set));

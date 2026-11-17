@@ -13,7 +13,7 @@ function cardHTML(s){
   const T=k=>m[k]?esc(m[k]):'';
   const N=(k,u)=>m[k]!=null?(LEN_KEYS.indexOf(k)>=0?esc(fmtLen(m[k])):esc(m[k])+' '+(u||unitOf(DEF[k],s.form)||'')):'';
   const B=(en,sv,inner,sec)=>inner.trim()?'<section class="blk"><h3>'+L(en,sv)+(sec?smark(s.sid,sec):'')+'</h3>'+inner+'</section>':'';
-  const typeO=TYPES_ALL.find(o=>o.k===m.type),statO=STATUS.find(o=>o.k===m.status),invO=INV.find(o=>o.k===m.invasive);
+  const typeO=TYPES_ALL.find(o=>o.k===m.type),statO=null/* species Status retired in 2.7.0 */,invO=INV.find(o=>o.k===m.invasive);
   const size=esc(fmtSize(m.height,m.spread));
   const nat=esc(fmtSize(m.nativeH,m.nativeW));
   const pv=provenOf(s);
@@ -44,7 +44,7 @@ function cardHTML(s){
 }
 
 /* ---------- overview ---------- */
-const FILTERS=[['type','Type','Typ',TYPES_ALL],['status','Status','Status',STATUS],['light','Light','Ljus',LIGHT],['layer','Layer','Skikt',LAYER],['struct','Structure','Struktur',STRUCT],['eco','Functions','Funktioner',ECO_ALL],['uses','Uses','Användning',USES_ALL],['tol','Tolerates','Tål',TOL]];
+const FILTERS=[['type','Type','Typ',TYPES_ALL],['light','Light','Ljus',LIGHT],['layer','Layer','Skikt',LAYER],['struct','Structure','Struktur',STRUCT],['eco','Functions','Funktioner',ECO_ALL],['uses','Uses','Användning',USES_ALL],['tol','Tolerates','Tål',TOL]];
 function buildFilters(){
   $('#fltBody').innerHTML='<div class="fgrp"><span class="fl">'+trh('Favourites','Favoriter')+'</span><div class="chips"><button type="button" class="chip sm" data-favonly aria-pressed="false"><i></i><span>'+trh('Only my favourites','Endast mina')+'</span></button></div></div><div class="fgrp"><span class="fl">'+trh('Form','Typ av växt')+'</span><div class="chips">'+
     [['',trh('All','Alla')],['w',trh('Woody','Vedartad')],['h',trh('Herbaceous','Örtartad')]].map(a=>'<button type="button" class="chip sm" data-form="'+a[0]+'" aria-pressed="'+(a[0]===state.fForm)+'"><i></i><span>'+a[1]+'</span></button>').join('')+'</div></div>'+
@@ -125,7 +125,6 @@ function buildForm(){
     '<label class="f"><span class="fl">'+trh('Entry date','Datum')+'</span><input type="date" id="entDate" value="'+esc(draft._date||today())+'"></label>'+
     '<div class="fg"><div class="fl">'+trh('Type · woody','Typ · vedartad')+'</div><div class="chips">'+TYPES_W.map(o=>chipBtn(DEF.type,o)).join('')+'</div></div>'+
     '<div class="fg"><div class="fl">'+trh('Type · herbaceous','Typ · örtartad')+'</div><div class="chips">'+TYPES_H.map(o=>chipBtn(DEF.type,o)).join('')+'</div></div>'+
-    fieldHTML(DEF.status)+
     '<div class="f wide ph-only"><label class="fl" for="entPhoto">'+trh('Photo','Foto')+'</label><input id="entPhoto" type="file" accept="image/*"><span class="hint" id="photoHint">'+(draft.photo?tr('A photo is already attached to this entry.','Ett foto finns redan på den här posten.'):tr('Shown on the card and the printed sheet.','Visas på kortet och det utskrivna bladet.'))+'</span></div>'+
     '</div></div>';
   $('#form').innerHTML=id+SEC.map((sec,i)=>'<details class="sec" data-sec="'+sec.id+'"'+(wide||i===0?' open':'')+'><summary>'+(state.lang==='both'?esc(sec.en)+' <em style="font:400 13px var(--ui)">'+esc(sec.sv)+'</em>':esc(trs(sec.en,sec.sv)))+(SPECIES_ONLY.indexOf(sec.f[0].k)>=0?'<small class="sponly">'+esc(tr('always for the whole species','gäller alltid hela arten','geldt altijd voor de hele soort'))+'</small>':'')+'<span class="n" data-n="'+sec.id+'"></span></summary><div class="fields">'+sec.f.filter(d=>(!d.only||d.only===draftForm)&&!d.hide).map(fieldHTML).join('')+'</div></details>').join('');

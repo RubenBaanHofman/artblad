@@ -22,25 +22,25 @@ Until 2.4.7 all logic was one file, `app.js`. Since 2.5.0 the same code is split
 
 | File | Contains | Lines |
 |---|---|---|
-| `01-core.js` | Helpers, option lists, field schema, lengths (cm/m), cultivars, app state, family/public setting, outside-service registry | 235 |
-| `02-data.js` | Data layer (Supabase or in-memory demo), offline copy on the device, favourites, photos, merging entries | 176 |
+| `01-core.js` | Helpers, option lists, field schema, lengths (cm/m), cultivars, app state, family/public setting, outside-service registry | 238 |
+| `02-data.js` | Data layer (Supabase or in-memory demo), projects column, offline copy on the device, favourites, photos, merging entries | 192 |
 | `03-artie-sources.js` | Outside sources pre-filled by Artie (the bot): labels and rules | 99 |
 | `04-i18n.js` | Labels and language switching | 41 |
 | `05-print.js` | Printable A5 sheet, QR codes and links to a species | 119 |
 | `06-values.js` | Value text in the chosen language | 149 |
-| `07-species.js` | Species card, overview, Add/Edit form and its draft, sheet view | 317 |
+| `07-species.js` | Species card, overview, Add/Edit form and its draft, sheet view | 316 |
 | `08-winter.js` | Winter survival records and sanity checks | 63 |
 | `09-svc-gbif-names.js` | SERVICE: Latin name check while typing (GBIF name service) | 21 |
 | `10-visuals.js` | Pictograms, layer diagram, year wheel, genus, grid, display, season, shields, bulk fill, admin extras | 238 |
 | `11-svc-map.js` | SERVICE: map of planting records (Leaflet from vendor/leaflet, tiles from SERVICES.tiles) | 25 |
 | `12-review-live.js` | Install on home screen; section marks, dismissed problems, live updates for admins | 142 |
 | `13-svc-zones-soil.js` | SERVICE: Swedish zones and winter temperatures; soil permeability (SGU open data) | 63 |
-| `14-review.js` | Verified marks, review flags, admin dashboard, service check, unused photo files | 176 |
+| `14-review.js` | Verified marks, review flags, admin dashboard, service check, unused photo files | 177 |
 | `15-exports.js` | Exports, picture-slot icons, completeness and gaps, links, near matches, renames, plant sources | 209 |
 | `16-autofill.js` | Auto-fill requests (Artie) and my contributions | 146 |
-| `17-planning.js` | Planning: compare (table), calendar, pick a plant, hardiness scale | 335 |
-| `18-plantings.js` | Planting records and comments | 42 |
-| `19-svc-climate.js` | SERVICE: winter climate of a map position (Open-Meteo archive, ERA5-Land) | 162 |
-| `20-lists.js` | Shared lists, who and when, trash, display name, manual | 102 |
-| `21-ui.js` | Home, navigation, events, sign-in, roles and realtime | 353 |
+| `17-planning.js` | Planning: compare (table), calendar, pick a plant, hardiness scale | 339 |
+| `18-plantings.js` | Projects (sites, members, places, notes), planting records and comments | 175 |
+| `19-svc-climate.js` | SERVICE: winter climate of a map position (Open-Meteo archive, ERA5-Land) | 176 |
+| `20-lists.js` | Shared lists, who and when, trash, display name, manual | 106 |
+| `21-ui.js` | Home, navigation, events, sign-in, roles and realtime | 377 |
 | `22-init.js` | Loading screen, start-up and the offline service worker (runs last) | 120 |

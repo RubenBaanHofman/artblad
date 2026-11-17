@@ -24,7 +24,7 @@ const SIC={
 };
 function sheetHead(s,lang,src,band){
   const m=s.m,w=s.form==='w',L=(en,sv)=>esc(lang==='sv'?sv:lang==='en'?en:lang==='nl'?nl(en):en+' · '+sv);
-  const typeO=TYPES_ALL.find(o=>o.k===m.type),statO=STATUS.find(o=>o.k===m.status),invO=INV.find(o=>o.k===m.invasive);
+  const typeO=TYPES_ALL.find(o=>o.k===m.type),statO=null/* species Status retired in 2.7.0 */,invO=INV.find(o=>o.k===m.invasive);
   const cn=lang==='sv'?m.sv:lang==='en'?m.en:lang==='nl'?m.nl:'';const main=cn||s.latin;
   const others=[m.en,m.sv,m.nl].filter(x=>x&&x!==main);
   const pic=s.cover&&src(s.cover)?'<img src="'+src(s.cover)+'" alt="">':phIcon(s);
@@ -127,7 +127,7 @@ function sheetFront(s,lang,src){
   return '<section class="sheet'+(w?'':' herb')+'"><div class="band"><span>'+(lang==='en'?(w?'WOODY PLANT':'HERBACEOUS PLANT'):lang==='nl'?(w?'HOUTIGE PLANT':'KRUIDACHTIGE PLANT'):lang==='sv'?(w?'VEDARTAD VÄXT':'ÖRTARTAD VÄXT'):(w?'WOODY PLANT · VEDARTAD VÄXT':'HERBACEOUS PLANT · ÖRTARTAD VÄXT'))+'</span><small>SKOGSTRÄDGÅRDENS ARTBLAD</small></div>'+
     '<div class="idb"><div class="idl"><div class="row">'+F('Common name','Namn',m.en,'',1.1)+F('Latin name','Latinskt namn',s.latin+(m.cultivar?" ‘"+m.cultivar+"’":''),'',1.4,'latin')+F('Swedish name','Svenskt namn',m.sv,'',1)+'</div>'+
     '<div class="row">'+F('Family','Familj',m.family,'',1.4)+F('Dutch name','Nederländskt namn',m.nl,'',1.6)+F('No.','Nr',s.no,'',.6)+'</div>'+
-    '<div class="row"><span class="lr" style="flex:1.6"><u>'+L('Type','Typ')+'</u>'+G('type',types,types.length)+'</span><span class="lr" style="flex:1"><u>'+L('Status','Status')+'</u>'+G('status',STATUS,5)+'</span></div></div>'+
+    '<div class="row"><span class="lr" style="flex:1"><u>'+L('Type','Typ')+'</u>'+G('type',types,types.length)+'</span></div></div>'+
     '<div class="pic">'+pic+'</div></div>'+
     '<div class="tri">'+b1+b2+b3+'</div>'+b4+'<div class="tri">'+b5+b6+b7+'</div>'+ft+'</section>';
 }

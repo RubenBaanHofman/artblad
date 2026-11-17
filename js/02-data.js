@@ -5,6 +5,10 @@
 const randHex=n=>{const a=new Uint8Array(n);crypto.getRandomValues(a);return [...a].map(x=>x.toString(16).padStart(2,'0')).join('')};
 const newId=()=>randHex(10);
 const COLS='id,data,author,updated_by,updated_at,deleted_at,deleted_by,created_at';
+// Database update v9 (app 2.7.0): planting records, lists and comments can belong to a project (column project_id).
+// Without v9 the column is missing: then they are read as before and projects stay switched off (PROJ_ON).
+let PROJ_ON=false;
+async function fetchAllP(t){try{return await fetchAll(t,COLS+',project_id')}catch(e){if(/project_id|42703|PGRST204/.test(String((e&&(e.message||e.code))||'')))return fetchAll(t);throw e}}
 async function fetchAll(t,cols){let out=[],from=0;for(;;){const r=await SB.from(t).select(cols||COLS).order('id').range(from,from+999);if(r.error)throw r.error;out=out.concat(r.data);if(r.data.length<1000)break;from+=1000}return out}
 // Fixed species numbers from the database (update v8, since 2.5.1); null when not available (then the list order is used).
 let SPNO=null;
@@ -20,11 +24,15 @@ let OFFLINE_AT=0; // when the copy on screen was saved; 0 = live data
 function applyRows(r,adm){
   META.clear();PROFILES.clear();
   (r[2].data||[]).forEach(p=>PROFILES.set(p.user_id,p.display_name));
-  const keep=(rows,kind)=>rows.map(x=>{META.set(x.id,{kind,author:x.author,updatedBy:x.updated_by,updatedAt:x.updated_at,deletedAt:x.deleted_at,deletedBy:x.deleted_by,createdAt:x.created_at});return Object.assign({id:x.id},x.data)});
+  const keep=(rows,kind)=>rows.map(x=>{META.set(x.id,{kind,author:x.author,updatedBy:x.updated_by,updatedAt:x.updated_at,deletedAt:x.deleted_at,deletedBy:x.deleted_by,createdAt:x.created_at,project:x.project_id||''});const o=Object.assign({id:x.id},x.data);if(x.project_id!==undefined)o.project=x.project_id||'';return o});
   const E=keep(r[0],'entry').map(e=>e.fields?lenNorm(Object.assign(e,{fields:normFields(e.fields)})):e),O=keep(r[1],'obs'),live=x=>!META.get(x.id).deletedAt;
   state.entries=E.filter(live);state.obs=O.filter(live);state.trashE=E.filter(x=>!live(x));state.trashO=O.filter(x=>!live(x));
   const Pl=keep(r[3],'planting'),Li=keep(r[4],'list');state.plantings=Pl.filter(live);state.lists=Li.filter(live);state.trashP=Pl.filter(x=>!live(x));state.trashL=Li.filter(x=>!live(x));
   const Cm=keep(r[5],'comment');state.comments=Cm.filter(live);state.trashC=Cm.filter(x=>!live(x));
+  // Projects (v9): r[9] the projects I belong to, r[10] their members.
+  PROJ_ON=Array.isArray(r[9]);document.body.classList.toggle('noproj',!PROJ_ON);
+  const Pj=PROJ_ON?keep(r[9],'project'):[];state.projects=Pj.filter(live);state.trashPj=Pj.filter(x=>!live(x));
+  state.members=PROJ_ON&&r[10]&&Array.isArray(r[10].data)?r[10].data:[];
   SPNO=r[8]&&!r[8].error&&Array.isArray(r[8].data)&&r[8].data.length?new Map(r[8].data.map(x=>[x.sid,Number(x.no)])):null;
   revSet(adm&&r[6]&&!r[6].error?r[6].data:null);if(adm&&r[7]&&!r[7].error)afRows=r[7].data||[];
 }
@@ -37,12 +45,12 @@ async function loadAll(){
   if(!SB)return;
   try{
     const adm=isAdmin(),soft=q=>Promise.resolve(q).then(x=>x,e=>({error:e}));
-    const r=await Promise.all([fetchAll('entries'),fetchAll('obs'),SB.from('profiles').select('user_id,display_name'),CANW?fetchAll('plantings').catch(()=>[]):[],CANW?fetchAll('lists').catch(()=>[]):[],fetchAll('comments').catch(()=>[]),
+    const r=await Promise.all([fetchAll('entries'),fetchAll('obs'),SB.from('profiles').select('user_id,display_name'),CANW?fetchAllP('plantings').catch(()=>[]):[],CANW?fetchAllP('lists').catch(()=>[]):[],fetchAllP('comments').catch(()=>[]),
       adm?soft(SB.rpc('review_state')):null,adm?soft(SB.from('autofill_requests').select('sid,latin,n,status,first_requested_at,last_requested_at,sent_at').order('first_requested_at')):null,
-      soft(SB.from('species_numbers').select('sid,no'))]);
+      soft(SB.from('species_numbers').select('sid,no')),fetchAll('projects').catch(()=>null),soft(SB.from('project_members').select('project_id,user_id,role'))]);
     if(r[2].error)throw r[2].error;
     // The copy for offline use is taken before applyRows, which adjusts the rows it reads (lengths, field names).
-    {const uid=meUid();if(uid){let copy=null;try{copy=JSON.parse(JSON.stringify([r[0],r[1],{data:r[2].data||[]},r[3],r[4],r[5],null,null,{data:(r[8]&&r[8].data)||[]}]))}catch(x){}if(copy)offPut({uid,at:Date.now(),v:APP_VERSION,r:copy}).catch(()=>{})}}
+    {const uid=meUid();if(uid){let copy=null;try{copy=JSON.parse(JSON.stringify([r[0],r[1],{data:r[2].data||[]},r[3],r[4],r[5],null,null,{data:(r[8]&&r[8].data)||[]},r[9],{data:(r[10]&&r[10].data)||[]}]))}catch(x){}if(copy)offPut({uid,at:Date.now(),v:APP_VERSION,r:copy}).catch(()=>{})}}
     applyRows(r,adm);OFFLINE_AT=0;document.body.classList.remove('offline');
     $('#banner').hidden=true;loaded=true;lastLoad=Date.now();renderAcct();refresh();
   }catch(e){
@@ -58,6 +66,14 @@ async function loadFav(uid){const r=await SB.from('favorites').select('sids').eq
 const gone=()=>({code:'42501',message:'Nothing was deleted: you may not have permission.'});
 // Entries written by this version store lengths in centimetres (see lenNorm in 01-core.js).
 const luTag=doc=>{if(doc&&doc.fields)doc.lu='cm';return doc};
+// Rows of tables that can belong to a project: the project goes into its own column (the database rules use it),
+// not into the document. Only when the document says which project (key present), so other saves leave it alone.
+const PROJ_TABLES=['plantings','lists','comments'];
+function projRow(table,id,doc){
+  const row={id,data:doc};
+  if(PROJ_TABLES.indexOf(table)>=0&&doc&&Object.prototype.hasOwnProperty.call(doc,'project')){const d=Object.assign({},doc);const pj=d.project||null;delete d.project;row.data=d;if(PROJ_ON)row.project_id=pj}
+  return row;
+}
 const Data={
   async saveEntry(id,doc){
     luTag(doc);
@@ -87,12 +103,12 @@ const Data={
   async saveRows(table,rows){
     if(!rows.length)return;
     if(table==='entries')rows.forEach(x=>luTag(x.data));
-    if(SB){const r=await SB.from(table).upsert(rows);if(r.error)throw r.error;await loadAll()}
+    if(SB){const r=await SB.from(table).upsert(rows.map(x=>Object.assign(projRow(table,x.id,x.data),x.project_id!==undefined?{project_id:x.project_id}:{})));if(r.error)throw r.error;await loadAll()}
     else{const a=(state[table]||[]).slice();rows.forEach(x=>{const i=a.findIndex(y=>y.id===x.id),o=Object.assign({id:x.id},x.data);if(i<0)a.push(o);else a[i]=o});state[table]=a;refresh()}
   },
   async saveRow(table,id,doc){
     const rid=id||newId();
-    if(SB){const r=await SB.from(table).upsert({id:rid,data:doc});if(r.error)throw r.error;await loadAll()}
+    if(SB){const r=await SB.from(table).upsert(projRow(table,rid,doc));if(r.error)throw r.error;await loadAll()}
     else{const k=table;const a=state[k]||[];const i=a.findIndex(x=>x.id===rid);const o=Object.assign({id:rid},doc);if(i<0)a.push(o);else a[i]=o;state[k]=a.slice();refresh()}
     return rid;
   },
