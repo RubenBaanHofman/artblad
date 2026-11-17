@@ -107,7 +107,6 @@ document.addEventListener('click',async e=>{
   const gso=t.closest('[data-gapsort]');if(gso){store.set('ab.gapsort',gso.dataset.gapsort);updateGaps();return}
   const vb=t.closest('[data-view]');if(vb){store.set('ab.view',vb.dataset.view);dispApply();updateOverview();return}
   const fo=t.closest('[data-favonly]');if(fo){state.favOnly=!state.favOnly;updateOverview();return}
-  const cv=t.closest('[data-cmpview]');if(cv){cmpSet('view',cv.dataset.cmpview);return}
   const cc=t.closest('[data-cmpcol]');if(cc){cmpSet('col',cc.dataset.cmpcol);return}
   const cd=t.closest('[data-cmp-del]');if(cd){cmp=cmp.filter(x=>x!==cd.dataset.cmpDel);saveCmp();updateCompare();return}
   const cs=t.closest('[data-calset]');if(cs){calState.set=cs.dataset.calset;updateCalendar();return}

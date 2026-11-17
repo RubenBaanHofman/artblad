@@ -38,9 +38,9 @@ Until 2.4.7 all logic was one file, `app.js`. Since 2.5.0 the same code is split
 | `14-review.js` | Verified marks, review flags, admin dashboard, service check, unused photo files | 176 |
 | `15-exports.js` | Exports, picture-slot icons, completeness and gaps, links, near matches, renames, plant sources | 209 |
 | `16-autofill.js` | Auto-fill requests (Artie) and my contributions | 146 |
-| `17-planning.js` | Planning: compare (table and side by side), calendar, pick a plant, hardiness scale | 363 |
+| `17-planning.js` | Planning: compare (table), calendar, pick a plant, hardiness scale | 335 |
 | `18-plantings.js` | Planting records and comments | 42 |
 | `19-svc-climate.js` | SERVICE: winter climate of a map position (Open-Meteo archive, ERA5-Land) | 162 |
 | `20-lists.js` | Shared lists, who and when, trash, display name, manual | 102 |
-| `21-ui.js` | Home, navigation, events, sign-in, roles and realtime | 354 |
+| `21-ui.js` | Home, navigation, events, sign-in, roles and realtime | 353 |
 | `22-init.js` | Loading screen, start-up and the offline service worker (runs last) | 120 |

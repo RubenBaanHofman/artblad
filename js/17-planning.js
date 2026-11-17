@@ -2,16 +2,15 @@
 // Part 17 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 /* ---------- planning: compare ---------- */
-const CMP_MAX=40;
+const CMP_MAX=40; // also named in the compare bars in index.html ("up to 40")
 let cmpMode=false;
 function updateCmpBar(){const b=$('#cmpBar');if(!b)return;const n=cmp.filter(x=>byRef(x)).length;b.hidden=!cmpMode;$('#cmpN').textContent=n;$('#cmpGo').disabled=n<2;const pb=$('#pickCmpBar');if(pb){pb.hidden=!n;$('#pickCmpN').textContent=n;$('#pickCmpGo').disabled=n<2}$$('[data-act=cmp-mode]').forEach(x=>x.setAttribute('aria-pressed',cmpMode))}
 let cmp=(()=>{try{const a=JSON.parse(store.get('ab.cmp')||'[]');return Array.isArray(a)?a.slice(0,CMP_MAX):[]}catch(e){return []}})();
 const saveCmp=()=>store.set('ab.cmp',JSON.stringify(cmp));
 function cmpAdd(sid){if(cmp.indexOf(sid)<0){if(cmp.length>=CMP_MAX)cmp.shift();cmp.push(sid);saveCmp()}}
 /* Compare (2.6.0): a table with one row per species, like the genus and cultivar tables, sorted in a few useful ways
-   and with columns to choose; "Side by side" keeps the old view for up to four species. */
-const CMP_SIDE=4;
-const cmpPref={view:store.get('ab.cmpview')==='side'?'side':'table',sort:store.get('ab.cmpsort')||'layer',cols:(()=>{try{const a=JSON.parse(store.get('ab.cmpcols')||'null');return Array.isArray(a)?new Set(a):null}catch(e){return null}})()};
+   and with columns to choose. The side-by-side view was removed in 2.6.1. */
+const cmpPref={sort:store.get('ab.cmpsort')||'layer',cols:(()=>{try{const a=JSON.parse(store.get('ab.cmpcols')||'null');return Array.isArray(a)?new Set(a):null}catch(e){return null}})()};
 const layerRank=x=>{const a=[].concat(x.m.layer||[]).map(k=>LAYER.findIndex(o=>o.k===k)).filter(i=>i>=0);return a.length?Math.min.apply(null,a):99};
 const firstMonth=(x,k)=>{const a=[].concat(x.m[k]||[]).map(Number).filter(n=>n>=1&&n<=12);return a.length?Math.min.apply(null,a):99};
 const CMP_SORTS=[
@@ -45,54 +44,27 @@ function cmpTableHTML(list){
     let h='';if(srt[0]==='layer'){const r=layerRank(x);if(r!==lastL){lastL=r;const o=LAYER[r];h='<tr class="cmpgrp"><th colspan="'+(cols.length+2)+'">'+(o?esc(trs(o.en,o.sv)):esc(tr('No layer recorded','Inget skikt angivet','Geen laag vastgelegd')))+'</th></tr>'}}
     return h+'<tr><td class="cmpnm"><span class="ph sm" style="--c:'+FCOL[x.form]+'">'+phInner(x,1)+'</span><button type="button" class="lnk" data-open="'+esc(x.ref)+'"><i>'+esc(x.latin)+'</i>'+(x.isCv?' '+esc(cvQ(x.cv)):'')+'</button>'+(commonName(x)?'<br><small>'+esc(commonName(x))+'</small>':'')+'</td>'+
       cols.map(c=>{const v=cell[c[0]](x);return '<td>'+(v||dash)+'</td>'}).join('')+
-      '<td><button type="button" class="btn sm" data-cmp-del="'+esc(x.ref)+'" aria-label="'+esc(tr('Remove','Ta bort','Verwijderen'))+'">×</button></td></tr>'}).join('');
+      '<td><span class="cmpacts">'+starBtn(x.sid)+addListSelect(x.sid)+'<button type="button" class="btn sm" data-cmp-del="'+esc(x.ref)+'" aria-label="'+esc(tr('Remove','Ta bort','Verwijderen'))+'">×</button></span></td></tr>'}).join('');
   return '<div class="tbl"><table class="cmpt cmptab"><thead><tr><th scope="col">'+esc(tr('Species','Art','Soort'))+'</th>'+cols.map(c=>'<th scope="col">'+esc(trs(c[1],c[2]))+'</th>').join('')+'<th></th></tr></thead><tbody>'+body+'</tbody></table></div>';
 }
 function updateCompare(){
   cmp=cmp.filter(x=>byRef(x));
-  const list=cmp.map(byRef),side=cmpPref.view==='side';
+  const list=cmp.map(byRef);
   const opts=species.slice().sort(byName).map(x=>'<option value="'+esc(x.sid)+'">'+esc(dispName(x))+'</option>'+x.cvs.map(c=>'<option value="'+esc(c.ref)+'">'+'\u00a0\u00a0\u00a0'+esc(dispName(c))+'</option>').join('')).join('');
   $('#cmpPick').innerHTML='<option value="">'+esc(tr('Add a species…','Lägg till en art…','Soort toevoegen…'))+'</option>'+opts;
   $('#cmpPick').disabled=list.length>=CMP_MAX;
   const ctl=$('#cmpCtl');
-  if(ctl)ctl.innerHTML='<span class="seg" role="group" aria-label="'+esc(tr('View','Visning','Weergave'))+'"><button type="button" data-cmpview="table" aria-pressed="'+!side+'">'+esc(tr('Table','Tabell','Tabel'))+'</button><button type="button" data-cmpview="side" aria-pressed="'+side+'">'+esc(tr('Side by side','Sida vid sida','Naast elkaar'))+'</button></span>'+
-    (side?'':'<label class="cmpsort">'+esc(tr('Order','Ordning','Volgorde'))+' <select id="cmpSort">'+CMP_SORTS.map(z=>'<option value="'+z[0]+'"'+(z[0]===cmpPref.sort?' selected':'')+'>'+esc(trs(z[1],z[2]))+'</option>').join('')+'</select></label>'+
+  if(ctl)ctl.innerHTML=('<label class="cmpsort">'+esc(tr('Order','Ordning','Volgorde'))+' <select id="cmpSort">'+CMP_SORTS.map(z=>'<option value="'+z[0]+'"'+(z[0]===cmpPref.sort?' selected':'')+'>'+esc(trs(z[1],z[2]))+'</option>').join('')+'</select></label>'+
     '<span class="chips cmpcols" aria-label="'+esc(tr('Columns','Kolumner','Kolommen'))+'">'+CMP_COLS.map(c=>'<button type="button" class="chip sm" data-cmpcol="'+c[0]+'" aria-pressed="'+cmpColOn(c[0])+'"><i></i><span>'+esc(trs(c[1],c[2]))+'</span></button>').join('')+'</span>');
   if(ctl)ctl.hidden=!list.length;
   if(!list.length){$('#cmpTable').innerHTML='<div class="empty"><p>'+tr('Add species to compare them in a table: one at a time, “Add my favourites”, “Compare” on a species page, a list, or the tick boxes in Pick a plant.','Lägg till arter för att jämföra dem i en tabell: en i taget, ”Lägg till mina favoriter”, ”Jämför” på en artsida, en lista eller kryssrutorna i Välj en växt.','Voeg soorten toe om ze in een tabel te vergelijken: één voor één, “Mijn favorieten toevoegen”, “Vergelijken” op een soortpagina, een lijst of de vinkjes in Kies een plant.')+'</p></div>';return}
-  if(side){const sl=list.slice(0,CMP_SIDE);$('#cmpTable').innerHTML=(list.length>CMP_SIDE?'<p class="muted">'+esc(tr('Side by side shows the first '+CMP_SIDE+' of '+list.length+'. The table shows all.','Sida vid sida visar de första '+CMP_SIDE+' av '+list.length+'. Tabellen visar alla.','Naast elkaar toont de eerste '+CMP_SIDE+' van '+list.length+'. De tabel toont alle.'))+'</p>':'')+cmpSideHTML(sl);return}
   $('#cmpTable').innerHTML=cmpTableHTML(list)+'<p class="muted" style="font-size:13px">'+esc(tr(list.length+' species. Tap a name to open its page.',list.length+' arter. Tryck på ett namn för att öppna sidan.',list.length+' soorten. Tik op een naam om de pagina te openen.'))+'</p>';
 }
 function cmpSet(kind,v){
-  if(kind==='view'){cmpPref.view=v==='side'?'side':'table';store.set('ab.cmpview',cmpPref.view)}
-  else if(kind==='sort'){cmpPref.sort=v;store.set('ab.cmpsort',v)}
+  if(kind==='sort'){cmpPref.sort=v;store.set('ab.cmpsort',v)}
   else if(kind==='col'){if(!cmpPref.cols)cmpPref.cols=new Set(CMP_COLS.filter(c=>c[3]).map(c=>c[0]));if(cmpPref.cols.has(v))cmpPref.cols.delete(v);else cmpPref.cols.add(v);store.set('ab.cmpcols',JSON.stringify([...cmpPref.cols]))}
   updateCompare();
 }
-function cmpSideHTML(list){
-  const lang=state.lang;
-  const V=(x,k)=>{const d=DEF[k],v=x.m[k];return isEmpty(v)||!d?'':esc(vtl(d,v,x.form,lang))};
-  const months=(x,k)=>'<span class="cmo">'+MONTHS.map((l,i)=>'<i'+((x.m[k]||[]).indexOf(i+1)>=0?' class="on"':'')+' title="'+MONTH_NAMES[i]+'"></i>').join('')+'</span>';
-  const rows=[
-    ['Type','Typ',x=>V(x,'type')],['Status','Status',x=>V(x,'status')],
-    ['Height × spread','Höjd × bredd',x=>!isEmpty(x.m.height)?esc(isEmpty(x.m.spread)?fmtLen(x.m.height):fmtSize(x.m.height,x.m.spread)):''],
-    ['Light','Ljus',x=>V(x,'light')],['Moisture','Fukt',x=>V(x,'moist')],['Soil','Jord',x=>V(x,'soil')],['pH','pH',x=>V(x,'ph')],['Tolerates','Tål',x=>V(x,'tol')],
-    ['Hardiness','Härdighet',x=>[x.m.usda?'USDA '+esc(x.m.usda):'',x.m.szone?'SE '+esc(x.m.szone):'',x.m.rhs?'RHS '+esc(x.m.rhs):''].filter(Boolean).join(' · ')],
-    ['Layer','Skikt',x=>V(x,'layer')],['Role','Roll',x=>V(x,'role')],['Structure','Struktur',x=>V(x,'struct')],
-    ['cal1','',x=>x.m.cal1?months(x,'cal1'):''],['cal2','',x=>x.m.cal2?months(x,'cal2'):''],['cal3','',x=>x.m.cal3?months(x,'cal3'):''],['cal4','',x=>x.m.cal4?months(x,'cal4'):''],
-    ['Uses','Användning',x=>V(x,'uses')],['Edibility','Ätlighet',x=>isEmpty(x.m.edibility)?'':x.m.edibility===0?esc(trs('Inedible','Oätlig')):dots(x.m.edibility,5)],['Yield','Skörd',x=>V(x,'yield')],['Ecosystem','Ekosystem',x=>V(x,'eco')],
-    ['Effort','Insats',x=>V(x,'effort')],['Establishment','Etablering',x=>V(x,'estab')],['Propagation','Förökning',x=>V(x,'prop')],
-    ['Use it?','Använda?',x=>x.m.verdict?dots(x.m.verdict,5):''],['Invasive risk (SE)','Invasionsrisk',x=>V(x,'invasive')],['Cautions','Varningar',x=>V(x,'caut')],
-    ['Good with','Passar med',x=>V(x,'goodWith')],['Avoid near','Undvik nära',x=>V(x,'avoid')]
-  ];
-  const head='<tr><th></th>'+list.map(x=>{const nm=names(x);return '<th><div class="cmph"><span class="ph" style="--c:'+FCOL[x.form]+'">'+phInner(x,1)+'</span><button type="button" class="lnk" data-open="'+esc(x.ref)+'"><span class="lat">'+nm.main+'</span></button><span class="nm">'+nm.sub+'</span><span class="cmpacts">'+starBtn(x.sid)+addListSelect(x.sid)+'<button type="button" class="btn sm" data-cmp-del="'+esc(x.ref)+'">'+tr('Remove','Ta bort')+'</button></span></div></th>'}).join('')+'</tr>';
-  const body=rows.map(r=>{const cells=list.map(r[2]);if(!cells.some(Boolean))return '';
-    const ca=CAL_ACT.find(z=>z[0]===r[0]),lab=ca?trh(ca[1],ca[2]):trh(r[0],r[1]);
-    const diff=new Set(cells.map(c=>c.replace(/<[^>]+>/g,''))).size>1;
-    return '<tr'+(diff?' class="diff"':'')+'><th scope="row">'+lab+'</th>'+cells.map(c=>'<td>'+(c||'<span class="muted">–</span>')+'</td>').join('')+'</tr>'}).join('');
-  return '<div class="tbl"><table class="cmpt"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div><p class="muted" style="font-size:13px">'+tr('Rows where the species differ are marked. Empty rows are hidden.','Rader där arterna skiljer sig är markerade. Tomma rader döljs.')+'</p>';
-}
-
 /* ---------- planning: calendar ---------- */
 const calState={set:'all',acts:new Set(['cal1','cal2','cal3','cal4']),cv:store.get('ab.calcv')!=='0'};
 const CAL_ACT=[['cal1','Plant / sow','Plantera / så'],['cal2','Flower','Blomning'],['cal3','Harvest','Skörd'],['cal4','Prune / cut','Beskär / skär']];
@@ -355,7 +327,7 @@ function updatePick(){
   const good=groups.filter(g=>g.best.cls==='ok').sort((a,b)=>(b.best.both?1:0)-(a.best.both?1:0)||a.best.unk-b.best.unk||(b.best.x.m.verdict||0)-(a.best.x.m.verdict||0)||byName(a.s,b.s));
   const close=groups.filter(g=>g.best.cls==='close'&&(scoped||Fav.has(g.s.sid))).sort((a,b)=>a.best.no-b.best.no||byName(a.s,b.s));
   const sec=(title,rows,empty)=>'<h2 class="hsec">'+title+' <em>'+rows.length+'</em></h2>'+(rows.length?'<div class="splist">'+rows.map(pickGroup).join('')+'</div>':'<p class="muted">'+empty+'</p>');
-  const hint='<p class="cmphint"><span class="cmpbox" aria-hidden="true"></span>'+esc(tr('Tick “Compare” on 2 to 4 species or cultivars to see them side by side.','Kryssa i ”Jämför” på 2 till 4 arter eller sorter för att se dem sida vid sida.','Vink “Vergelijken” aan bij 2 tot 4 soorten of cultivars om ze naast elkaar te zien.'))+'</p>';
+  const hint='<p class="cmphint"><span class="cmpbox" aria-hidden="true"></span>'+esc(tr('Tick “Compare” on two or more species or cultivars (up to 40) to see them in one table.','Kryssa i ”Jämför” på två eller fler arter eller sorter (upp till 40) för att se dem i en tabell.','Vink “Vergelijken” aan bij twee of meer soorten of cultivars (tot 40) om ze in één tabel te zien.'))+'</p>';
   {const j=$('#pickJump'),n=good.length+close.length;if(j){j.hidden=!n;j.textContent=tr('Show '+n+' matches ↓','Visa '+n+' träffar ↓','Toon '+n+' resultaten ↓')}}
   $('#pickOut').innerHTML=hint+sec(trh('Good matches','Bra matchningar'),good,tr('No species match everything yet. Try leaving out a condition.','Inga arter matchar allt ännu. Prova att hoppa över ett villkor.'))+
     sec(scoped?trh('Could work with some help','Kan fungera med lite hjälp'):trh('Favourites that could work with some help','Favoriter som kan fungera med lite hjälp'),close,scoped?tr('None of these species are a near miss for this spot.','Ingen av dessa arter är nära att passa här.'):tr('None of your favourites are a near miss for this spot.','Ingen av dina favoriter är nära att passa här.'))+
