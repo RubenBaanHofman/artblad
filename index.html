@@ -30,7 +30,7 @@ body:not(.ro) .ro-only{display:none!important}
 .joinhow{padding:16px 18px;border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:14px;background:var(--surface)}.joinhow h2{margin:0 0 6px}.joinhow ol{margin:0 0 8px;padding-left:1.3em;display:grid;gap:4px}
 .dock .dkic{position:relative;display:inline-flex}.dkdot{position:absolute;top:-2px;right:-4px;width:9px;height:9px;border-radius:50%;background:var(--falu);box-shadow:0 0 0 2px var(--surface)}.dkdot[hidden]{display:none}
 </style><title>Skogsträdgårdens artblad</title><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1f3a2c"><link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Artblad">
-<link rel="stylesheet" href="vendor/fonts/fonts.css?v=2.7.0">
+<link rel="stylesheet" href="vendor/fonts/fonts.css?v=2.7.1">
 <style>
 /* Layout: sticky top bar with three persistent views (Overview list, Add form, Sheet card + print sheet + photo log). Paper-green neutrals, forest for woody plants, amber for herbaceous. */
 :root{
@@ -502,7 +502,8 @@ body.ro .dock .w-only{display:none}
 @media print{.dock{display:none!important}body{padding-bottom:0!important}}
 #splash{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:var(--bg);pointer-events:none;transition:background-color .5s ease}
 #splash.out{background:transparent}
-#splash.quick.go *{animation-duration:.01s!important;animation-delay:0s!important}
+/* quick splash: only the logo and the name skip their growing animation; the falling snow, petals or leaves keep their own timing */
+#splash.quick.go .splogo *,#splash.quick.go .spname{animation-duration:.01s!important;animation-delay:0s!important}
 #splash .spin{display:flex;flex-direction:column;align-items:center;gap:22px;padding:16px;text-align:center}
 #splash .splogo{width:min(62vw,280px);height:min(62vw,280px);transform-origin:0 0;overflow:visible}
 #splash .splogo *{transform-box:fill-box}
@@ -694,7 +695,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <button type="button" class="btn sm" id="installBtn" data-act="install" hidden data-t="Install as an app|Installera som app|Als app installeren">Install as an app</button>
   </div>
   <p id="herbLabel" class="herblabel" aria-hidden="true"></p>
-  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.7.0</span></p>
+  <p class="appver"><span data-t="Version|Version|Versie">Version</span> <span id="appVer">2.7.1</span></p>
 </section>
 
 <section id="v-overview" class="view" hidden>
@@ -792,7 +793,7 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
     <p class="enc-only muted" style="grid-column:1/-1;margin:0" data-t="An encounter is a species you came across that you did not plant yourself, for example in a garden, park or the wild. It tells us where the species grows; give a map position if you can.|Ett fynd är en art du stött på som du inte planterat själv, till exempel i en trädgård, en park eller i naturen. Det visar var arten växer; ange gärna en kartposition.|Een vondst is een soort die je tegenkwam en die je niet zelf hebt geplant, bijvoorbeeld in een tuin, park of in het wild. Het laat zien waar de soort groeit; geef zo mogelijk een kaartpositie.">An encounter is a species you came across that you did not plant yourself.</p>
     <div class="f"><label class="fl" for="plSp" data-t="Species|Art|Soort">Species</label><select id="plSp"></select></div>
     <div class="pl-only f"><label class="fl" for="plCv" data-t="Cultivar|Sort|Cultivar">Cultivar</label><select id="plCv" data-cvnew="plCvNew"></select><input id="plCvNew" type="text" maxlength="80" hidden data-tp="Cultivar name|Sortnamn|Cultivarnaam"></div>
-    <div class="pl-only f" hidden><label class="fl" for="plProj" data-t="Project|Projekt|Project">Project</label><select id="plProj"></select></div>
+    <div class="pl-only f" hidden><label class="fl" for="plProj" data-t="Project|Projekt|Project">Project</label><select id="plProj"></select><input id="plProjNew" type="text" maxlength="80" hidden data-tp="Name of the new project|Namn på det nya projektet|Naam van het nieuwe project" style="margin-top:6px"></div>
     <div class="pl-only f" hidden><label class="fl" for="plPlaceId" data-t="Place in the project|Plats i projektet|Plek in het project">Place in the project</label><select id="plPlaceId"></select></div>
     <div class="f"><label class="fl" for="plPlace" data-t="Place (bed or area)|Plats (bädd eller område)">Place</label><input id="plPlace" type="text" list="plPlaces" maxlength="120"><datalist id="plPlaces"></datalist></div>
     <div class="f"><label class="fl" for="plDate"><span class="pl-only" data-t="Planted on|Planterad|Geplant op">Planted on</span><span class="enc-only" data-t="Seen on|Sedd|Gezien op">Seen on</span></label><input id="plDate" type="date"></div>
@@ -1016,30 +1017,30 @@ details.disd{margin-top:6px;font-size:13.5px}details.disd summary{cursor:pointer
 <circle class="sp-berry b1" cx="77" cy="67" r="2.2" fill="#d23a3f"/><circle class="sp-berry b2" cx="84" cy="72" r="2.2" fill="#d23a3f"/><circle class="sp-berry b3" cx="80" cy="75" r="2.2" fill="#d23a3f"/>
 </svg><div class="spname"><span class="bn">Skogsträdgården<span class="bs2">s</span> <b>artblad</b></span><span class="sptag" data-t="Species fact sheets for the food forest|Artfakta för skogsträdgården">Species fact sheets for the food forest</span></div></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script><script src="nl.js?v=2.7.0"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script>
+<script src="config.js"></script><script src="nl.js?v=2.7.1"></script><script src="vendor/supabase.js"></script><script src="vendor/qrcode.js"></script>
 <script>/* If a part of the app cannot be loaded (missing or incomplete upload), say so instead of showing a broken page. */
 window.__abMiss=[];function abMissing(el){window.__abMiss.push(el.getAttribute('src').split('?')[0]);var b=document.getElementById('banner');if(b){b.hidden=false;b.textContent='Part of the app did not load ('+window.__abMiss.join(', ')+'). Reload the page. If this message stays, the site files on GitHub are incomplete: upload all files of the latest update.'}}</script>
 <!-- The app in parts, loaded in this order; they share one scope (see js/README.md). Keep ?v= the same as APP_VERSION in js/01-core.js. -->
-<script src="js/01-core.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/02-data.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/03-artie-sources.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/04-i18n.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/05-print.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/06-values.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/07-species.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/08-winter.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/09-svc-gbif-names.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/10-visuals.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/11-svc-map.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/12-review-live.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/13-svc-zones-soil.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/14-review.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/15-exports.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/16-autofill.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/17-planning.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/18-plantings.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/19-svc-climate.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/20-lists.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/21-ui.js?v=2.7.0" onerror="abMissing(this)"></script>
-<script src="js/22-init.js?v=2.7.0" onerror="abMissing(this)"></script>
+<script src="js/01-core.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/02-data.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/03-artie-sources.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/04-i18n.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/05-print.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/06-values.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/07-species.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/08-winter.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/09-svc-gbif-names.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/10-visuals.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/11-svc-map.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/12-review-live.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/13-svc-zones-soil.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/14-review.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/15-exports.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/16-autofill.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/17-planning.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/18-plantings.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/19-svc-climate.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/20-lists.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/21-ui.js?v=2.7.1" onerror="abMissing(this)"></script>
+<script src="js/22-init.js?v=2.7.1" onerror="abMissing(this)"></script>
 </body></html>

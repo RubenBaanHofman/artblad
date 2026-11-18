@@ -263,7 +263,7 @@ document.addEventListener('click',async e=>{
 document.addEventListener('change',e=>{
   if(e.target.id==='cmpSort'){cmpSet('sort',e.target.value);return}
   if(e.target.id==='plProjSel'){plState.proj=e.target.value;plState.place='';updatePlantings();return}
-  if(e.target.id==='plProj'){plPlaceFill(e.target.value,'');return}
+  if(e.target.id==='plProj'){plProjToggle();plPlaceFill(e.target.value==='__new'?'':e.target.value,'');return}
   if(e.target.matches('[data-pjrole]')){pjMemberRole(e.target.dataset.pjrole,e.target.value);return}
   if(e.target.matches('[data-pjmove]')){const v=e.target.value;if(v)pjMove(e.target.dataset.pjmove,v);return}
   if(e.target.matches('select[data-lu]')){lenUnitSet(e.target.dataset.lu,e.target.value);return}

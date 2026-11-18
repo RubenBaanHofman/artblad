@@ -111,6 +111,7 @@ function plRow(p,showSpecies){
 }
 // The place of a record: a named place of its project (2.7.0), else the free text typed before.
 function plPlaceName(p){if(p.placeId&&p.project){const q=pjById(p.project),x=q&&(q.places||[]).find(y=>y.id===p.placeId);if(x)return x.name}return p.place||''}
+function plProjToggle(){const s=$('#plProj'),nn=$('#plProjNew');if(!s||!nn)return;const show=!s.closest('.f').hidden&&s.value==='__new';nn.hidden=!show;if(show&&!nn.value)nn.focus()}
 function plPlaceFill(pid,sel){
   const q=pid&&pjById(pid),ps=q?(q.places||[]).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))):[];
   const s=$('#plPlaceId');if(!s)return;const w=s.closest('.f');if(w)w.hidden=!ps.length;
@@ -123,9 +124,13 @@ function plFormOpen(p,sid,cv,kind){
   $('#plSp').value=p?p.sid:(sid||selected||'');$('#plSp').disabled=!!p;
   plCvFill(p?cvKey(p.cultivar):(cv!=null?cv:((sid||selected)===selected?selCv:'')));
   $('#plPlace').value=p?p.place||'':'';
-  {const s=$('#plProj');if(s){const ed=PROJ_ON&&pjEditable().length,w=s.closest('.f');if(w)w.hidden=!ed;
-    const def=p?(p.project||''):(plState.proj&&plState.proj!=='__none'&&projCanEdit(plState.proj)?plState.proj:(pjActive()&&projCanEdit(PJ)&&kind!=='encounter'?PJ:''));
-    s.innerHTML=pjOptions(def);s.value=def;plPlaceFill(def,p&&p.placeId)}}$('#plDate').value=p?p.date||today():today();$('#plCount').value=p&&p.count?p.count:'';
+  // Since 2.7.0 every planting record belongs to a project (Ruben, 17 Nov). Encounters (plants seen elsewhere) stay shared.
+  // No project yet, or a new one wanted: "New project…" with a name field; the project is made when the record is saved.
+  {const s=$('#plProj');if(s){const enc=plState.kind==='encounter',show=PROJ_ON&&!enc,w=s.closest('.f');if(w)w.hidden=!show;
+    const eds=pjEditable(),okp=id=>id&&eds.some(q=>q.id===id);
+    const def=p&&okp(p.project)?p.project:okp(plState.proj)?plState.proj:okp(PJ)?PJ:eds[0]?eds[0].id:'__new';
+    s.innerHTML=eds.map(q=>'<option value="'+esc(q.id)+'">'+esc(pjName(q.id))+'</option>').join('')+'<option value="__new">'+esc(tr('New project…','Nytt projekt…','Nieuw project…'))+'</option>';
+    s.value=def;const nn=$('#plProjNew');if(nn)nn.value=eds.length?'':tr('My garden','Min trädgård','Mijn tuin');plProjToggle();plPlaceFill(def==='__new'?'':def,p&&p.placeId)}}$('#plDate').value=p?p.date||today():today();$('#plCount').value=p&&p.count?p.count:'';
   $('#plSource').value=p?p.source||'':'';$('#plStatus').value=p?p.status||'alive':'alive';$('#plNotes').value=p?p.notes||'':'';
   $('#plGeo').value=p&&p.lat!=null?p.lat+', '+p.lng:'';{const c=$('#plEstab');if(c)c.checked=!!(p&&p.established)}
   $('#plTitle').textContent=plState.kind==='encounter'?(p?tr('Edit encounter','Redigera fynd','Vondst bewerken'):tr('New encounter','Nytt fynd','Nieuwe vondst')):(p?tr('Edit planting','Redigera plantering'):tr('New planting','Ny plantering'));
@@ -147,7 +152,12 @@ async function plSave(){
     source:$('#plSource').value.trim(),status:st,notes:$('#plNotes').value.trim(),checks:old&&old.checks?old.checks.slice():[],createdAt:old?old.createdAt:Date.now()};
   if(old&&old.winters)doc.winters=old.winters;
   // Project and named place (2.7.0). The project decides who sees the record (D7).
-  {const s=$('#plProj');if(s&&PROJ_ON){doc.project=s.value||'';const pi=($('#plPlaceId')||{}).value||'';if(pi&&doc.project){doc.placeId=pi;if(!doc.place)doc.place=plPlaceName(Object.assign({},doc))}}}
+  {const s=$('#plProj');if(s&&PROJ_ON&&!enc){
+    let pid=s.value||'';
+    if(pid==='__new'){const n=String(($('#plProjNew')||{}).value||'').trim();if(!n){toast(tr('Give the new project a name.','Ge det nya projektet ett namn.','Geef het nieuwe project een naam.'),'err');const i=$('#plProjNew');if(i)i.focus();return}
+      try{pid=await Data.saveRow('projects',null,{name:n.slice(0,80),description:'',country:'',szone:'',usda:'',places:[],createdAt:Date.now()});pjSet(pid);toast(tr('Project created: ','Projekt skapat: ','Project aangemaakt: ')+n)}catch(e){toast(errMsg(e),'err');return}}
+    if(!pid){toast(tr('Choose a project.','Välj ett projekt.','Kies een project.'),'err');return}
+    doc.project=pid;const pi=($('#plPlaceId')||{}).value||'';if(pi){doc.placeId=pi;if(!doc.place)doc.place=plPlaceName(Object.assign({},doc))}}}
   if(geo.length===2&&geo.every(isFinite)){doc.lat=geo[0];doc.lng=geo[1]}
   if(old&&old.fromV1)doc.fromV1=true;
   if(cv)doc.cultivar=cv;

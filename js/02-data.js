@@ -7,7 +7,7 @@ const newId=()=>randHex(10);
 const COLS='id,data,author,updated_by,updated_at,deleted_at,deleted_by,created_at';
 // Database update v9 (app 2.7.0): planting records, lists and comments can belong to a project (column project_id).
 // Without v9 the column is missing: then they are read as before and projects stay switched off (PROJ_ON).
-let PROJ_ON=false;
+let PROJ_ON=false,EVID=null;
 async function fetchAllP(t){try{return await fetchAll(t,COLS+',project_id')}catch(e){if(/project_id|42703|PGRST204/.test(String((e&&(e.message||e.code))||'')))return fetchAll(t);throw e}}
 async function fetchAll(t,cols){let out=[],from=0;for(;;){const r=await SB.from(t).select(cols||COLS).order('id').range(from,from+999);if(r.error)throw r.error;out=out.concat(r.data);if(r.data.length<1000)break;from+=1000}return out}
 // Fixed species numbers from the database (update v8, since 2.5.1); null when not available (then the list order is used).
@@ -33,6 +33,8 @@ function applyRows(r,adm){
   PROJ_ON=Array.isArray(r[9]);document.body.classList.toggle('noproj',!PROJ_ON);
   const Pj=PROJ_ON?keep(r[9],'project'):[];state.projects=Pj.filter(live);state.trashPj=Pj.filter(x=>!live(x));
   state.members=PROJ_ON&&r[10]&&Array.isArray(r[10].data)?r[10].data:[];
+  // Winter evidence summed over ALL projects (v9 artblad_evidence): sid → [{cultivar, survived, t_survived, ...}]. Null without v9.
+  EVID=null;if(r[11]&&!r[11].error&&Array.isArray(r[11].data)){EVID=new Map();r[11].data.forEach(x=>{(EVID.get(x.sid)||EVID.set(x.sid,[]).get(x.sid)).push(x)})}
   SPNO=r[8]&&!r[8].error&&Array.isArray(r[8].data)&&r[8].data.length?new Map(r[8].data.map(x=>[x.sid,Number(x.no)])):null;
   revSet(adm&&r[6]&&!r[6].error?r[6].data:null);if(adm&&r[7]&&!r[7].error)afRows=r[7].data||[];
 }
@@ -47,10 +49,10 @@ async function loadAll(){
     const adm=isAdmin(),soft=q=>Promise.resolve(q).then(x=>x,e=>({error:e}));
     const r=await Promise.all([fetchAll('entries'),fetchAll('obs'),SB.from('profiles').select('user_id,display_name'),CANW?fetchAllP('plantings').catch(()=>[]):[],CANW?fetchAllP('lists').catch(()=>[]):[],fetchAllP('comments').catch(()=>[]),
       adm?soft(SB.rpc('review_state')):null,adm?soft(SB.from('autofill_requests').select('sid,latin,n,status,first_requested_at,last_requested_at,sent_at').order('first_requested_at')):null,
-      soft(SB.from('species_numbers').select('sid,no')),fetchAll('projects').catch(()=>null),soft(SB.from('project_members').select('project_id,user_id,role'))]);
+      soft(SB.from('species_numbers').select('sid,no')),fetchAll('projects').catch(()=>null),soft(SB.from('project_members').select('project_id,user_id,role')),soft(SB.rpc('artblad_evidence'))]);
     if(r[2].error)throw r[2].error;
     // The copy for offline use is taken before applyRows, which adjusts the rows it reads (lengths, field names).
-    {const uid=meUid();if(uid){let copy=null;try{copy=JSON.parse(JSON.stringify([r[0],r[1],{data:r[2].data||[]},r[3],r[4],r[5],null,null,{data:(r[8]&&r[8].data)||[]},r[9],{data:(r[10]&&r[10].data)||[]}]))}catch(x){}if(copy)offPut({uid,at:Date.now(),v:APP_VERSION,r:copy}).catch(()=>{})}}
+    {const uid=meUid();if(uid){let copy=null;try{copy=JSON.parse(JSON.stringify([r[0],r[1],{data:r[2].data||[]},r[3],r[4],r[5],null,null,{data:(r[8]&&r[8].data)||[]},r[9],{data:(r[10]&&r[10].data)||[]},{data:(r[11]&&!r[11].error&&r[11].data)||null}]))}catch(x){}if(copy)offPut({uid,at:Date.now(),v:APP_VERSION,r:copy}).catch(()=>{})}}
     applyRows(r,adm);OFFLINE_AT=0;document.body.classList.remove('offline');
     $('#banner').hidden=true;loaded=true;lastLoad=Date.now();renderAcct();refresh();
   }catch(e){

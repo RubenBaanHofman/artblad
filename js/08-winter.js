@@ -5,12 +5,16 @@
 const WOUT=O('survived:Survived:Överlevde|damaged:Damaged:Skadad|died:Died:Dog');
 // The coldest winter temperature a species (or cultivar) is recorded to have survived, and in how many plantings.
 function provenOf(x){
-  const pl=(x&&x.plantings)||[];let t=null,ts=null;const ids=new Set(),sids=new Set();
-  pl.forEach(p=>(p.winters||[]).forEach(w=>{const v=Number(w.t);if(w.o==='survived'&&w.t!==''&&w.t!=null&&isFinite(v)){ids.add(p.id);if(t==null||v<t)t=v}}));
+  const pl=(x&&x.plantings)||[];let t=null,ts=null;const ids=new Set(),sids=new Set();let n=null;
+  // Since 2.7.1 the planting part comes from the database's summed evidence over ALL projects (artblad_evidence),
+  // so private projects count for everyone without showing their records. Without v9: the visible plantings, as before.
+  const ev=EVID&&x?EVID.get(x.sid):null;
+  if(EVID&&x){n=0;(ev||[]).filter(r=>!x.isCv||(r.cultivar&&cvKey(r.cultivar)===x.ck)).forEach(r=>{const v=Number(r.t_survived);if(r.survived>0&&r.t_survived!=null&&isFinite(v)){n+=r.survived;if(t==null||v<t)t=v}})}
+  else pl.forEach(p=>(p.winters||[]).forEach(w=>{const v=Number(w.t);if(w.o==='survived'&&w.t!==''&&w.t!=null&&isFinite(v)){ids.add(p.id);if(t==null||v<t)t=v}}));
   // Encounters marked as established, with the winter climate of their map position (Open-Meteo): "seen established".
   pl.forEach(p=>{if(isEnc(p)&&p.established&&p.clim&&isFinite(p.clim.t)){sids.add(p.id);if(ts==null||p.clim.t<ts)ts=p.clim.t}});
   if(t==null&&ts==null)return null;
-  return{t:t==null?ts:ts==null?t:Math.min(t,ts),n:ids.size,tOwn:t,tSeen:ts,ns:sids.size};
+  return{t:t==null?ts:ts==null?t:Math.min(t,ts),n:n!=null?n:ids.size,tOwn:t,tSeen:ts,ns:sids.size};
 }
 const provenTxt=pv=>[pv.tOwn!=null?tr('Survived ','Överlevde ','Overleefde ')+fmtC(pv.tOwn)+' ('+pv.n+' '+(pv.n===1?tr('planting','plantering','aanplant'):tr('plantings','planteringar','aanplantingen'))+')':'',
   pv.tSeen!=null?tr('seen established where winters reach ≈ ','sedd etablerad där vintrarna når ≈ ','gevestigd gezien waar de winters ≈ ')+fmtC(pv.tSeen)+tr('','',' halen')+' ('+pv.ns+' '+(pv.ns===1?tr('encounter','fynd','vondst'):tr('encounters','fynd','vondsten'))+')':''].filter(Boolean).join(' · ').replace(/^./,c=>c.toUpperCase());
