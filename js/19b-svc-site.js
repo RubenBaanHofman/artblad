@@ -105,7 +105,8 @@ function siteRows(v){
   if(v.summerT!=null)add(tr('Summer temperature (Jun–Aug mean)','Sommartemperatur (medel jun–aug)','Zomertemperatuur (gemiddeld jun–aug)'),numTxt(v.summerT)+' °C');
   if(v.sunH!=null)add(tr('Sunshine (Apr–Sep)','Solsken (apr–sep)','Zonneschijn (apr–sep)'),intTxt(v.sunH)+' h');
   if(v.snowDays!=null)add(tr('Snow cover of 5 cm or more','Snötäcke på minst 5 cm','Sneeuwdek van 5 cm of meer'),v.snowDays+' '+tr('days a winter','dagar per vinter','dagen per winter'));
-  if(v.soil)add(tr('Soil (SGU map)','Jord (SGU-karta)','Grond (SGU-kaart)'),v.soil+(v.perm?' · '+tr('permeability ','genomsläpplighet ','doorlatendheid ')+v.perm:''));
+  // A soil value saved by 2.8.0 before the SGU fix may be the map's title ("25 000-1:100 000 (visningstjänst)"): not shown.
+  if(v.soil&&!NOT_SOIL.test(v.soil))add(tr('Soil (SGU map)','Jord (SGU-karta)','Grond (SGU-kaart)'),v.soil+(v.perm?' · '+tr('permeability ','genomsläpplighet ','doorlatendheid ')+v.perm:''));
   return r;
 }
 function siteTable(v){const r=siteRows(v);return r.length?'<table class="sitetab">'+r.map(x=>'<tr><th>'+esc(x[0])+'</th><td>'+esc(x[1])+'</td></tr>').join('')+'</table>':''}

@@ -8,11 +8,37 @@ const SGU_SOIL_WMS=svcUrl('sguSoil'),SGU_SOIL_LAYER=SERVICES.sguSoil.layer;
 const SGU_PERM_API=svcUrl('sguPerm');
 async function fetchJ(u,ms,id){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||12000);try{const r=id?await svcFetch(id,u,{signal:c.signal}):await fetch(u,{signal:c.signal});if(!r.ok)throw new Error('HTTP '+r.status);const tx=await r.text();try{return JSON.parse(tx)}catch(e){return{_text:tx}}}finally{clearTimeout(t)}}
 const propStrings=f=>Object.entries((f&&f.properties)||{}).filter(([k,v])=>typeof v==='string'&&v.trim());
+// 2.8.0 fix: the answer may be JSON, GeoServer's plain text ("name = value" lines) or an HTML table, and it also carries the
+// map's own title ("Jordarter 1:25 000-1:100 000 (visningstjänst)"), which earlier versions took for the soil type.
+// So: look at every name/value pair, skip anything that is a map title or scale, and prefer values that name a soil.
+const SOIL_WORD=/morän|lera|lerig|sand|grus|torv|silt|mjäla|\bmo\b|finmo|gyttja|dy\b|berg|häll|fyll|isälv|svall|klapper|block|kärr|mosse|organogen|postglacial|glacial|vatten|skal|älvsediment|svämsediment|flygsand/i;
+const NOT_SOIL=/1\s*:\s*\d|visningstjänst|jordarter\s|\bwms\b|karttyp|https?:|^\s*\d+([.,]\d+)?\s*$/i;
+function soilPairs(j){
+  const out=[];
+  if(j&&!j._text){(j.features||[]).forEach(f=>propStrings(f).forEach(([k,v])=>out.push([k,v.trim()])));return out}
+  const t=String((j&&j._text)||'');
+  // GeoServer text/plain: "name = value"
+  t.split(/\r?\n/).forEach(l=>{const m=/^\s*([\wåäöÅÄÖ.:-]+)\s*=\s*(.+?)\s*$/.exec(l);if(m)out.push([m[1],m[2]])});
+  // HTML table: header cells, then the cells of the first data row
+  if(/<t[hd][\s>]/i.test(t)){
+    const cells=row=>[...row.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map(m=>m[1].replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim());
+    const rows=[...t.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(m=>cells(m[1]));
+    if(rows.length>1)rows.slice(1).forEach(r=>r.forEach((v,i)=>out.push([rows[0][i]||'',v])));
+  }
+  return out;
+}
+function soilFrom(j){
+  const ok=([k,v])=>v&&v.length<80&&!NOT_SOIL.test(v);
+  const ps=soilPairs(j).filter(ok);
+  const named=ps.filter(([k])=>/jordart|jg2|soil/i.test(k)&&!/kod|code|id$/i.test(k));
+  const pick=named.find(([,v])=>SOIL_WORD.test(v))||ps.find(([,v])=>SOIL_WORD.test(v))||named.find(([,v])=>/[a-zåäö]{3}/i.test(v));
+  return pick?pick[1]:null;
+}
 async function sguSoil(lat,lng){
-  const d=0.0005,u=SGU_SOIL_WMS+'?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&LAYERS='+encodeURIComponent(SGU_SOIL_LAYER)+'&QUERY_LAYERS='+encodeURIComponent(SGU_SOIL_LAYER)+'&STYLES=&CRS=EPSG:4326&BBOX='+[lat-d,lng-d,lat+d,lng+d].map(v=>v.toFixed(6)).join(',')+'&WIDTH=101&HEIGHT=101&I=50&J=50&INFO_FORMAT=application%2Fjson&FEATURE_COUNT=1';
-  const j=await fetchJ(u,0,'sguSoil');
-  if(j._text){const m=/jordart[^:=<>]*[:=>]\s*["']?([^"'<\n,}]+)/i.exec(j._text);return m?m[1].trim():null}
-  const f=(j.features||[])[0];if(!f)return null;const p=propStrings(f);const k=p.find(([k])=>/jordart/i.test(k))||p.find(([k,v])=>/morän|lera|sand|grus|torv|silt|berg|gyttja|fyll|mo\b|mjäla/i.test(v));return k?k[1].trim():null;
+  const d=0.0005,q=f=>SGU_SOIL_WMS+'?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&LAYERS='+encodeURIComponent(SGU_SOIL_LAYER)+'&QUERY_LAYERS='+encodeURIComponent(SGU_SOIL_LAYER)+'&STYLES=&CRS=EPSG:4326&BBOX='+[lat-d,lng-d,lat+d,lng+d].map(v=>v.toFixed(6)).join(',')+'&WIDTH=101&HEIGHT=101&I=50&J=50&INFO_FORMAT='+encodeURIComponent(f)+'&FEATURE_COUNT=1';
+  let v=soilFrom(await fetchJ(q('application/json'),0,'sguSoil'));
+  if(!v)v=soilFrom(await fetchJ(q('text/plain'),0,'sguSoil'));
+  return v;
 }
 async function sguPerm(lat,lng){
   const c=await fetchJ(SGU_PERM_API+'/collections?f=json',0,'sguPerm');const col=((c.collections||[])[0]||{}).id;if(!col)return null;
