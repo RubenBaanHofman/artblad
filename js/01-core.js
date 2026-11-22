@@ -2,7 +2,7 @@
 // Part 1 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 // The version shown on Home. Also change ?v= on every script tag in index.html (dev/check_version.py checks this).
-const APP_VERSION='2.7.1';
+const APP_VERSION='2.8.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};

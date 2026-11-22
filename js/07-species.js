@@ -16,11 +16,11 @@ function cardHTML(s){
   const typeO=TYPES_ALL.find(o=>o.k===m.type),statO=null/* species Status retired in 2.7.0 */,invO=INV.find(o=>o.k===m.invasive);
   const size=esc(fmtSize(m.height,m.spread));
   const nat=esc(fmtSize(m.nativeH,m.nativeW));
-  const pv=provenOf(s);
+  const pv=provenOf(s),sv=summerOf(s);
   const blocks=[
    ['Origin','Ursprung',P(REGIONS,'region')+KV('Native size','Naturlig storlek',nat,['nativeH','nativeW'])+KV('Habitat','Miljö',T('habitat'),'habitat')+P(SUCC,'succession')+KV('Notes','Anm.',T('range'),'range')],
    ['Size & form','Storlek & form',P(O('annual:Can be grown as an annual:Kan odlas som ettårig'),'asAnnual')+KV('Size','Storlek',size,['height','spread'])+KV('Spacing','Avstånd',m.spacing!=null?N('spacing'):'','spacing')+P(w?CROWN:HABIT,w?'crown':'habit')+P(w?ROOTS_W:ROOTS_H,'roots')+P(w?LEAF:DORM,w?'leaf':'dormant')+KV('Lifespan','Livslängd',N('lifespan'),'lifespan')+KV(w?'First yield':'Sow→harvest',w?'Första skörd':'Sådd→skörd',w?N('firstYield'):N('sowHarvest'),['firstYield','sowHarvest'])+KV('Product','Produkt',T('product'),'product')],
-   ['Site','Plats',(pv?KV('Proven hardy','Bevisat härdig',esc(provenTxt(pv))):'')+P(LIGHT,'light')+(m.moist?KV('Moisture','Fukt',dots(m.moist,5)+' <em>'+L('dry→wet','torr→blöt').replace(/<[^>]+>/g,'')+'</em>','moist'):'')+P(SOIL,'soil')+P(PH,'ph')+P(TOL,'tol')+KV('Zones','Zoner',[m.usda&&'USDA '+esc(m.usda),m.szone&&'SE '+esc(m.szone),m.rhs&&'RHS '+esc(m.rhs)].filter(Boolean).join(' · '),['usda','szone','rhs'])],
+   ['Site','Plats',(pv?KV('Proven hardy','Bevisat härdig',esc(provenTxt(pv))):'')+(sv?KV('Summers','Somrar',esc(summerTxt(sv))):'')+P(LIGHT,'light')+(m.moist?KV('Moisture','Fukt',dots(m.moist,5)+' <em>'+L('dry→wet','torr→blöt').replace(/<[^>]+>/g,'')+'</em>','moist'):'')+P(SOIL,'soil')+P(PH,'ph')+P(TOL,'tol')+KV('Zones','Zoner',[m.usda&&'USDA '+esc(m.usda),m.szone&&'SE '+esc(m.szone),m.rhs&&'RHS '+esc(m.rhs)].filter(Boolean).join(' · '),['usda','szone','rhs'])],
    ['Calendar & care','Kalender & skötsel',yearWheel(s)+(()=>{const rows=['cal1','cal2','cal3','cal4'].filter(k=>(m[k]||[]).length);if(!rows.length)return '';return rows.map(k=>'<div class="fl" style="margin-top:4px">'+L(CAL_LAB[k][s.form][0],CAL_LAB[k][s.form][1])+'</div><div class="cal'+(inh(k)?' inh':'')+'">'+MONTHS.map((x,i)=>'<span class="'+(m[k].indexOf(i+1)>=0?'on':'')+'">'+x+'</span>').join('')+'</div>').join('')})()+P(w?PROP_W:PROP_H,'prop')+P(w?POLL:SOWING,w?'poll':'sowing')+P(EFFORT,'effort')+P(ESTAB,'estab')+KV('Watch-outs','Se upp',T('watch'),'watch')],
    ['Uses','Användning',P(w?USES_W:USES_H,'uses')+P(YIELD,'yield')+KV('Edibility','Ätlighet',isEmpty(m.edibility)?'':Number(m.edibility)===0?L('Inedible','Oätlig'):dots(m.edibility,5),'edibility')+KV('Edible / notes','Ätligt',T('edible'),'edible')],
    ['Ecosystem functions','Ekosystemfunktioner',P(w?ECO_W:ECO_H,'eco')+KV('Notes','Anm.',T('ecoNotes'),'ecoNotes')],
@@ -306,8 +306,12 @@ function updateSheet(){
   ['#obsCv','#srcCv'].forEach(id=>{const el=$(id);if(el){el.innerHTML=cvOptions(s,selCv);el.value=selCv;const nb=$(id+'New');if(nb){nb.hidden=true;nb.value=''}}});
   $('#srcList').innerHTML=srcHTML(p);
   updateComments(s);
-  $('#spPlInfo').textContent=plSummary(p.plantings)||tr('No planting records yet.','Inga planteringar ännu.');
-  $('#spPlList').innerHTML=p.plantings.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(x=>plRow(x,false)).join('');
+  // 2.8.0 (D38): planting records and encounters are listed apart.
+  {const pl=p.plantings.filter(x=>!isEnc(x)),en=p.plantings.filter(isEnc),by=(a,b)=>(b.date||'').localeCompare(a.date||'');
+   $('#spPlInfo').textContent=plSummary1(pl)||tr('No planting records yet.','Inga planteringar ännu.');
+   $('#spPlList').innerHTML=pl.slice().sort(by).map(x=>plRow(x,false)).join('');
+   const ei=$('#spEncInfo');if(ei)ei.textContent=en.length?en.length+' '+(en.length===1?tr('encounter','fynd','vondst'):tr('encounters','fynd','vondsten')):tr('No encounters yet.','Inga fynd ännu.','Nog geen vondsten.');
+   const el=$('#spEncList');if(el)el.innerHTML=en.slice().sort(by).map(x=>plRow(x,false)).join('')}
   $('#sheetAddList').innerHTML=addListSelect(s.sid);
   $('#obsList').innerHTML=p.obs.length?p.obs.map(o=>'<div class="obs"><div class="ph" style="--c:'+FCOL[s.form]+'">'+(o.photo?'<img src="'+blobSrc(o.photo)+'" alt="" data-lb="'+o.photo+'" loading="lazy">':'–')+'</div><div style="min-width:0"><div class="d">'+esc(o.date||'')+(o.plot?' · '+esc(o.plot):'')+(p.isCv?'':cvPill(o))+'</div><p>'+esc(o.text||'')+'</p>'+(SB?'<small class="muted">'+rowStamp(o.id).slice(3)+'</small>':'')+'</div>'+(canEdit(o.id)?'<button class="btn sm danger w-only" data-act="del-obs" data-id="'+esc(o.id)+'">'+tr('Delete','Radera')+'</button>':'<span></span>')+'</div>').join(''):'<p class="muted" style="margin:0">'+(p.isCv?tr('No observations of this cultivar yet.','Inga observationer av den här sorten ännu.','Nog geen waarnemingen van deze cultivar.'):tr('No observations yet. Add a note or a photo above.','Inga observationer ännu. Lägg till en anteckning eller ett foto ovan.'))+'</p>';
   const ents=p.isCv?p.entries:s.entries;

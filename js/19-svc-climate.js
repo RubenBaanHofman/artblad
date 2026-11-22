@@ -20,6 +20,11 @@ const omErr=(kind,ms)=>Object.assign(new Error('limit'),{limit:kind,ms});
 let OM_LAST_ERR=null;
 // One request for one stretch of days; returns the daily minimums. wait: true = wait for the budget (calibration), else throw.
 async function omFetch(lat,lng,a,b,wait,onWait){
+  const j=await omGet(lat,lng,a,b,'&daily=temperature_2m_min&models=era5_land&timezone=GMT',wait,onWait);
+  return{v:((j.daily||{}).temperature_2m_min||[]).filter(x=>x!=null&&isFinite(x)),elev:j.elevation};
+}
+// 2.8.0: the same request with any variables (q = '&daily=…&models=…&timezone=GMT'); returns Open-Meteo's answer.
+async function omGet(lat,lng,a,b,qs,wait,onWait){
   if(!svcOn('climate'))throw Object.assign(new Error('service off'),{why:'off'});
   const w=omWeight(a,b);
   for(let tries=0;;tries++){
@@ -28,14 +33,14 @@ async function omFetch(lat,lng,a,b,wait,onWait){
     const ms=Math.max(q.min,q.hour);
     if(ms){if(!wait)throw omErr(q.hour?'hour':'min',ms);if(onWait)onWait(ms);await new Promise(r=>setTimeout(r,Math.min(ms,15000)));continue}
     omNote(w);
-    const u=svcUrl('climate')+'?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+a+'&end_date='+b+'&daily=temperature_2m_min&models=era5_land&timezone=GMT';
+    const u=svcUrl('climate')+'?latitude='+lat.toFixed(4)+'&longitude='+lng.toFixed(4)+'&start_date='+a+'&end_date='+b+qs;
     const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),20000);let r=null,net='';
     try{r=await svcFetch('climate',u,{signal:ctl.signal})}catch(e){net=e&&e.name==='AbortError'?'timeout':'connection'}finally{clearTimeout(to)}
     // Connection problems, time-outs and server errors are retried after a pause (refused limit answers can also look like a lost connection).
     if(net||r.status>=500){const bf=window.__omBackoff||1,back0=wait?[1e4,3e4,6e4,12e4][tries]:(tries<1?2000:null),back=back0==null?null:back0*bf;
       if(back==null)throw Object.assign(new Error(net||'HTTP '+r.status),{why:net||'server'});
       if(onWait)onWait(back);await new Promise(ok=>setTimeout(ok,back));continue}
-    if(r.ok){const j=await r.json();return{v:((j.daily||{}).temperature_2m_min||[]).filter(x=>x!=null&&isFinite(x)),elev:j.elevation}}
+    if(r.ok)return await r.json();
     let reason='';try{reason=(await r.json()).reason||''}catch(e){}
     if(r.status===429||/limit/i.test(reason)){
       const kind=/daily|day/i.test(reason)?'day':/hour/i.test(reason)?'hour':'min';
@@ -106,7 +111,10 @@ function plRow(p,showSpecies){
     (isEnc(p)?'<span class="pill enc">'+esc(tr('Encounter','Fynd','Vondst'))+'</span> ':'')+'<b>'+esc(plPlaceName(p)||tr('No place given','Ingen plats angiven'))+'</b>'+(p.project&&plState.proj!==p.project?' '+pjPill(p.project):'')+(p.count&&!isEnc(p)?' · '+esc(p.count)+' '+tr('plants','plantor'):'')+' · '+esc(p.date||'')+' '+pstatPill(p.status)+
     (p.source?'<br><small class="muted">'+tr('Source','Källa')+': '+esc(p.source)+'</small>':'')+(p.notes?'<br>'+esc(p.notes):'')+encInfo(p)+
     (last?'<br><small class="muted">'+tr('Last check','Senaste kontroll')+' '+esc(last.date)+(last.note?': '+esc(last.note):'')+'</small>':'')+
+    ((p.summers||[]).length?'<br><span class="pill sumr '+esc(p.summers[p.summers.length-1].o)+'">'+esc(summerTxt1(p.summers[p.summers.length-1]))+'</span>':'')+
+    ((p.harvests||[]).length?'<br><small class="muted">'+esc(tr('Harvests: ','Skördar: ','Oogsten: ')+p.harvests.length+' · '+tr('last ','senast ','laatst ')+p.harvests[p.harvests.length-1].date)+'</small>':'')+
     (SB?'<br><small class="muted">'+rowStamp(p.id).slice(3)+'</small>':'')+((p.winters||[]).length?'<br>'+winterRows(p):'')+(canEdit(p.id)?winterForm(p):'')+'</span>'+
+    (isEnc(p)?'':'<span class="acts"><button class="btn sm" data-act="pl-hist" data-id="'+esc(p.id)+'">'+tr('History','Historik','Geschiedenis')+'</button></span>')+
     (canEdit(p.id)?'<span class="acts w-only"><button class="btn sm" data-act="pl-winter" data-id="'+esc(p.id)+'">'+tr('Log a winter','Notera en vinter','Winter noteren')+'</button><select data-plstat="'+esc(p.id)+'" aria-label="'+esc(tr('Update status','Uppdatera status'))+'"><option value="">'+esc(tr('Update status…','Uppdatera status…'))+'</option>'+PSTAT.map(o=>'<option value="'+o.k+'">'+esc(trs(o.en,o.sv))+'</option>').join('')+'</select><button class="btn sm" data-act="pl-edit" data-id="'+esc(p.id)+'">'+tr('Edit','Redigera')+'</button><button class="btn sm danger" data-act="pl-del" data-id="'+esc(p.id)+'">'+tr('Delete','Radera')+'</button></span>':'')+'</div>';
 }
 // The place of a record: a named place of its project (2.7.0), else the free text typed before.
@@ -119,7 +127,8 @@ function plPlaceFill(pid,sel){
 }
 function plCvFill(ck){const s=bySid.get($('#plSp').value);$('#plCv').innerHTML=cvOptions(s,ck,tr('Species / unknown cultivar','Arten / okänd sort','Soort / onbekende cultivar'));$('#plCv').value=ck&&s&&s.cvs.some(c=>c.ck===ck)?ck:'';$('#plCvNew').hidden=true;$('#plCvNew').value=''}
 function plFormOpen(p,sid,cv,kind){
-  plState.edit=p?p.id:null;plState.kind=p?(isEnc(p)?'encounter':''):(kind||'');const f=$('#plForm');f.hidden=false;f.classList.toggle('enc',plState.kind==='encounter');
+  plState.edit=p?p.id:null;plState.kind=p?(isEnc(p)?'encounter':''):(kind||'');
+  {const t=plState.kind==='encounter'?'enc':'rec';if(plState.tab!==t&&!$('#v-plantings').hidden){plState.tab=t;updatePlantings()}else plState.tab=t}const f=$('#plForm');f.hidden=false;f.classList.toggle('enc',plState.kind==='encounter');
   $('#plSp').innerHTML=species.slice().sort(byName).map(x=>'<option value="'+esc(x.sid)+'">'+esc(dispName(x))+(commonName(x)?' ('+esc(x.latin)+')':'')+'</option>').join('');
   $('#plSp').value=p?p.sid:(sid||selected||'');$('#plSp').disabled=!!p;
   plCvFill(p?cvKey(p.cultivar):(cv!=null?cv:((sid||selected)===selected?selCv:'')));
@@ -132,7 +141,9 @@ function plFormOpen(p,sid,cv,kind){
     s.innerHTML=eds.map(q=>'<option value="'+esc(q.id)+'">'+esc(pjName(q.id))+'</option>').join('')+'<option value="__new">'+esc(tr('New project…','Nytt projekt…','Nieuw project…'))+'</option>';
     s.value=def;const nn=$('#plProjNew');if(nn)nn.value=eds.length?'':tr('My garden','Min trädgård','Mijn tuin');plProjToggle();plPlaceFill(def==='__new'?'':def,p&&p.placeId)}}$('#plDate').value=p?p.date||today():today();$('#plCount').value=p&&p.count?p.count:'';
   $('#plSource').value=p?p.source||'':'';$('#plStatus').value=p?p.status||'alive':'alive';$('#plNotes').value=p?p.notes||'':'';
-  $('#plGeo').value=p&&p.lat!=null?p.lat+', '+p.lng:'';{const c=$('#plEstab');if(c)c.checked=!!(p&&p.established)}
+  $('#plGeo').value=p&&p.lat!=null?p.lat+', '+p.lng:'';delete $('#plGeo').dataset.acc;delete $('#plGeo').dataset.at;{const c=$('#plEstab');if(c)c.checked=!!(p&&p.established)}
+  // 2.8.0: the spot of the plant (row 71); a new record starts from its place's taps.
+  {const mb=$('#plMicro');if(mb){mb.innerHTML=microHTML('plM',p&&p.micro||{});const d=mb.closest('details');if(d)d.open=!!(p&&p.micro)}}
   $('#plTitle').textContent=plState.kind==='encounter'?(p?tr('Edit encounter','Redigera fynd','Vondst bewerken'):tr('New encounter','Nytt fynd','Nieuwe vondst')):(p?tr('Edit planting','Redigera plantering'):tr('New planting','Ny plantering'));
   const places=[...new Set((state.plantings||[]).map(x=>x.place).filter(Boolean))].sort();
   $('#plPlaces').innerHTML=places.map(x=>'<option value="'+esc(x)+'"></option>').join('');
@@ -150,7 +161,10 @@ async function plSave(){
   const doc=enc?{kind:'encounter',sid,latin:x.latin,place:$('#plPlace').value.trim(),date:$('#plDate').value||today(),status:st,established:!!($('#plEstab')||{}).checked,checks:old&&old.checks?old.checks.slice():[],createdAt:old?old.createdAt:Date.now()}
     :{sid,latin:x.latin,place:$('#plPlace').value.trim(),date:$('#plDate').value||today(),count:$('#plCount').value?Number($('#plCount').value):null,
     source:$('#plSource').value.trim(),status:st,notes:$('#plNotes').value.trim(),checks:old&&old.checks?old.checks.slice():[],createdAt:old?old.createdAt:Date.now()};
-  if(old&&old.winters)doc.winters=old.winters;
+  // Everything recorded later (winters, summers, harvests, field notes) stays with the record when it is edited.
+  if(old)['winters','summers','harvests','log'].forEach(k=>{if(old[k])doc[k]=old[k]});
+  if(!enc){const m=microRead('plM');if(Object.keys(m).length)doc.micro=m}
+  else if(old&&old.micro)doc.micro=old.micro;
   // Project and named place (2.7.0). The project decides who sees the record (D7).
   {const s=$('#plProj');if(s&&PROJ_ON&&!enc){
     let pid=s.value||'';
@@ -158,7 +172,12 @@ async function plSave(){
       try{pid=await Data.saveRow('projects',null,{name:n.slice(0,80),description:'',country:'',szone:'',usda:'',places:[],createdAt:Date.now()});pjSet(pid);toast(tr('Project created: ','Projekt skapat: ','Project aangemaakt: ')+n)}catch(e){toast(errMsg(e),'err');return}}
     if(!pid){toast(tr('Choose a project.','Välj ett projekt.','Kies een project.'),'err');return}
     doc.project=pid;const pi=($('#plPlaceId')||{}).value||'';if(pi){doc.placeId=pi;if(!doc.place)doc.place=plPlaceName(Object.assign({},doc))}}}
-  if(geo.length===2&&geo.every(isFinite)){doc.lat=geo[0];doc.lng=geo[1]}
+  if(geo.length===2&&geo.every(isFinite)){doc.lat=geo[0];doc.lng=geo[1];
+    // 2.8.0: the accuracy of a GPS position taken with "Here" is kept (shown as a circle on the map); typed positions have none.
+    const gi=$('#plGeo');if(gi&&gi.dataset.at===gi.value&&gi.dataset.acc)doc.acc=Number(gi.dataset.acc);else if(old&&old.acc&&old.lat===doc.lat&&old.lng===doc.lng)doc.acc=old.acc}
+  if(old&&old.pos)doc.pos=old.pos;
+  // Encounters are often in someone else's garden: their position is kept to about 1 km (D38; the climate grid is ~9 km).
+  if(enc&&isFinite(doc.lat)&&doc.lat!=null){doc.lat=Math.round(doc.lat*100)/100;doc.lng=Math.round(doc.lng*100)/100}
   if(old&&old.fromV1)doc.fromV1=true;
   if(cv)doc.cultivar=cv;
   if(old&&old.status!==st)doc.checks.push({date:today(),status:st,note:''});
@@ -175,12 +194,15 @@ function updatePlantings(){
   {const s=$('#plProjSel');if(s){const ps=state.projects||[];s.hidden=!PROJ_ON||!ps.length;if(plState.proj&&plState.proj!=='__none'&&!pjById(plState.proj))plState.proj='';
     s.innerHTML='<option value="">'+esc(tr('All projects','Alla projekt','Alle projecten'))+'</option>'+ps.map(q=>'<option value="'+esc(q.id)+'"'+(q.id===plState.proj?' selected':'')+'>'+esc(pjName(q.id))+'</option>').join('')+'<option value="__none"'+(plState.proj==='__none'?' selected':'')+'>'+esc(tr('Without a project','Utan projekt','Zonder project'))+'</option>'}}
   const all=(state.plantings||[]).filter(p=>!plState.proj||(plState.proj==='__none'?!p.project:p.project===plState.proj)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const places=[...new Set(all.map(plPlaceName).filter(Boolean))].sort();
+  const places=[...new Set(all.filter(p=>isEnc(p)===(plState.tab==='enc')).map(plPlaceName).filter(Boolean))].sort();
   $('#plPlaceSel').innerHTML='<option value="">'+esc(tr('All places','Alla platser'))+'</option>'+places.map(x=>'<option'+(x===plState.place?' selected':'')+'>'+esc(x)+'</option>').join('');
   $$('#plStatSeg [data-plst]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.plst===plState.status));
-  const se=plShowEnc();{const c=$('#plShowEnc');if(c)c.checked=se;const lb=c&&c.closest('label');if(lb)lb.style.display=all.some(isEnc)?'':'none'}
-  const list=all.filter(p=>(!plState.status||p.status===plState.status)&&(!plState.place||plPlaceName(p)===plState.place)&&(se||!isEnc(p)));
-  $('#plStats').textContent=plSummary(all)||tr('No planting records yet.','Inga planteringar ännu.');
-  $('#plList').innerHTML=list.length?list.map(p=>plRow(p,true)).join(''):'<div class="empty"><p>'+tr('No planting records match.','Inga planteringar matchar.')+'</p></div>';
+  // 2.8.0 (D38): encounters have their own list, apart from the planting records.
+  const enc=plState.tab==='enc';$$('#plTabSeg [data-k]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===(enc?'enc':'rec')));
+  {const s=$('#plProjSel');if(s&&enc)s.hidden=true;const g=$('#plStatSeg');if(g)g.hidden=enc}
+  const encAll=(state.plantings||[]).filter(isEnc).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const list=enc?encAll.filter(p=>!plState.place||plPlaceName(p)===plState.place):all.filter(p=>!isEnc(p)&&(!plState.status||p.status===plState.status)&&(!plState.place||plPlaceName(p)===plState.place));
+  $('#plStats').textContent=enc?(encAll.length?encAll.length+' '+(encAll.length===1?tr('encounter','fynd','vondst'):tr('encounters','fynd','vondsten'))+' · '+tr('plants seen growing elsewhere, shared with everyone signed in','växter sedda på andra ställen, delade med alla inloggade','planten elders gezien, gedeeld met iedereen die is ingelogd'):tr('No encounters yet.','Inga fynd ännu.','Nog geen vondsten.')):(plSummary1(all.filter(p=>!isEnc(p)))||tr('No planting records yet.','Inga planteringar ännu.'));
+  $('#plList').innerHTML=list.length?list.map(p=>plRow(p,true)).join(''):'<div class="empty"><p>'+(enc?tr('No encounters match.','Inga fynd matchar.','Geen vondsten gevonden.'):tr('No planting records match.','Inga planteringar matchar.'))+'</p></div>';
   updatePlMap(list);
 }

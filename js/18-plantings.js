@@ -4,7 +4,7 @@
 /* ---------- planting records ---------- */
 // 2.7.0: "planned" = not in the ground yet (row 17).
 const PSTAT=O('planned:Planned:Planerad|alive:Alive:Lever|struggling:Struggling:Kämpar|dead:Dead:Död|removed:Removed:Borttagen|unknown:Unknown:Okänd');
-const plState={status:'',place:'',edit:null,kind:'',proj:''};
+const plState={status:'',place:'',edit:null,kind:'',proj:'',tab:store.get('ab.pltab')==='enc'?'enc':'rec'};
 const isEnc=p=>p&&p.kind==='encounter';
 const plShowEnc=()=>store.get('ab.plenc')!=='0';
 const pstatPill=st=>{const o=PSTAT.find(x=>x.k===st)||PSTAT.find(x=>x.k==='unknown');return '<span class="pill pst '+esc(o.k)+'">'+esc(trs(o.en,o.sv))+'</span>'};
@@ -70,7 +70,8 @@ function pjSummary(p){
   const pl=pjPlantings(p.id).filter(x=>!isEnc(x)),sp=new Set(pl.map(x=>x.sid)),last=pl.flatMap(x=>(x.checks||[]).map(c=>c.date)).concat(pl.map(x=>x.date)).filter(Boolean).sort().pop();
   const plants=pl.reduce((t,x)=>t+(Number(x.count)||1),0),n=k=>pl.filter(x=>x.status===k).length;
   const tiles=[[pl.length,tr('planting records','planteringar','aanplantingen')],[plants,tr('plants','plantor','planten')],[sp.size,tr('species','arter','soorten')],[n('planned'),tr('planned','planerade','gepland')],[n('alive'),tr('alive','lever','levend')],[n('dead'),tr('dead','döda','dood')]];
-  return '<div class="pjstats">'+tiles.map(t=>'<div class="stat"><b>'+t[0]+'</b><span>'+esc(t[1])+'</span></div>').join('')+'</div>'+(last?'<p class="muted" style="margin:6px 0 0;font-size:13px">'+esc(tr('Last record or check: ','Senaste post eller kontroll: ','Laatste invoer of controle: ')+last)+'</p>':'');
+  const y=new Date().getFullYear(),hs=harvSum(pl,y),ht=harvSumTxt(hs);
+  return '<div class="pjstats">'+tiles.map(t=>'<div class="stat"><b>'+t[0]+'</b><span>'+esc(t[1])+'</span></div>').join('')+'</div>'+(ht?'<p style="margin:6px 0 0;font-size:14px">'+esc(tr('Harvested in ','Skördat ','Geoogst in ')+y+': '+ht)+'</p>':'')+(last?'<p class="muted" style="margin:6px 0 0;font-size:13px">'+esc(tr('Last record or check: ','Senaste post eller kontroll: ','Laatste invoer of controle: ')+last)+'</p>':'');
 }
 function pjSiteHTML(p,ed){
   const site=[p.country||'',p.szone?tr('Swedish zone ','Svensk zon ','Zweedse zone ')+p.szone:'',p.usda?'USDA '+p.usda:''].filter(Boolean).join(' · ');
@@ -89,8 +90,10 @@ function pjSiteHTML(p,ed){
 function pjPlacesHTML(p,ed){
   const pl=pjPlantings(p.id),places=(p.places||[]).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name)));
   const rows=places.map(x=>{const n=pl.filter(y=>y.placeId===x.id).length,k=PLACE_KIND.find(o=>o.k===x.kind);
-    return '<div class="ent"><span><b>'+esc(x.name)+'</b> · '+esc(k?trs(k.en,k.sv):'')+' · '+n+' '+esc(tr('records','poster','records'))+(x.notes?'<br><small class="muted">'+esc(x.notes)+'</small>':'')+'</span>'+
-      (ed?'<span class="acts"><button type="button" class="btn sm" data-act="pj-place-ren" data-id="'+esc(x.id)+'">'+esc(tr('Rename','Byt namn','Hernoemen'))+'</button><button type="button" class="btn sm danger" data-act="pj-place-del" data-id="'+esc(x.id)+'">'+esc(tr('Remove','Ta bort','Verwijderen'))+'</button></span>':'')+'</div>'}).join('');
+    const cond=[microTxt(x.micro),(x.soil||[]).map(k=>{const o=SOIL.find(z=>z.k===k);return o?trs(o.en,o.sv):k}).join(', ')].filter(Boolean).join(' · ');
+    return '<div class="ent"><span><b>'+esc(x.name)+'</b> · '+esc(k?trs(k.en,k.sv):'')+' · '+n+' '+esc(tr('records','poster','records'))+(cond?'<br><small>'+esc(cond)+'</small>':'')+(x.notes?'<br><small class="muted">'+esc(x.notes)+'</small>':'')+'</span>'+
+      '<span class="acts"><button type="button" class="btn sm" data-act="pj-place-pick" data-id="'+esc(x.id)+'">'+esc(tr('Pick a plant here','Välj en växt här','Kies hier een plant'))+'</button>'+(ed?'<button type="button" class="btn sm" data-act="pj-place-cond" data-id="'+esc(x.id)+'">'+esc(tr('Conditions','Förhållanden','Omstandigheden'))+'</button><button type="button" class="btn sm" data-act="pj-place-ren" data-id="'+esc(x.id)+'">'+esc(tr('Rename','Byt namn','Hernoemen'))+'</button><button type="button" class="btn sm danger" data-act="pj-place-del" data-id="'+esc(x.id)+'">'+esc(tr('Remove','Ta bort','Verwijderen'))+'</button>':'')+'</span></div>'+
+      (ed&&pjPlState.edit===x.id?pjPlaceCondHTML(p,x):'')}).join('');
   return (rows||'<p class="muted" style="margin:0">'+esc(tr('No places yet. Places are beds, zones or guilds inside the site; planting records can be linked to them.','Inga platser ännu. Platser är bäddar, zoner eller gillen på platsen; planteringar kan kopplas till dem.','Nog geen plekken. Plekken zijn bedden, zones of gildes binnen de locatie; aanplantingen kunnen eraan gekoppeld worden.'))+'</p>')+
     (ed?'<form class="obsform" onsubmit="return false" style="margin-top:8px"><div class="f"><label class="fl" for="pjPlName">'+esc(tr('New place','Ny plats','Nieuwe plek'))+'</label><input id="pjPlName" maxlength="60"></div><div class="f"><label class="fl" for="pjPlKind">'+esc(tr('Kind','Typ','Soort'))+'</label><select id="pjPlKind">'+PLACE_KIND.map(o=>'<option value="'+o.k+'">'+esc(trs(o.en,o.sv))+'</option>').join('')+'</select></div><div class="acts" style="align-self:end"><button type="button" class="btn sm" data-act="pj-place-add">'+esc(tr('Add place','Lägg till plats','Plek toevoegen'))+'</button></div></form>':'');
 }
@@ -133,7 +136,9 @@ function updateProjects(){
   const ed=projCanEdit(p.id),own=projRole(p.id)==='owner',sec=(h,b)=>'<section class="admsec"><h2 class="hsec">'+esc(h)+'</h2>'+b+'</section>';
   box.innerHTML=tabs+
     '<div class="pjhead"><h2 style="margin:10px 0 4px">'+esc(pjName(p.id))+' <span class="pill">'+esc(roleName(projRole(p.id)||'viewer'))+'</span></h2>'+pjSiteHTML(p,ed)+'</div>'+
-    sec(tr('Summary','Sammanfattning','Overzicht'),pjSummary(p)+'<div class="acts" style="margin-top:8px"><button type="button" class="btn sm" data-act="pj-goto" data-to="plantings">'+esc(tr('Planting records','Planteringar','Aanplantingen'))+'</button><button type="button" class="btn sm" data-act="pj-goto" data-to="calendar">'+esc(tr('Calendar of this project','Projektets kalender','Kalender van dit project'))+'</button>'+((p.szone||isFinite(p.lat)&&p.lat!=null&&p.lat!=='')?'<button type="button" class="btn sm" data-act="pj-pick">'+esc(tr('Pick a plant for this site','Välj en växt för platsen','Kies een plant voor deze locatie'))+'</button>':'')+'</div>')+
+    sec(tr('Summary','Sammanfattning','Overzicht'),pjSummary(p)+'<div class="acts" style="margin-top:8px"><button type="button" class="btn sm" data-act="pj-goto" data-to="plantings">'+esc(tr('Planting records','Planteringar','Aanplantingen'))+'</button><button type="button" class="btn sm" data-act="gp-open">'+esc(tr('Garden plan','Trädgårdsplan','Tuinplan'))+'</button><button type="button" class="btn sm" data-act="pj-goto" data-to="calendar">'+esc(tr('Calendar of this project','Projektets kalender','Kalender van dit project'))+'</button>'+((p.szone||p.site||isFinite(p.lat)&&p.lat!=null&&p.lat!=='')?'<button type="button" class="btn sm" data-act="pj-pick">'+esc(tr('Pick a plant for this site','Välj en växt för platsen','Kies een plant voor deze locatie'))+'</button>':'')+'</div>')+
+    sec(tr('Site values','Platsvärden','Locatiewaarden'),pjSiteValsHTML(p,ed))+
+    sec(tr('Season checks','Säsongskoll','Seizoenscontrole'),scHTML(p))+
     sec(tr('Places','Platser','Plekken'),pjPlacesHTML(p,ed))+
     sec(tr('Plant lists','Växtlistor','Plantenlijsten'),pjListsHTML(p,ed))+
     sec(tr('Project notes','Projektanteckningar','Projectnotities'),pjCommentsHTML(p,ed))+
@@ -167,9 +172,5 @@ async function pjMove(id,pid){
   try{await Data.saveRow('plantings',id,doc);toast(tr('Moved to ','Flyttad till ','Verplaatst naar ')+pjName(pid))}catch(e){toast(errMsg(e),'err')}
 }
 // Pick a plant for the project's site: its Swedish zone and site point are filled in.
-function pjToPick(){
-  const p=pjActive();if(!p)return;
-  if(p.szone){const z=String(p.szone).match(/\d/);if(z)pickState.zone=z[0]}
-  location.hash='pick';
-  setTimeout(()=>{const g=$('#pkGeo');if(g&&isFinite(p.lat)&&p.lat!=null&&p.lat!==''){g.value=p.lat+', '+p.lng;const d=g.closest('details');if(d)d.open=true}if(typeof updatePick==='function')updatePick()},50);
-}
+// 2.8.0: also the winter low, soil and heat sum from the project's site values (row 71, row 24).
+function pjToPick(){const p=pjActive();if(p)pickFromSite(p,null)}

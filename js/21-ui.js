@@ -30,10 +30,13 @@ function updateHome(){
   left+='</div>';
   const plant=species.filter(x=>(x.m.cal1||[]).indexOf(mo)>=0),harvest=species.filter(x=>(x.m.cal3||[]).indexOf(mo)>=0);
   const none='<span class="tnone">'+(state.lang==='sv'?'Inget registrerat för '+MONTHS_SV[mo-1]+' ännu.':state.lang==='nl'?'Nog niets vastgelegd voor '+MONTHS_NL[mo-1]+'.':'Nothing recorded for '+MONTHS_EN[mo-1]+' yet.')+'</span>';
-  const right='<div><div class="eyebrow">'+esc(tr('Now in '+MONTHS_EN[mo-1],'Nu i '+MONTHS_SV[mo-1],'Nu in '+MONTHS_NL[mo-1]))+'</div>'+
+  // 2.8.0 (row 25): first what to do with the plants in your own projects this month, then all species.
+  const mine=SB||state.plantings.length?myTodoHTML(mo,none):'';
+  const right='<div><div class="eyebrow">'+esc(tr('Now in '+MONTHS_EN[mo-1],'Nu i '+MONTHS_SV[mo-1],'Nu in '+MONTHS_NL[mo-1]))+'</div>'+mine+(mine?'<div class="eyebrow" style="margin-top:10px">'+esc(tr('All species','Alla arter','Alle soorten'))+'</div>':'')+
     '<div class="trow"><span>'+trh('Plant','Plantera')+'</span>'+(chipList(plant)||none)+'</div>'+
     '<div class="trow"><span>'+trh('Harvest','Skörda')+'</span>'+(chipList(harvest)||none)+'</div>'+
-    '<p class="tnone" style="margin:0;padding:0">'+tr('Based on the planting and harvest months on each species sheet.','Baserat på plantering- och skördemånaderna på varje artblad.')+'</p></div>';
+    '<p class="tnone" style="margin:0;padding:0">'+tr('Based on the planting and harvest months on each species sheet.','Baserat på plantering- och skördemånaderna på varje artblad.')+'</p>'+
+    (mine||(state.plantings||[]).some(p=>!isEnc(p)&&canEdit(p.id))?'<div class="acts w-only" style="margin-top:8px"><button type="button" class="btn sm" data-act="rc-capture">'+esc(tr('Quick capture: photo and note','Snabbanteckning: foto och notering','Snel vastleggen: foto en notitie'))+'</button></div>':'')+'</div>';
   $('#today').innerHTML=left+right;
   updateHomeSearch();
 }
@@ -53,7 +56,7 @@ function show(v){
   mmenu(false);$$('.acts.mcol.open').forEach(c=>c.classList.remove('open'));
   $$('.view').forEach(x=>{x.hidden=x.id!=='v-'+v});
   document.body.classList.toggle('onadd',v==='add');dockSize();
-  $$('#dock [data-dk]').forEach(t=>t.setAttribute('aria-current',t.dataset.dk===(v==='trash'||v==='lists'?'overview':v==='help'||v==='autofill'?'home':v)?'page':'false'));
+  $$('#dock [data-dk]').forEach(t=>t.setAttribute('aria-current',t.dataset.dk===(v==='trash'||v==='lists'?'overview':v==='help'||v==='autofill'?'home':v==='planting'||v==='capture'?'plantings':v==='plan'?'projects':v)?'page':'false'));
   $$('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===(['gaps','trash','compare','lists'].indexOf(v)>=0?'overview':v==='help'||v==='autofill'||v==='admin'||v==='join'?'home':v)?'page':'false'));
   if(FAMILY&&(v==='me'||v==='join'||(v==='gaps'&&loaded&&!isAdmin()))){location.hash='home';return}
   if(v==='add'&&!formBuilt)buildForm();
@@ -68,12 +71,15 @@ function show(v){
   if(v==='pick')updatePick();
   if(v==='plantings')updatePlantings();
   if(v==='projects')updateProjects();
+  if(v==='planting')updatePlHist();
+  if(v==='plan')updatePlan();
+  if(v==='capture'){updateCapture();if(!QC.pos)qcLocate()}
   if(v==='lists')updateLists();
   if(v==='help')updateHelp();
   if(v==='autofill')updateAutofill();
   if(v==='admin')updateAdmin();
   if(v==='add'&&document.body.classList.contains('ro')){location.hash='home';return}
-  if(['gaps','plantings','lists','projects'].indexOf(v)>=0&&document.body.classList.contains('ro')&&SESSION){location.hash='join';return}
+  if(['gaps','plantings','lists','projects','planting','capture','plan'].indexOf(v)>=0&&document.body.classList.contains('ro')&&SESSION){location.hash='join';return}
   if(v==='join')updateJoin();
   if(v!=='sheet'&&$('#renBox'))$('#renBox').hidden=true;
   window.scrollTo(0,0);
@@ -81,10 +87,12 @@ function show(v){
 function route(){const h=(location.hash||'#home').slice(1);
   if(h.indexOf('s-')===0){setSel(h.slice(2));show('sheet');return}
   if(h.indexOf('l-')===0){openList=h.slice(2);show('lists');return}
+  if(h.indexOf('p-')===0){openPl=h.slice(2);phState.open='';show('planting');return}
+  if(h==='plan'){show('plan');return}
   if(h==='lists')openList='';
- show(['home','overview','add','sheet','gaps','trash','me','compare','calendar','pick','plantings','projects','lists','help','autofill','admin','join'].indexOf(h)>=0?h:'home')}
+ show(['home','overview','add','sheet','gaps','trash','me','compare','calendar','pick','plantings','projects','lists','help','autofill','admin','join','capture'].indexOf(h)>=0?h:'home')}
 function go(v){if(location.hash==='#'+v)show(v);else location.hash=v}
-function refresh(){derive();revCompute();updateAdminBadge();if(!$('#v-admin').hidden)updateAdmin();updateOverview();if(!$('#v-home').hidden)updateHome();if(!$('#v-gaps').hidden)updateGaps();if(!$('#v-me').hidden)updateMe();if(!$('#v-compare').hidden)updateCompare();if(!$('#v-calendar').hidden)updateCalendar();if(!$('#v-pick').hidden)updatePick();if(!$('#v-plantings').hidden)updatePlantings();if(!$('#v-projects').hidden)updateProjects();if(!$('#v-lists').hidden)updateLists();if(!$('#v-help').hidden)updateHelp();updateTrash();if(!$('#v-sheet').hidden)updateSheet();
+function refresh(){derive();revCompute();updateAdminBadge();if(!$('#v-admin').hidden)updateAdmin();updateOverview();if(!$('#v-home').hidden)updateHome();if(!$('#v-gaps').hidden)updateGaps();if(!$('#v-me').hidden)updateMe();if(!$('#v-compare').hidden)updateCompare();if(!$('#v-calendar').hidden)updateCalendar();if(!$('#v-pick').hidden)updatePick();if(!$('#v-plantings').hidden)updatePlantings();if(!$('#v-projects').hidden)updateProjects();if(!$('#v-planting').hidden)updatePlHist();if(!$('#v-plan').hidden)updatePlan();if(!$('#v-lists').hidden)updateLists();if(!$('#v-help').hidden)updateHelp();updateTrash();if(!$('#v-sheet').hidden)updateSheet();
   $('#spNames').innerHTML=species.map(s=>'<option value="'+esc(s.latin)+'"></option>').join('');updateHint()}
 function arm(btn,run){
   if(btn.dataset.armed){clearTimeout(btn._t);delete btn.dataset.armed;btn.textContent=btn.dataset.label;run();return}
@@ -142,11 +150,12 @@ document.addEventListener('click',async e=>{
   }
   const a=t.closest('[data-act]');if(!a)return;
   const act=a.dataset.act,s=selected&&bySid.get(selected),cp=cur();
+  if(recClick(act,a)||gpClick(act,a))return;
   if(act==='goto-add')openAdd({});
   else if(act==='artie-req')artieRequest([a.dataset.latin],a);
   else if(act==='af-send')artieRequest(String($('#afNames').value||'').split(/\n/),a);
   else if(act==='af-download')afDownload();
-  else if(act==='pl-winter'){const b=$('[data-plw="'+a.dataset.id+'"]');if(b){b.hidden=!b.hidden;if(!b.hidden)b.querySelector('.plw-t').focus()}}
+  else if(act==='pl-winter'){const b=(a.closest('.view')||document).querySelector('[data-plw="'+a.dataset.id+'"]');if(b){b.hidden=!b.hidden;if(!b.hidden)b.querySelector('.plw-t').focus()}}
   else if(act==='pl-winter-save')plWinterSave(a.dataset.id);
   else if(act==='gbif-use'){const l=a.dataset.latin,i=$('#latin');if(i){i.value=l;draft.latin=l;delete draft._nearOk;updateHint();gbifCheck();updateCounts()}}
   else if(act==='bulk-all'){$$('#gapList [data-bulksel]').forEach(c=>bulkState.sel.add(c.dataset.bulksel));updateGaps()}
@@ -232,7 +241,7 @@ document.addEventListener('click',async e=>{
   else if(act==='pl-edit'){const p=(state.plantings||[]).find(x=>x.id===a.dataset.id);if(p){if($('#v-plantings').hidden){go('plantings');setTimeout(()=>plFormOpen(p),50)}else plFormOpen(p)}}
   else if(act==='pl-save')plSave();
   else if(act==='pl-cancel'){$('#plForm').hidden=true;plState.edit=null}
-  else if(act==='pl-geo'){try{navigator.geolocation.getCurrentPosition(pos=>{$('#plGeo').value=pos.coords.latitude.toFixed(5)+', '+pos.coords.longitude.toFixed(5)},()=>toast(tr('Location is not available here.','Platsen är inte tillgänglig här.'),'err'))}catch(e){toast(tr('Location is not available here.','Platsen är inte tillgänglig här.'),'err')}}
+  else if(act==='pl-geo'){toast(tr('Taking several readings for a few seconds…','Tar flera mätningar några sekunder…','Een paar seconden meerdere metingen…'));geoAvg(g=>{$('#plGeo').value=g.lat+', '+g.lng;$('#plGeo').dataset.acc=g.acc;$('#plGeo').dataset.at=$('#plGeo').value;toast(tr('Position: ± ','Position: ± ','Positie: ± ')+g.acc+' m ('+g.n+' '+tr('readings','mätningar','metingen')+')')},()=>toast(tr('Location is not available here.','Platsen är inte tillgänglig här.'),'err'))}
   else if(act==='pl-del')arm(a,async()=>{try{await Data.trash('plantings',a.dataset.id,true);toast(tr('Moved to the trash','Flyttad till papperskorgen'))}catch(err){toast(errMsg(err),'err')}});
   else if(act==='list-new'){const n=$('#newListName').value.trim();if(!n){toast(tr('Give the list a name.','Ge listan ett namn.'),'err');return}try{const lp=($('#newListProj')||{}).value||'',doc={name:n,description:$('#newListDesc').value.trim(),sids:[],createdAt:Date.now()};if(lp)doc.project=lp;const id=await Data.saveRow('lists',null,doc);$('#newListName').value='';$('#newListDesc').value='';location.hash='l-'+id}catch(err){toast(errMsg(err),'err')}}
   else if(act==='list-save'){const L=listById(openList);if(L){const doc=Object.assign({},L);delete doc.id;doc.name=$('#listName').value.trim()||L.name;doc.description=$('#listDesc').value.trim();try{await Data.saveRow('lists',L.id,doc);toast(tr('List saved','Lista sparad'))}catch(err){toast(errMsg(err),'err')}}}
@@ -261,6 +270,7 @@ document.addEventListener('click',async e=>{
   else if(act==='remove-examples')arm(a,async()=>{try{for(const en of state.entries.filter(x=>x.ex))await Data.delEntry(en.id);toast(tr('Examples removed','Exemplen borttagna','Voorbeelden verwijderd'))}catch(err){toast(errMsg(err),'err')}});
 });
 document.addEventListener('change',e=>{
+  if(recChange(e.target)||gpChange(e.target))return;
   if(e.target.id==='cmpSort'){cmpSet('sort',e.target.value);return}
   if(e.target.id==='plProjSel'){plState.proj=e.target.value;plState.place='';updatePlantings();return}
   if(e.target.id==='plProj'){plProjToggle();plPlaceFill(e.target.value==='__new'?'':e.target.value,'');return}
