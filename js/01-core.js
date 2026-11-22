@@ -2,7 +2,7 @@
 // Part 1 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 // The version shown on Home. Also change ?v= on every script tag in index.html (dev/check_version.py checks this).
-const APP_VERSION='2.8.1';
+const APP_VERSION='2.8.2';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
@@ -218,7 +218,7 @@ const SERVICE_DEFAULTS={
   gbif:{name:'GBIF name check',url:'https://api.gbif.org/v1',test:'/species/match?kingdom=Plantae&name=Betula%20pendula',for:['Latin name check while typing','Kontroll av latinskt namn']},
   tiles:{name:'Map tiles (OpenStreetMap)',url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',attr:'© OpenStreetMap',test:'0/0/0',for:['Map of plantings','Karta över planteringar']},
   climate:{name:'Winter climate (Open-Meteo, ERA5-Land)',url:'https://archive-api.open-meteo.com/v1/archive',test:'?latitude=63.8&longitude=20.3&start_date=2020-01-01&end_date=2020-01-02&daily=temperature_2m_min&models=era5_land&timezone=GMT',for:['Winter climate of a map position','Vinterklimat för en kartposition']},
-  sguSoil:{name:'Soil map (SGU)',url:'https://resource.sgu.se/service/wms/130/jordarter-25-100-tusen',layer:'jord:SE.GOV.SGU.JORD.GRUNDLAGER.25K',test:'?SERVICE=WMS&REQUEST=GetCapabilities',for:['Soil type in Pick a plant','Jordart i Välj en växt']},
+  sguSoil:{name:'Soil map (SGU)',url:'https://maps3.sgu.se/geoserver/jord/ows',layer:'jord:SE.GOV.SGU.JORD.GRUNDLAGER.25K',test:'?SERVICE=WMS&REQUEST=GetCapabilities',for:['Soil type in Pick a plant','Jordart i Välj en växt']},
   sguPerm:{name:'Soil permeability (SGU)',url:'https://api.sgu.se/oppnadata/genomslapplighet/ogc/features/v1',test:'/collections?f=json',for:['Moisture guess in Pick a plant','Fuktuppskattning i Välj en växt']}
 };
 const SERVICES={};

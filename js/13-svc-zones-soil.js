@@ -8,7 +8,7 @@ const SGU_SOIL_WMS=svcUrl('sguSoil'),SGU_SOIL_LAYER=SERVICES.sguSoil.layer;
 const SGU_PERM_API=svcUrl('sguPerm');
 async function fetchJ(u,ms,id){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||12000);try{const r=id?await svcFetch(id,u,{signal:c.signal}):await fetch(u,{signal:c.signal});if(!r.ok)throw new Error('HTTP '+r.status);const tx=await r.text();try{return JSON.parse(tx)}catch(e){return{_text:tx}}}finally{clearTimeout(t)}}
 const propStrings=f=>Object.entries((f&&f.properties)||{}).filter(([k,v])=>typeof v==='string'&&v.trim());
-// 2.8.0 fix: the answer may be JSON, GeoServer's plain text ("name = value" lines) or an HTML table, and it also carries the
+// 2.8.1 fix: the answer may be JSON, GeoServer's plain text ("name = value" lines) or an HTML table, and it also carries the
 // map's own title ("Jordarter 1:25 000-1:100 000 (visningstjänst)"), which earlier versions took for the soil type.
 // So: look at every name/value pair, skip anything that is a map title or scale, and prefer values that name a soil.
 const SOIL_WORD=/morän|lera|lerig|sand|grus|torv|silt|mjäla|\bmo\b|finmo|gyttja|dy\b|berg|häll|fyll|isälv|svall|klapper|block|kärr|mosse|organogen|postglacial|glacial|vatten|skal|älvsediment|svämsediment|flygsand/i;
@@ -19,6 +19,8 @@ function soilPairs(j){
   const t=String((j&&j._text)||'');
   // GeoServer text/plain: "name = value"
   t.split(/\r?\n/).forEach(l=>{const m=/^\s*([\wåäöÅÄÖ.:-]+)\s*=\s*(.+?)\s*$/.exec(l);if(m)out.push([m[1],m[2]])});
+  // XML / GML: <ns:name>value</ns:name> elements without child elements
+  for(const m of t.matchAll(/<(?:[\w-]+:)?([\w-]+)(?:\s[^>]*)?>([^<>]{1,120})<\/(?:[\w-]+:)?\1>/g))out.push([m[1],m[2].trim()]);
   // HTML table: header cells, then the cells of the first data row
   if(/<t[hd][\s>]/i.test(t)){
     const cells=row=>[...row.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map(m=>m[1].replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim());
@@ -27,7 +29,12 @@ function soilPairs(j){
   }
   return out;
 }
+// 2.8.2: the old address (SGU resource server) answers soil questions with the service description (WMS_Capabilities), whose
+// title holds the map scale. Soil questions go to SGU's GeoServer (SERVICES.sguSoil in part 1, the GetFeatureInfo address that the
+// description itself names); a description or an error message is never read as an answer.
+const NOT_ANSWER=/WMS_Capabilities|ServiceException|ExceptionReport/;
 function soilFrom(j){
+  if(j&&j._text&&NOT_ANSWER.test(j._text))return null;
   const ok=([k,v])=>v&&v.length<80&&!NOT_SOIL.test(v);
   const ps=soilPairs(j).filter(ok);
   const named=ps.filter(([k])=>/jordart|jg2|soil/i.test(k)&&!/kod|code|id$/i.test(k));
