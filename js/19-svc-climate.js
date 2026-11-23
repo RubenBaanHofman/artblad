@@ -162,7 +162,7 @@ async function plSave(){
     :{sid,latin:x.latin,place:$('#plPlace').value.trim(),date:$('#plDate').value||today(),count:$('#plCount').value?Number($('#plCount').value):null,
     source:$('#plSource').value.trim(),status:st,notes:$('#plNotes').value.trim(),checks:old&&old.checks?old.checks.slice():[],createdAt:old?old.createdAt:Date.now()};
   // Everything recorded later (winters, summers, harvests, field notes) stays with the record when it is edited.
-  if(old)['winters','summers','harvests','log'].forEach(k=>{if(old[k])doc[k]=old[k]});
+  if(old)['winters','summers','harvests','log','plan','geo'].forEach(k=>{if(old[k])doc[k]=old[k]});
   if(!enc){const m=microRead('plM');if(Object.keys(m).length)doc.micro=m}
   else if(old&&old.micro)doc.micro=old.micro;
   // Project and named place (2.7.0). The project decides who sees the record (D7).

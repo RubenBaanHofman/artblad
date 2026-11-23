@@ -12,18 +12,26 @@
 const MP_MAX=300;
 const MPK={
   bed:{g:'Polygon',c:'#8a5a2b',f:.28,en:'Bed',sv:'Bädd',nl:'Bed',key:'B'},
-  zone:{g:'Polygon',c:'#3a76c4',f:.08,d:'7 5',en:'Zone',sv:'Zon',nl:'Zone',key:'Z'},
+  pline:{g:'LineString',c:'#5d8a1f',en:'Planting line',sv:'Planteringsrad',nl:'Plantrij',key:'L'},
   plant:{g:'Point',c:'#2f7d32',en:'Plant',sv:'Planta',nl:'Plant',key:'P'},
+  zone:{g:'Polygon',c:'#3a76c4',f:.08,d:'7 5',en:'Zone',sv:'Zon',nl:'Zone',key:'Z'},
+  structure:{g:'Polygon',c:'#6b6b6b',f:.45,en:'Structure',sv:'Byggnad',nl:'Bouwwerk',key:'T'},
+  support:{g:'LineString',c:'#7b5a3c',en:'Support (trellis, wires)',sv:'Stöd (spaljé, vajrar)',nl:'Steun (latwerk, draden)',key:'U'},
+  path:{g:'LineString',c:'#b3a57c',en:'Path',sv:'Gång',nl:'Pad',key:'A'},
+  water:{g:'Polygon',c:'#3d8fd1',f:.45,en:'Water',sv:'Vatten',nl:'Water',key:'W'},
   note:{g:'Point',c:'#555555',en:'Note',sv:'Anteckning',nl:'Notitie',key:'N'},
   measure:{g:'LineString',c:'#c0392b',d:'5 4',en:'Measure',sv:'Mått',nl:'Maat',key:'M'}
 };
 const MP_KINDS=Object.keys(MPK);
+const MP_NUM=['spread','inrow','rowsp','rows','gap','width','height'];
 const MP={pid:'',id:'',shapes:[],base:'',tool:'select',draft:[],sel:'',undo:[],redo:[],bg:store.get('ab.mpbg')||'auto',fade:Number(store.get('ab.mpfade')||100),
-  hide:{},map:null,lay:null,tiles:null,grid:null,o:null,saveT:null,saving:false,drag:null,clip:null,form:'',lastSid:'',live:null,ring:null,fitFor:''};
+  hide:{},view:store.get('ab.mpview')||'ill',phone:false,gps:null,typed:'',map:null,lay:null,tiles:null,grid:null,o:null,saveT:null,saving:false,drag:null,clip:null,form:'',lastSid:'',live:null,ring:null,fitFor:''};
 const mpK=k=>trs(MPK[k].en,MPK[k].sv,MPK[k].nl);
 const mpPlans=pid=>(state.plans||[]).filter(x=>x.project===pid).sort((a,b)=>(a.status==='archived')-(b.status==='archived')||String(a.name).localeCompare(String(b.name)));
 const mpPlan=()=>(state.plans||[]).find(x=>x.id===MP.id)||null;
 const mpCanEdit=()=>{const q=mpPlan();return !!q&&projCanEdit(q.project)&&q.status!=='archived'&&!q.lock};
+// 2.12.0: drawing needs a mouse and keyboard; on a phone the plan is shown with field actions only (decision 11).
+const mpDrawOK=()=>mpCanEdit()&&!MP.phone;
 const mpCanExport=pid=>projCanEdit(pid);
 /* ---------- metres ↔ map ---------- */
 function mpOrigin(p){if(hasPt(p))return{lat:Number(p.lat),lng:Number(p.lng)};const s=(MP.shapes||[])[0];if(s){const c=mpPts(s)[0];return{lat:c[1],lng:c[0]}}return{lat:62,lng:16}}
@@ -41,12 +49,13 @@ const mpM2=v=>numTxt(v<100?Math.round(v*10)/10:Math.round(v))+' m²';
 function mpBox(shapes){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;shapes.forEach(s=>mpPts(s).forEach(c=>{const p=mpXY(c);x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y)}));return x0===Infinity?null:{w:x1-x0,h:y1-y0}}
 const mpTooBig=sh=>{const b=mpBox(sh);return b&&(b.w>MP_MAX+.01||b.h>MP_MAX+.01)};
 const mpSpread=s=>{const v=Number(s.spread);if(isFinite(v)&&v>0)return v;const x=bySid.get(s.sid),m=x&&((x.m||{}).spread);return isFinite(Number(m))&&Number(m)>0?Number(m)/100:null};
-const mpAbbr=s=>{const x=bySid.get(s.sid);if(!x)return s.name||'?';const w=String(x.latin||'').split(/\s+/);return (w[0]||'').slice(0,3)+(w[1]?' '+w[1].slice(0,3):'')+(s.cultivar?' ‘'+s.cultivar+'’':'')};
+const mpAbbr=s=>{const x=bySid.get(s.sid);if(!x)return s.name||'?';if(MP.view==='ill')return dispName(x)+(s.cultivar?' ‘'+s.cultivar+'’':'');const w=String(x.latin||'').split(/\s+/);return (w[0]||'').slice(0,3)+(w[1]?' '+w[1].slice(0,3):'')+(s.cultivar?' ‘'+s.cultivar+'’':'')};
 /* ---------- the view ---------- */
 function updateMPlan(){
   const box=$('#mpBody');if(!box)return;const p=pjActive();
   if(!PLANS_ON){box.innerHTML='<div class="ovhead"><h1>'+esc(tr('Garden plan on the map','Trädgårdsplan på kartan','Tuinplan op de kaart'))+'</h1></div><p class="admwarn">'+esc(tr('Database update v11 is not installed yet (setup/v11_plans.sql).','Databasuppdatering v11 är inte installerad än (setup/v11_plans.sql).','Database-update v11 is nog niet geïnstalleerd (setup/v11_plans.sql).'))+'</p>';return}
   if(!p){box.innerHTML='<p class="muted">'+esc(tr('Choose a project first (Projects).','Välj ett projekt först (Projekt).','Kies eerst een project (Projecten).'))+'</p>';return}
+  MP.phone=!!(window.matchMedia&&(matchMedia('(pointer: coarse)').matches||innerWidth<760));
   if(MP.pid!==p.id){MP.pid=p.id;MP.id='';MP.sel='';MP.draft=[];MP.undo=[];MP.redo=[];MP.fitFor=''}
   const plans=mpPlans(p.id);if(!plans.some(x=>x.id===MP.id)){const a=plans.find(x=>x.status!=='archived')||plans[0];MP.id=a?a.id:'';MP.sel='';MP.undo=[];MP.redo=[];MP.base=''}
   const q=mpPlan();
@@ -70,6 +79,7 @@ function mpTop(){
   if(ed&&q)h+='<button type="button" class="btn sm danger" data-act="mp-trash">'+esc(tr('Delete','Radera','Verwijderen'))+'</button>';
   if(ed&&gpPlan(p)&&!plans.some(x=>x.from==='batch5'))h+='<button type="button" class="btn sm" data-act="mp-convert">'+esc(tr('Bring in the 2.8 plan','Hämta in 2.8-planen','Het 2.8-plan overnemen'))+'</button>';
   h+='<span class="mpbg seg" role="group" aria-label="Background">'+[['auto',tr('Auto','Auto','Auto')],['map',tr('Map','Karta','Kaart')],['neutral',tr('Neutral','Neutral','Neutraal')]].map(b=>'<button type="button" data-act="mp-bg" data-k="'+b[0]+'" aria-pressed="'+(MP.bg===b[0])+'">'+esc(b[1])+'</button>').join('')+'</span>'+
+    '<span class="seg" role="group" aria-label="View">'+[['ill',tr('Illustrated','Illustrerad','Geïllustreerd')],['tech',tr('Technical','Teknisk','Technisch')]].map(b=>'<button type="button" data-act="mp-view" data-k="'+b[0]+'" aria-pressed="'+(MP.view===b[0])+'">'+esc(b[1])+'</button>').join('')+'</span>'+
     '<label class="mpfade"><span class="fl">'+esc(tr('Background','Bakgrund','Achtergrond'))+'</span><input id="mpFade" type="range" min="0" max="100" step="10" value="'+MP.fade+'"></label>'+
     '<span class="mpundo"><button type="button" class="btn sm" data-act="mp-undo"'+(MP.undo.length&&mpCanEdit()?'':' disabled')+' title="Ctrl+Z">↶</button><button type="button" class="btn sm" data-act="mp-redo"'+(MP.redo.length&&mpCanEdit()?'':' disabled')+' title="Ctrl+Y">↷</button></span>';
   if(MP.form==='new')h+='<form class="obsform mpnew" onsubmit="return false"><label class="f"><span class="fl">'+esc(tr('Name','Namn','Naam'))+'</span><input id="mpNewName" type="text" maxlength="60" value="'+esc(plans.length?tr('Design','Design','Ontwerp'):tr('Now','Nu','Nu'))+'"></label>'+
@@ -84,7 +94,7 @@ function mpTop(){
 }
 const mpSeasonOpts=v=>[['',tr('– any –','– valfri –','– geen –')],['spring',tr('Spring','Vår','Lente')],['summer',tr('Summer','Sommar','Zomer')],['autumn',tr('Autumn','Höst','Herfst')],['winter',tr('Winter','Vinter','Winter')]].map(o=>'<option value="'+o[0]+'"'+(o[0]===(v||'')?' selected':'')+'>'+esc(o[1])+'</option>').join('');
 function mpTools(){
-  const el=$('#mpTools');if(!el)return;const ed=mpCanEdit();
+  const el=$('#mpTools');if(!el)return;const ed=mpDrawOK();if(MP.phone){el.innerHTML=mpPhoneTools();return}
   const t=(k,lab,key)=>'<button type="button" class="mptool'+(MP.tool===k?' on':'')+'" data-act="mp-tool" data-k="'+k+'"'+(ed||k==='select'?'':' disabled')+' title="'+esc(lab+(key?' ('+key+')':''))+'">'+esc(lab)+'</button>';
   el.innerHTML=t('select',tr('Select','Välj','Selecteren'),'S')+MP_KINDS.map(k=>t(k,mpK(k),MPK[k].key)).join('')+t('moveall',tr('Move whole plan','Flytta hela planen','Hele plan verplaatsen'),'')+
     '<p class="muted mphelp">'+esc(MP.tool==='select'?tr('Click a shape to select it. Drag corners; drag a side’s middle to add a corner; right-click a corner to remove it. Arrows nudge 10 cm (Shift 1 cm), R rotates 15°, Delete removes.','Klicka på en form för att välja den. Dra i hörn; dra i mitten av en sida för att lägga till ett hörn; högerklicka på ett hörn för att ta bort det. Pilar flyttar 10 cm (Skift 1 cm), R vrider 15°, Delete tar bort.','Klik op een vorm om hem te selecteren. Sleep hoeken; sleep het midden van een zijde om een hoek toe te voegen; rechtsklik op een hoek om hem te verwijderen. Pijlen verschuiven 10 cm (Shift 1 cm), R draait 15°, Delete verwijdert.'):
@@ -93,30 +103,31 @@ function mpTools(){
       tr('Click the corners. Enter or double-click finishes, Esc cancels, Backspace removes the last corner. Shift: right angles. Alt: no snapping.','Klicka på hörnen. Enter eller dubbelklick avslutar, Esc avbryter, Backsteg tar bort sista hörnet. Skift: räta vinklar. Alt: ingen fästning.','Klik de hoeken. Enter of dubbelklik rondt af, Esc annuleert, Backspace verwijdert de laatste hoek. Shift: rechte hoeken. Alt: niet uitlijnen.'))+'</p>';
 }
 function mpSide(){
-  const el=$('#mpSide');if(!el)return;const q=mpPlan(),s=MP.shapes.find(x=>x.id===MP.sel),ed=mpCanEdit();
+  const el=$('#mpSide');if(!el)return;const q=mpPlan(),s=MP.shapes.find(x=>x.id===MP.sel),ed=mpDrawOK();
   if(!q){el.innerHTML='';return}
   if(s){
     const pts=mpPts(s),poly=MPK[s.kind].g==='Polygon',line=MPK[s.kind].g==='LineString',ro=ed?'':' disabled';
     let h='<h3 class="hsub">'+esc(mpK(s.kind))+'</h3>';
     h+='<label class="f"><span class="fl">'+esc(tr('Name','Namn','Naam'))+'</span><input data-mp="name" type="text" maxlength="60" value="'+esc(s.name||'')+'"'+ro+'></label>';
-    if(s.kind==='plant'){
+    if(s.kind==='plant'||s.kind==='pline'){
       h+='<label class="f"><span class="fl">'+esc(tr('Species','Art','Soort'))+'</span><select data-mp="sid"'+ro+'><option value="">–</option>'+species.slice().sort(byName).map(x=>'<option value="'+esc(x.sid)+'"'+(x.sid===s.sid?' selected':'')+'>'+esc(dispName(x))+'</option>').join('')+'</select></label>'+
         '<label class="f"><span class="fl">'+esc(tr('Cultivar','Sort','Cultivar'))+'</span><input data-mp="cultivar" type="text" maxlength="60" value="'+esc(s.cultivar||'')+'"'+ro+'></label>';
-      const sp=mpSpread(Object.assign({},s,{spread:''}));
-      h+='<label class="f"><span class="fl">'+esc(tr('Mature width (m)','Full bredd (m)','Volgroeide breedte (m)'))+'</span><input data-mp="spread" type="number" min="0.05" max="40" step="0.05" value="'+esc(s.spread||'')+'" placeholder="'+esc(sp?numTxt(sp):tr('unknown','okänd','onbekend'))+'"'+ro+'></label>';
-      h+='<p class="muted mpsmall">'+esc(tr('A planned plant: nothing is planted until you add a planting record (“Log as planted” comes in the next version).','En planerad planta: inget är planterat förrän du lägger till en plantering (”Registrera som planterad” kommer i nästa version).','Een geplande plant: niets is geplant tot je een aanplant toevoegt (“Als geplant vastleggen” komt in de volgende versie).'))+'</p>';
+      if(s.kind==='plant'){const sp=mpSpread(Object.assign({},s,{spread:''}));
+      h+='<label class="f"><span class="fl">'+esc(tr('Mature width (m)','Full bredd (m)','Volgroeide breedte (m)'))+'</span><input data-mp="spread" type="number" min="0.05" max="40" step="0.05" value="'+esc(s.spread||'')+'" placeholder="'+esc(sp?numTxt(sp):tr('unknown','okänd','onbekend'))+'"'+ro+'></label>'}
     }
     if(s.kind==='note')h+='<label class="f"><span class="fl">'+esc(tr('Text','Text','Tekst'))+'</span><textarea data-mp="text" rows="3" maxlength="400"'+ro+'>'+esc(s.text||'')+'</textarea></label>';
+    h+=mpSideKind(s,ro);
     if(poly)h+='<p class="mpstat"><b>'+esc(mpM2(mpArea(pts)))+'</b> · '+esc(tr('perimeter ','omkrets ','omtrek ')+mpM(mpLen(pts,true)))+'</p>';
     if(line)h+='<p class="mpstat"><b>'+esc(mpM(mpLen(pts,false)))+'</b></p>';
     if(poly||line){const n=poly?pts.length:pts.length-1;
       h+='<details class="mpsides"'+(n<=8?' open':'')+'><summary>'+esc(tr('Sides (type an exact length)','Sidor (skriv en exakt längd)','Zijden (typ een exacte lengte)'))+'</summary>'+
         Array.from({length:n},(_,i)=>'<label class="mpside1"><span>'+(i+1)+'–'+((i+1)%pts.length+1)+'</span><input data-mpside="'+i+'" type="number" min="0.01" step="0.01" value="'+(Math.round(mpDist(pts[i],pts[(i+1)%pts.length])*100)/100)+'"'+ro+'> m</label>').join('')+'</details>'}
-    if(ed)h+='<div class="acts"><button type="button" class="btn sm danger" data-act="mp-del">'+esc(tr('Delete shape','Ta bort formen','Vorm verwijderen'))+'</button><button type="button" class="btn sm" data-act="mp-desel">'+esc(tr('Done','Klar','Klaar'))+'</button></div>';
+    h+=mpPlantedHTML(s);if(MP.phone&&s.kind==='plant'&&mpCanEdit())h+='<div class="acts"><button type="button" class="btn sm" data-act="mp-here">'+esc(tr('Move it to where I stand','Flytta den dit jag står','Verplaats hem naar waar ik sta'))+'</button></div>';if(mpDrawOK())h+=mpRepeatHTML(s);
+    if(mpDrawOK())h+='<div class="acts"><button type="button" class="btn sm danger" data-act="mp-del">'+esc(tr('Delete shape','Ta bort formen','Vorm verwijderen'))+'</button><button type="button" class="btn sm" data-act="mp-desel">'+esc(tr('Done','Klar','Klaar'))+'</button></div>';
     el.innerHTML=h;return;
   }
   let h='<h3 class="hsub">'+esc(tr('This plan','Den här planen','Dit plan'))+'</h3>';
-  const ro=mpCanEdit()?'':' disabled';
+  const ro=mpDrawOK()?'':' disabled';
   h+='<label class="f"><span class="fl">'+esc(tr('Name','Namn','Naam'))+'</span><input data-mpp="name" type="text" maxlength="60" value="'+esc(q.name||'')+'"'+ro+'></label>'+
     '<div class="mprow"><label class="f"><span class="fl">'+esc(tr('Year','År','Jaar'))+'</span><input data-mpp="year" type="number" min="1990" max="2100" value="'+esc(q.year||'')+'"'+ro+'></label>'+
     '<label class="f"><span class="fl">'+esc(tr('Season','Säsong','Seizoen'))+'</span><select data-mpp="season"'+ro+'>'+mpSeasonOpts(q.season)+'</select></label></div>';
@@ -130,14 +141,17 @@ function mpSide(){
 function mpSummary(shapes){
   const o={n:shapes.length,bed:0,beds:0,zone:0,zones:0,measure:0,plants:{},notes:0};
   shapes.forEach(s=>{const p=mpPts(s);if(s.kind==='bed'){o.bed+=mpArea(p);o.beds++}else if(s.kind==='zone'){o.zone+=mpArea(p);o.zones++}else if(s.kind==='measure')o.measure+=mpLen(p,false);else if(s.kind==='note')o.notes++;
-    else if(s.kind==='plant'){const k=(s.sid||'?')+'|'+(s.cultivar||'');o.plants[k]=(o.plants[k]||0)+1}});
+    else if(s.kind==='plant'||s.kind==='pline'){const k=(s.sid||'?')+'|'+(s.cultivar||''),n=s.kind==='plant'?1:mpLineCount(s);o.plants[k]=(o.plants[k]||0)+n;if(s.kind==='pline'){o.lines=(o.lines||0)+1;o.lineLen=(o.lineLen||0)+mpLen(p,false)}}
+    else if(s.kind==='path')o.path=(o.path||0)+mpLen(p,false)*(Number(s.width)||1);else if(s.kind==='structure')o.struct=(o.struct||0)+mpArea(p);else if(s.kind==='water')o.water=(o.water||0)+mpArea(p)});
+  ['path','struct','water'].forEach(k=>{if(o[k])o[k]=Math.round(o[k]*10)/10});if(o.lineLen)o.lineLen=Math.round(o.lineLen*10)/10;
   o.bed=Math.round(o.bed*10)/10;o.zone=Math.round(o.zone*10)/10;o.measure=Math.round(o.measure*100)/100;return o;
 }
 function mpSummaryHTML(o){
   const pl=Object.keys(o.plants||{}).sort().map(k=>{const [sid,cv]=k.split('|'),x=bySid.get(sid);return '<li>'+esc((x?dispName(x):sid==='?'?tr('species not chosen','art inte vald','soort niet gekozen'):sid)+(cv?' ‘'+cv+'’':''))+': '+o.plants[k]+'</li>'}).join('');
   return '<ul class="mpsum"><li>'+esc(tr('Beds: ','Bäddar: ','Bedden: ')+o.beds+' · '+mpM2(o.bed))+'</li><li>'+esc(tr('Zones: ','Zoner: ','Zones: ')+o.zones+' · '+mpM2(o.zone))+'</li>'+
+    (o.lines?'<li>'+esc(tr('Planting lines: ','Planteringsrader: ','Plantrijen: ')+o.lines+' · '+mpM(o.lineLen))+'</li>':'')+(o.struct?'<li>'+esc(tr('Structures: ','Byggnader: ','Bouwwerken: ')+mpM2(o.struct))+'</li>':'')+(o.path?'<li>'+esc(tr('Paths: ','Gångar: ','Paden: ')+mpM2(o.path))+'</li>':'')+(o.water?'<li>'+esc(tr('Water: ','Vatten: ','Water: ')+mpM2(o.water))+'</li>':'')+
     (o.measure?'<li>'+esc(tr('Measured lines: ','Mätlinjer: ','Maatlijnen: ')+mpM(o.measure))+'</li>':'')+(o.notes?'<li>'+esc(tr('Notes: ','Anteckningar: ','Notities: ')+o.notes)+'</li>':'')+
-    '<li>'+esc(tr('Planned plants: ','Planerade plantor: ','Geplande planten: ')+Object.values(o.plants||{}).reduce((a,b)=>a+b,0))+(pl?'<ul>'+pl+'</ul>':'')+'</li></ul>';
+    '<li>'+esc(tr('Plants (planned and planted): ','Plantor (planerade och planterade): ','Planten (gepland en geplant): ')+Object.values(o.plants||{}).reduce((a,b)=>a+b,0))+(pl?'<ul>'+pl+'</ul>':'')+'</li></ul>';
 }
 /* ---------- the map ---------- */
 async function mpEnsureMap(){
@@ -175,37 +189,21 @@ function mpBack(){
   for(let y=Math.floor(Math.min(a.y,b.y)/st)*st;y<=Math.max(a.y,b.y);y+=st){const p=px(a.x,y),q=px(b.x,y),maj=Math.abs(Math.round(y/st)%10)===0;line(p.x,p.y,q.x,q.y,maj)}
   g.fillStyle='rgba(40,50,40,'+(.7*show)+')';g.font='11px sans-serif';g.fillText(tr('grid ','rutnät ','raster ')+(st<1?'10 cm':st+' m'),8,sz.y-8);
 }
-function mpStyle(s,sel,other){
-  // While a drawing tool is active, shapes let clicks through to the map (so a bed can be drawn inside a zone).
-  const k=MPK[s.kind],act=!other&&(MP.tool==='select'||MP.tool==='moveall');return{color:k.c,weight:sel?3.5:2,opacity:other?.35:1,fillColor:k.c,fillOpacity:other?.04:(k.f||0),dashArray:k.d||null,interactive:act,bubblingMouseEvents:false};
-}
 function mpDraw(){
-  const m=MP.map;if(!m||!MP.lay)return;MP.lay.clearLayers();const q=mpPlan();if(!q){mpDraftDraw();return}
+  const m=MP.map;if(!m||!MP.lay)return;MP.lay.clearLayers();mpDefs();const q=mpPlan();if(!q){mpDraftDraw();return}MP.ovl=mpOverlapSet();
   const vis=s=>!MP.hide[s.kind];
   if(!MP.hide.others)mpPlans(MP.pid).filter(x=>x.id!==MP.id&&x.status!=='archived').forEach(o=>(o.shapes||[]).filter(vis).forEach(s=>mpShapeLayer(s,false,true)));
-  if(!MP.hide.records)pjPlantings(MP.pid).filter(x=>!isEnc(x)).forEach(p=>{const pt=plPoint(p);if(!pt||!pt.own&&!pt.plan)return;
+  const linked=new Set(MP.shapes.map(x=>x.plantingId).filter(Boolean));
+  if(!MP.hide.records)pjPlantings(MP.pid).filter(x=>!isEnc(x)&&!linked.has(x.id)).forEach(p=>{const pt=plPoint(p);if(!pt||!pt.own&&!pt.plan)return;
     L.circleMarker([pt.lat,pt.lng],{radius:4,color:'#1b5e20',weight:1.5,fillColor:'#fff',fillOpacity:1,interactive:true}).bindTooltip(plTitle(p)+' · '+tr('planted','planterad','geplant'),{direction:'top'}).addTo(MP.lay)});
+  if(MP.view==='ill')mpShadows(MP.shapes.filter(vis));
   MP.shapes.filter(vis).forEach(s=>mpShapeLayer(s,s.id===MP.sel,false));
   const s=MP.shapes.find(x=>x.id===MP.sel);if(s&&vis(s))mpHandles(s);
-  mpDraftDraw();
-}
-function mpShapeLayer(s,sel,other){
-  const k=MPK[s.kind],pts=mpPts(s),st=mpStyle(s,sel,other);let ly=null;
-  if(k.g==='Polygon'&&pts.length>2){ly=L.polygon(pts.map(mpLat),st);if(s.name&&!other)ly.bindTooltip(s.name,{permanent:true,direction:'center',className:'mpname'})}
-  else if(k.g==='LineString'&&pts.length>1){ly=L.polyline(pts.map(mpLat),st);if(!other)ly.bindTooltip(mpM(mpLen(pts,false)),{permanent:true,direction:'center',className:'mpname mplenl'})}
-  else if(s.kind==='plant'&&pts[0]){const r=mpSpread(s),c=mpLat(pts[0]);
-    ly=L.layerGroup();const st2=Object.assign({},st,{fillOpacity:other?.03:.12,dashArray:s.spread||r==null?null:'4 4'});
-    const circ=L.circle(c,Object.assign({radius:r?r/2:.25},st2));circ.addTo(ly);const dot=L.circleMarker(c,{radius:3,color:k.c,weight:1,fillColor:k.c,fillOpacity:1,interactive:st.interactive,bubblingMouseEvents:false});dot.addTo(ly);
-    if(!other)dot.bindTooltip(mpAbbr(s),{permanent:MP.map.getZoom()>=20,direction:'right',className:'mpname mpplant'});
-    if(!other)[circ,dot].forEach(x=>x.on('mousedown',e=>mpShapeDown(e,s.id)))}
-  else if(s.kind==='note'&&pts[0]){ly=L.marker(mpLat(pts[0]),{icon:L.divIcon({className:'mpnoteic',html:'<span>✎ '+esc(String(s.text||s.name||'').slice(0,40))+'</span>',iconSize:null}),interactive:st.interactive,bubblingMouseEvents:false})}
-  if(!ly)return;
-  if(!other&&s.kind!=='plant')ly.on('mousedown',e=>mpShapeDown(e,s.id));
-  ly.addTo(MP.lay);
+  mpDraftDraw();mpGpsDraw();
 }
 // Corner handles, middle-of-side handles and side lengths of the selected shape.
 function mpHandles(s){
-  const pts=mpPts(s),k=MPK[s.kind];if(k.g==='Point')return;const ed=mpCanEdit(),closed=k.g==='Polygon';
+  const pts=mpPts(s),k=MPK[s.kind];if(k.g==='Point')return;const ed=mpDrawOK(),closed=k.g==='Polygon';
   const n=closed?pts.length:pts.length-1;
   for(let i=0;i<n;i++){const a=pts[i],b=pts[(i+1)%pts.length],mid=[(a[0]+b[0])/2,(a[1]+b[1])/2];
     L.marker(mpLat(mid),{icon:L.divIcon({className:'mpsidel',html:'<span>'+esc(mpM(mpDist(a,b)))+'</span>',iconSize:null}),interactive:false}).addTo(MP.lay);
@@ -249,7 +247,7 @@ function mpMapClick(e){
   if(MP.drag&&MP.drag.moved)return;
   const t=MP.tool;
   if(t==='select'||t==='moveall'){if(MP.sel&&!MP.justSel){MP.sel='';mpDraw();mpSide()}MP.justSel=false;return}
-  if(!mpCanEdit())return;const sn=mpSnap(e.latlng,e.originalEvent);
+  if(!mpDrawOK())return;const sn=mpSnap(e.latlng,e.originalEvent);
   if(MPK[t].g==='Point'){const s={id:randHex(6),kind:t,g:{type:'Point',coordinates:sn.c}};if(t==='plant'&&MP.lastSid)s.sid=MP.lastSid;mpAddShape(s);return}
   const last=MP.draft[MP.draft.length-1];if(last&&mpDist(last,sn.c)<.005)return;
   if(MPK[t].g==='Polygon'&&MP.draft.length>2&&mpDist(MP.draft[0],sn.c)<.005){mpFinish();return}
@@ -257,22 +255,22 @@ function mpMapClick(e){
 }
 function mpMapMove(e){
   if(MP.drag){mpDragMove(e);return}
-  if(!MPK[MP.tool]||!mpCanEdit()){mpRing();return}
+  if(!MPK[MP.tool]||!mpDrawOK()){mpRing();return}
   const sn=mpSnap(e.latlng,e.originalEvent);mpRing(sn.c,sn.k);
   if(MP.draft.length){MP.cur=sn.c;mpDraftDraw();mpLiveShow(e.containerPoint)}
 }
 function mpLiveShow(pt){
   const l=$('#mpLive');if(!l)return;const d=MP.draft,k=MPK[MP.tool];if(!d.length||!k){l.hidden=true;return}
   const pts=d.concat(MP.cur?[MP.cur]:[]),seg=pts.length>1?mpDist(pts[pts.length-2],pts[pts.length-1]):0;
-  let t=mpM(seg);if(k.g==='LineString'&&pts.length>2)t+=' · '+tr('total ','totalt ','totaal ')+mpM(mpLen(pts,false));if(k.g==='Polygon'&&pts.length>2)t+=' · '+mpM2(mpArea(pts));
+  let t=mpM(seg);if(MP.typed)t=tr('typed: ','skrivet: ','getypt: ')+MP.typed+(MP.typed.indexOf('<')>=0?'°':' m')+' · Enter';if(k.g==='LineString'&&pts.length>2)t+=' · '+tr('total ','totalt ','totaal ')+mpM(mpLen(pts,false));if(k.g==='Polygon'&&pts.length>2)t+=' · '+mpM2(mpArea(pts));
   l.textContent=t;l.hidden=false;if(pt){l.style.left=(pt.x+16)+'px';l.style.top=(pt.y+14)+'px'}
 }
 function mpFinish(){
   const k=MPK[MP.tool];if(!k){return}const d=MP.draft.slice(),need=k.g==='Polygon'?3:2;
   if(d.length<need){toast(k.g==='Polygon'?tr('A shape needs at least three corners.','En form behöver minst tre hörn.','Een vorm heeft minstens drie hoeken nodig.'):tr('A line needs at least two points.','En linje behöver minst två punkter.','Een lijn heeft minstens twee punten nodig.'),'err');return}
-  const s={id:randHex(6),kind:MP.tool};mpSetPts(s,d);MP.draft=[];MP.cur=null;const l=$('#mpLive');if(l)l.hidden=true;mpAddShape(s);
+  const s={id:randHex(6),kind:MP.tool};mpSetPts(s,d);if(s.kind==='pline'){if(MP.lastSid)s.sid=MP.lastSid;mpLineDefaults(s)}MP.draft=[];MP.cur=null;const l=$('#mpLive');if(l)l.hidden=true;mpAddShape(s);
 }
-function mpCancel(){MP.draft=[];MP.cur=null;const l=$('#mpLive');if(l)l.hidden=true;mpDraftDraw();mpRing()}
+function mpCancel(){MP.typed='';MP.draft=[];MP.cur=null;const l=$('#mpLive');if(l)l.hidden=true;mpDraftDraw();mpRing()}
 function mpAddShape(s){
   if(mpTooBig(MP.shapes.concat([s]))){toast(tr('A plan may cover at most 300 × 300 m. Start another plan for the rest.','En plan får täcka högst 300 × 300 m. Starta en annan plan för resten.','Een plan mag hoogstens 300 × 300 m beslaan. Begin een ander plan voor de rest.'),'err');mpDraftDraw();return}
   mpPush();MP.shapes.push(s);MP.sel=s.id;if(MPK[s.kind].g!=='Point'){MP.tool='select';mpTools()}mpChanged();
@@ -283,16 +281,16 @@ function mpShapeDown(e,id){
   if(MP.tool==='moveall'){mpMapDown(e);return}
   const was=MP.sel===id;MP.sel=id;MP.justSel=true;setTimeout(()=>{MP.justSel=false},400);
   if(!was){mpDraw();mpSide()}
-  if(mpCanEdit()){const s=MP.shapes.find(x=>x.id===id);MP.drag={type:'shape',id,start:e.latlng,orig:JSON.stringify(s.g),moved:false};MP.map.dragging.disable()}
+  if(mpDrawOK()){const s=MP.shapes.find(x=>x.id===id);MP.drag={type:'shape',id,start:e.latlng,orig:JSON.stringify(s.g),moved:false};MP.map.dragging.disable()}
 }
 function mpVertexDown(e,id,i,mid){
-  L.DomEvent.stopPropagation(e);if(!mpCanEdit())return;const s=MP.shapes.find(x=>x.id===id);if(!s)return;
+  L.DomEvent.stopPropagation(e);if(!mpDrawOK())return;const s=MP.shapes.find(x=>x.id===id);if(!s)return;
   const before=JSON.stringify(MP.shapes);
   if(mid){const p=mpPts(s);const a=p[i-1],b=p[i%p.length];p.splice(i,0,[(a[0]+b[0])/2,(a[1]+b[1])/2]);mpSetPts(s,p)}
   MP.drag={type:'vx',id,i,moved:mid,before};MP.map.dragging.disable();
 }
 function mpMapDown(e){
-  if(MP.tool!=='moveall'||!mpCanEdit()||!MP.shapes.length)return;
+  if(MP.tool!=='moveall'||!mpDrawOK()||!MP.shapes.length)return;
   MP.drag={type:'all',start:e.latlng,orig:JSON.stringify(MP.shapes),moved:false};MP.map.dragging.disable();
 }
 function mpDragMove(e){
@@ -372,6 +370,8 @@ async function mpTrash(){
 function mpClick(act,a){
   if(act==='mp-open'){go('mplan');return true}
   if(act==='mp-tool'){MP.tool=a.dataset.k;mpCancel();if(MP.tool!=='select')MP.sel='';mpTools();mpDraw();mpSide();const m=$('#mpMap');if(m)m.classList.toggle('mpdrawc',MP.tool!=='select');return true}
+  if(act==='mp-view'){MP.view=a.dataset.k;store.set('ab.mpview',MP.view);mpTop();mpDraw();return true}
+  if(mpClick2(act,a))return true;
   if(act==='mp-bg'){MP.bg=a.dataset.k;store.set('ab.mpbg',MP.bg);mpTop();mpBack();return true}
   if(act==='mp-undo'){mpUndo();return true}
   if(act==='mp-redo'){mpRedo();return true}
@@ -394,7 +394,7 @@ function mpChange(t){
   if(t.dataset.mpp){const k=t.dataset.mpp,v=k==='year'?(Number(t.value)||''):String(t.value||'').trim();if(k==='name'&&!v)return true;mpSaveMeta({[k]:v});return true}
   const s=MP.shapes.find(x=>x.id===MP.sel);if(!s||!mpCanEdit())return false;
   if(t.dataset.mpside!==undefined){mpSideLen(Number(t.dataset.mpside),Number(t.value));return true}
-  if(t.dataset.mp){const k=t.dataset.mp;mpPush();let v=t.value;if(k==='spread'){v=Number(v);if(!(v>0))v=''}else v=String(v).trim();if(v==='')delete s[k];else s[k]=v;if(k==='sid'&&v)MP.lastSid=v;mpChanged();return true}
+  if(t.dataset.mp){const k=t.dataset.mp;mpPush();let v=t.value;if(MP_NUM.indexOf(k)>=0){v=Number(v);if(!(v>0))v=''}else v=String(v).trim();if(v==='')delete s[k];else s[k]=v;if(k==='sid'&&v){MP.lastSid=v;if(s.kind==='pline'){delete s.inrow;delete s.rowsp;mpLineDefaults(s)}}if(t.tagName==='SELECT')t.blur();mpChanged();return true}
   return false;
 }
 function mpKey(e){
@@ -404,16 +404,18 @@ function mpKey(e){
   if(ctl&&(k==='y'||k==='Y')){e.preventDefault();mpRedo();return}
   if(ctl&&(k==='c'||k==='C')){const s=MP.shapes.find(x=>x.id===MP.sel);if(s){MP.clip=JSON.stringify(s);toast(tr('Copied','Kopierad','Gekopieerd'))}return}
   if(ctl&&(k==='v'||k==='V')){if(!MP.clip||!mpCanEdit())return;e.preventDefault();const s=JSON.parse(MP.clip);s.id=randHex(6);const p=mpPts(s).map(c=>{const v=mpXY(c);return mpLL(v.x+1,v.y-1)});mpSetPts(s,p);mpAddShape(s);MP.sel=s.id;mpDraw();mpSide();return}
+  if(mpDrawing()&&mpTypedKey(e))return;
   if(mpDrawing()){if(k==='Enter'){e.preventDefault();mpFinish();return}if(k==='Backspace'){e.preventDefault();MP.draft.pop();mpDraftDraw();return}}
   if(k==='Escape'){if(MP.draft.length)mpCancel();else if(MP.sel){MP.sel='';mpDraw();mpSide()}else if(MP.tool!=='select'){MP.tool='select';mpTools()}return}
   if(ctl||e.altKey)return;
+  if(MP.phone)return;
   if(MP.sel&&mpCanEdit()){const st=e.shiftKey?.01:.1;
     if(k==='ArrowLeft'){e.preventDefault();mpNudge(-st,0);return}if(k==='ArrowRight'){e.preventDefault();mpNudge(st,0);return}
     if(k==='ArrowUp'){e.preventDefault();mpNudge(0,st);return}if(k==='ArrowDown'){e.preventDefault();mpNudge(0,-st);return}
     if(k==='r'||k==='R'){e.preventDefault();mpRotate(e.shiftKey?15:-15);return}
     if(k==='Delete'||k==='Backspace'){e.preventDefault();mpClick('mp-del');return}}
   const tk={s:'select',S:'select'};MP_KINDS.forEach(x=>{tk[MPK[x].key.toLowerCase()]=x;tk[MPK[x].key]=x});
-  if(tk[k]&&!MP.draft.length&&(mpCanEdit()||tk[k]==='select')){const a={dataset:{k:tk[k]}};mpClick('mp-tool',a)}
+  if(tk[k]&&!MP.draft.length&&(mpDrawOK()||tk[k]==='select')){const a={dataset:{k:tk[k]}};mpClick('mp-tool',a)}
 }
 document.addEventListener('keydown',mpKey);
 document.addEventListener('mouseup',()=>{if(MP.drag)mpDragEnd()});
