@@ -5,6 +5,7 @@ window.ARTBLAD_CONFIG = {
   SUPABASE_ANON_KEY: "sb_publishable_1steaReuaFmiWk9Y4bBR_Q__WQAuNy2",
   // false: everyone must sign in to see anything. true: anyone with the link can read, only editors can change.
   // If you set this to true, also use the "public read" block in setup/setup.sql.
+  KNMI_API_KEY: "eyJvcmciOiI1ZTU1NGUxOTI3NGE5NjAwMDEyYTNlYjEiLCJpZCI6ImEzN2JkNzBkYzdlNzQ1MGJhOTA4NGIwMzE4ODllMGM2IiwiaCI6Im11cm11cjEyOCJ9",
   PUBLIC_READ: false,
   // Optional: the address printed in the QR codes on sheets. Leave empty to use the address the site is opened from.
   SITE_URL: "https://rubenbaanhofman.github.io/artblad/"
