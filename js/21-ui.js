@@ -56,7 +56,7 @@ function show(v){
   mmenu(false);$$('.acts.mcol.open').forEach(c=>c.classList.remove('open'));
   $$('.view').forEach(x=>{x.hidden=x.id!=='v-'+v});
   document.body.classList.toggle('onadd',v==='add');dockSize();
-  $$('#dock [data-dk]').forEach(t=>t.setAttribute('aria-current',t.dataset.dk===(v==='trash'||v==='lists'?'overview':v==='help'||v==='autofill'?'home':v==='planting'||v==='capture'?'plantings':v==='plan'?'projects':v)?'page':'false'));
+  $$('#dock [data-dk]').forEach(t=>t.setAttribute('aria-current',t.dataset.dk===(v==='trash'||v==='lists'?'overview':v==='help'||v==='autofill'?'home':v==='planting'||v==='capture'?'plantings':v==='plan'||v==='mplan'?'projects':v)?'page':'false'));
   $$('.tab').forEach(t=>t.setAttribute('aria-current',t.dataset.v===(['gaps','trash','compare','lists'].indexOf(v)>=0?'overview':v==='help'||v==='autofill'||v==='admin'||v==='join'?'home':v)?'page':'false'));
   if(FAMILY&&(v==='me'||v==='join'||(v==='gaps'&&loaded&&!isAdmin()))){location.hash='home';return}
   if(v==='add'&&!formBuilt)buildForm();
@@ -73,13 +73,14 @@ function show(v){
   if(v==='projects')updateProjects();
   if(v==='planting')updatePlHist();
   if(v==='plan')updatePlan();
+  if(v==='mplan')updateMPlan();
   if(v==='capture'){updateCapture();if(!QC.pos)qcLocate()}
   if(v==='lists')updateLists();
   if(v==='help')updateHelp();
   if(v==='autofill')updateAutofill();
   if(v==='admin')updateAdmin();
   if(v==='add'&&document.body.classList.contains('ro')){location.hash='home';return}
-  if(['gaps','plantings','lists','projects','planting','capture','plan'].indexOf(v)>=0&&document.body.classList.contains('ro')&&SESSION){location.hash='join';return}
+  if(['gaps','plantings','lists','projects','planting','capture','plan','mplan'].indexOf(v)>=0&&document.body.classList.contains('ro')&&SESSION){location.hash='join';return}
   if(v==='join')updateJoin();
   if(v!=='sheet'&&$('#renBox'))$('#renBox').hidden=true;
   window.scrollTo(0,0);
@@ -89,10 +90,11 @@ function route(){const h=(location.hash||'#home').slice(1);
   if(h.indexOf('l-')===0){openList=h.slice(2);show('lists');return}
   if(h.indexOf('p-')===0){openPl=h.slice(2);phState.open='';show('planting');return}
   if(h==='plan'){show('plan');return}
+  if(h==='mplan'){show('mplan');return}
   if(h==='lists')openList='';
  show(['home','overview','add','sheet','gaps','trash','me','compare','calendar','pick','plantings','projects','lists','help','autofill','admin','join','capture'].indexOf(h)>=0?h:'home')}
 function go(v){if(location.hash==='#'+v)show(v);else location.hash=v}
-function refresh(){derive();revCompute();updateAdminBadge();if(!$('#v-admin').hidden)updateAdmin();updateOverview();if(!$('#v-home').hidden)updateHome();if(!$('#v-gaps').hidden)updateGaps();if(!$('#v-me').hidden)updateMe();if(!$('#v-compare').hidden)updateCompare();if(!$('#v-calendar').hidden)updateCalendar();if(!$('#v-pick').hidden)updatePick();if(!$('#v-plantings').hidden)updatePlantings();if(!$('#v-projects').hidden)updateProjects();if(!$('#v-planting').hidden)updatePlHist();if(!$('#v-plan').hidden)updatePlan();if(!$('#v-lists').hidden)updateLists();if(!$('#v-help').hidden)updateHelp();updateTrash();if(!$('#v-sheet').hidden)updateSheet();
+function refresh(){derive();revCompute();updateAdminBadge();if(!$('#v-admin').hidden)updateAdmin();updateOverview();if(!$('#v-home').hidden)updateHome();if(!$('#v-gaps').hidden)updateGaps();if(!$('#v-me').hidden)updateMe();if(!$('#v-compare').hidden)updateCompare();if(!$('#v-calendar').hidden)updateCalendar();if(!$('#v-pick').hidden)updatePick();if(!$('#v-plantings').hidden)updatePlantings();if(!$('#v-projects').hidden)updateProjects();if(!$('#v-planting').hidden)updatePlHist();if(!$('#v-plan').hidden)updatePlan();if(!$('#v-mplan').hidden)updateMPlan();if(!$('#v-lists').hidden)updateLists();if(!$('#v-help').hidden)updateHelp();updateTrash();if(!$('#v-sheet').hidden)updateSheet();
   $('#spNames').innerHTML=species.map(s=>'<option value="'+esc(s.latin)+'"></option>').join('');updateHint()}
 function arm(btn,run){
   if(btn.dataset.armed){clearTimeout(btn._t);delete btn.dataset.armed;btn.textContent=btn.dataset.label;run();return}
@@ -150,7 +152,7 @@ document.addEventListener('click',async e=>{
   }
   const a=t.closest('[data-act]');if(!a)return;
   const act=a.dataset.act,s=selected&&bySid.get(selected),cp=cur();
-  if(recClick(act,a)||gpClick(act,a))return;
+  if(recClick(act,a)||gpClick(act,a)||mpClick(act,a))return;
   if(act==='goto-add')openAdd({});
   else if(act==='artie-req')artieRequest([a.dataset.latin],a);
   else if(act==='af-send')artieRequest(String($('#afNames').value||'').split(/\n/),a);
@@ -270,7 +272,7 @@ document.addEventListener('click',async e=>{
   else if(act==='remove-examples')arm(a,async()=>{try{for(const en of state.entries.filter(x=>x.ex))await Data.delEntry(en.id);toast(tr('Examples removed','Exemplen borttagna','Voorbeelden verwijderd'))}catch(err){toast(errMsg(err),'err')}});
 });
 document.addEventListener('change',e=>{
-  if(recChange(e.target)||gpChange(e.target))return;
+  if(recChange(e.target)||gpChange(e.target)||mpChange(e.target))return;
   if(e.target.id==='cmpSort'){cmpSet('sort',e.target.value);return}
   if(e.target.id==='plProjSel'){plState.proj=e.target.value;plState.place='';updatePlantings();return}
   if(e.target.id==='plProj'){plProjToggle();plPlaceFill(e.target.value==='__new'?'':e.target.value,'');return}
@@ -372,7 +374,9 @@ function startRealtime(uid){
     .on('postgres_changes',{event:'*',schema:'public',table:'lists'},kick)
     .on('postgres_changes',{event:'*',schema:'public',table:'comments'},kick)
     .on('postgres_changes',{event:'*',schema:'public',table:'projects'},kick)
-    .on('postgres_changes',{event:'*',schema:'public',table:'project_members'},kick);
+    .on('postgres_changes',{event:'*',schema:'public',table:'project_members'},kick)
+    // 2.11.0: garden plans; my own saves are written straight to the row, so their echo is skipped altogether.
+    .on('postgres_changes',{event:'*',schema:'public',table:'plans'},p=>{const r=p&&(p.new||p.old)||{};if(r.updated_by===meUid()&&p.eventType!=='DELETE')return;kick(p)});
   if(uid)RT.on('postgres_changes',{event:'*',schema:'public',table:'favorites',filter:'user_id=eq.'+uid},async()=>{await loadFav(uid);refresh()});
   // Admins (database update v5): flags, marks and Artie requests arrive live. Others receive nothing from these tables.
   if(isAdmin())['review_flags','reviews','review_sections','review_dismissed','autofill_requests'].forEach(t=>RT.on('postgres_changes',{event:'*',schema:'public',table:t},revLive));

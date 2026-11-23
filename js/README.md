@@ -45,6 +45,7 @@ Until 2.4.7 all logic was one file, `app.js`. Since 2.5.0 the same code is split
 | `19b-svc-site.js` | SERVICE: site values from a project's private site point (Open-Meteo, SGU, Natural Earth coastline in vendor/) | 114 |
 | `19c-records.js` | Records: spot of a plant, summers, harvests, field notes, history page, season checks, quick capture, monthly to-do, places in Pick a plant | 342 |
 | `19d-plan.js` | Garden plan in metres: outline, beds, plants, tape-measure placement, photo background with scale, mature-size circles, planned plants, link to the map, print | 292 |
+| `19e-mapplan.js` | Garden plan on the map (2.11.0, plan A): several named plans (table plans, database update v11), drawing beds, zones, plants, notes and measure lines in real-world coordinates, snapping, editing, undo, backgrounds and grid | 419 |
 | `20-lists.js` | Shared lists, who and when, trash, display name, manual | 106 |
 | `21-ui.js` | Home, navigation, events, sign-in, roles and realtime | 377 |
 | `22-init.js` | Loading screen, start-up and the offline service worker (runs last) | 120 |

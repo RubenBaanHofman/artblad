@@ -64,6 +64,7 @@ function trashItems(){
   (state.trashP||[]).forEach(p=>rows.push({t:'plantings',id:p.id,latin:p.latin,what:trs('Planting','Plantering')+': '+(p.place||'')+' '+(p.date||''),m:META.get(p.id)}));
   (state.trashC||[]).forEach(c=>rows.push({t:'comments',id:c.id,latin:(bySid.get(c.sid)||{}).latin||c.sid,what:trs('Comment','Kommentar')+': '+String(c.text||'').slice(0,80),m:META.get(c.id)}));
   (state.trashL||[]).forEach(l=>rows.push({t:'lists',id:l.id,latin:'',what:trs('List','Lista')+': '+(l.name||''),m:META.get(l.id)}));
+  (state.trashPlan||[]).forEach(x=>rows.push({t:'plans',id:x.id,latin:'',what:trs('Garden plan','Trädgårdsplan')+': '+(x.name||''),m:META.get(x.id)}));
   (state.trashPj||[]).forEach(x=>rows.push({t:'projects',id:x.id,latin:'',what:trs('Project','Projekt')+': '+(x.name||''),m:META.get(x.id)}));
   (state.trashO||[]).forEach(o=>rows.push({t:'obs',id:o.id,latin:o.latin,what:(o.kind==='source'?trs('Source','Källa')+': '+(o.supplier||''):trs('Observation','Observation'))+' '+(o.date||'')+(o.text?': '+String(o.text).slice(0,80):''),m:META.get(o.id)}));
   return rows.sort((a,b)=>String(b.m.deletedAt).localeCompare(String(a.m.deletedAt)));
