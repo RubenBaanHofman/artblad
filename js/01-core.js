@@ -2,7 +2,7 @@
 // Part 1 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 // The version shown on Home. Also change ?v= on every script tag in index.html (dev/check_version.py checks this).
-const APP_VERSION='2.8.2';
+const APP_VERSION='2.9.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
@@ -217,7 +217,11 @@ let tt;function toast(msg,kind){const t=$('#toast');t.textContent=msg;t.classNam
 const SERVICE_DEFAULTS={
   gbif:{name:'GBIF name check',url:'https://api.gbif.org/v1',test:'/species/match?kingdom=Plantae&name=Betula%20pendula',for:['Latin name check while typing','Kontroll av latinskt namn']},
   tiles:{name:'Map tiles (OpenStreetMap)',url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',attr:'© OpenStreetMap',test:'0/0/0',for:['Map of plantings','Karta över planteringar']},
-  climate:{name:'Winter climate (Open-Meteo, ERA5-Land)',url:'https://archive-api.open-meteo.com/v1/archive',test:'?latitude=63.8&longitude=20.3&start_date=2020-01-01&end_date=2020-01-02&daily=temperature_2m_min&models=era5_land&timezone=GMT',for:['Winter climate of a map position','Vinterklimat för en kartposition']},
+  climate:{name:'Climate model (Open-Meteo, ERA5-Land)',url:'https://archive-api.open-meteo.com/v1/archive',test:'?latitude=63.8&longitude=20.3&start_date=2020-01-01&end_date=2020-01-02&daily=temperature_2m_min&models=era5_land&timezone=GMT',for:['Winter climate of a map position','Vinterklimat för en kartposition']},
+  // 2.9.0: measured winter lows from weather stations (js/19a-svc-stations.js). Frost needs a free client ID: FROST_CLIENT_ID in config.js.
+  smhiObs:{name:'Weather stations Sweden (SMHI)',url:'https://opendata-download-metobs.smhi.se/api/version/1.0',test:'/parameter/19/station/140480.json',for:['Measured winter lows in Sweden','Uppmätta vinterlägsta i Sverige']},
+  frost:{name:'Weather stations Norway (MET Norway Frost)',url:'https://frost.met.no',test:'/sources/v0.jsonld?ids=SN18700',for:['Measured winter lows in Norway','Uppmätta vinterlägsta i Norge']},
+  fmi:{name:'Weather stations Finland (FMI)',url:'https://opendata.fmi.fi/wfs',test:'?service=WFS&version=2.0.0&request=describeStoredQueries&storedquery_id=fmi::observations::weather::daily::simple',for:['Measured winter lows in Finland','Uppmätta vinterlägsta i Finland']},
   sguSoil:{name:'Soil map (SGU)',url:'https://maps3.sgu.se/geoserver/jord/ows',layer:'jord:SE.GOV.SGU.JORD.GRUNDLAGER.25K',test:'?SERVICE=WMS&REQUEST=GetCapabilities',for:['Soil type in Pick a plant','Jordart i Välj en växt']},
   sguPerm:{name:'Soil permeability (SGU)',url:'https://api.sgu.se/oppnadata/genomslapplighet/ogc/features/v1',test:'/collections?f=json',for:['Moisture guess in Pick a plant','Fuktuppskattning i Välj en växt']}
 };

@@ -85,12 +85,12 @@ async function winterMin(lat,lng,y){
 const usdaOfT=t=>{const f=t*1.8+32;if(f<-60)return '1a';const k=Math.floor((f+60)/5),n=Math.min(13,Math.floor(k/2)+1);return n+(k%2?'b':'a')};
 function climTxt(c){
   return tr('Winter low here ≈ ','Vinterlägsta här ≈ ','Winterminimum hier ≈ ')+fmtC(c.t)+' '+tr('on average (coldest ','i snitt (kallast ','gemiddeld (koudst ')+fmtC(c.lo)+', '+c.n+' '+tr('winters','vintrar','winters')+')'+
-    ' · ≈ USDA '+usdaOfT(c.t);
+    ' · ≈ USDA '+usdaOfT(c.t)+(c.kind?' · '+climSrcTxt(c):'');
 }
 const CLIM_CREDIT='<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (ERA5-Land, CC BY 4.0)';
 async function plClimFor(doc){
   if(!(isEnc(doc)&&doc.established&&isFinite(doc.lat)&&isFinite(doc.lng)))return false;
-  try{doc.clim=await climLookup(Number(doc.lat),Number(doc.lng));OM_LAST_ERR=null;return true}catch(e){OM_LAST_ERR=e;return null}
+  try{doc.clim=await climBest(Number(doc.lat),Number(doc.lng));OM_LAST_ERR=null;return true}catch(e){OM_LAST_ERR=e;return null}
 }
 async function plClimRetry(id){
   const p=(state.plantings||[]).find(x=>x.id===id);if(!p)return;const doc=Object.assign({},p);delete doc.id;
@@ -101,7 +101,7 @@ async function plClimRetry(id){
 function encInfo(p){
   if(!isEnc(p))return '';
   if(!p.established)return '<br><small class="muted">'+esc(tr('Not marked as established: does not count as proven hardy.','Inte markerad som etablerad: räknas inte som bevisat härdig.','Niet als gevestigd gemarkeerd: telt niet als bewezen winterhard.'))+'</small>';
-  if(p.clim)return '<br><small>'+esc(tr('Established. ','Etablerad. ','Gevestigd. ')+climTxt(p.clim))+'. <span class="muted">'+esc(tr('Climate: ','Klimat: ','Klimaat: '))+CLIM_CREDIT+'</span></small>';
+  if(p.clim)return '<br><small>'+esc(tr('Established. ','Etablerad. ','Gevestigd. ')+climTxt(p.clim))+'. <span class="muted">'+esc(tr('Climate: ','Klimat: ','Klimaat: '))+climCredit(p.clim)+'</span></small>';
   if(!isFinite(p.lat)||p.lat===''||p.lat==null)return '<br><small class="muted">'+esc(tr('Established. Add a map position to look up its winter climate.','Etablerad. Lägg till en kartposition för att hämta vinterklimatet.','Gevestigd. Voeg een kaartpositie toe om het winterklimaat op te zoeken.'))+'</small>';
   return '<br><small class="muted">'+esc(tr('Established. Winter climate not looked up yet.','Etablerad. Vinterklimatet är inte hämtat än.','Gevestigd. Winterklimaat nog niet opgezocht.'))+'</small>'+(canEdit(p.id)?' <button type="button" class="btn sm w-only" data-act="pl-clim" data-id="'+esc(p.id)+'">'+esc(tr('Look up climate','Hämta klimat','Klimaat opzoeken'))+'</button>':'');
 }

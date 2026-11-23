@@ -193,7 +193,7 @@ async function scSave(){
     const d=plDoc(r.q),pt=plPoint(r.q),key=pt?ptKey(pt.lat,pt.lng):'';
     if(scState.k==='w'){
       const w=scWinter(),rec={w,t:'',o:r.o,date:today()};
-      if(pt){if(!look.has(key))look.set(key,winterMin(pt.lat,pt.lng,winterStart(w)).then(v=>v,e=>{bad=omErrMsg(e);return null}));const v=await look.get(key);if(v){rec.t=v.t;rec.tSrc='open-meteo'}}
+      if(pt){if(!look.has(key))look.set(key,winterBest(pt.lat,pt.lng,winterStart(w)).then(v=>v,e=>{bad=omErrMsg(e);return null}));const v=await look.get(key);if(v){rec.t=v.t;rec.tSrc=v.src;if(v.stn)rec.tStn=v.stn}}
       d.winters=(d.winters||[]).concat([rec]);if(r.o==='died'&&d.status!=='dead'){d.status='dead';d.checks=(d.checks||[]).concat([{date:today(),status:'dead',note:tr('Winter check','Vinterkoll','Wintercontrole')}])}
     }else{
       const y=summerYear(),rec={id:recId(),y,o:r.o,date:today()};if(r.wood)rec.wood=r.wood;
@@ -209,7 +209,7 @@ async function scSave(){
 const siteBusy={pid:'',msg:''};
 function pjSiteValsHTML(p,ed){
   const v=p.site,has=hasPt(p);
-  let h=v?siteTable(v)+'<p class="muted" style="font-size:13px;margin:6px 0 0">'+esc(tr('Looked up ','Hämtat ','Opgezocht op ')+v.at+(v.years?' · '+tr('growing seasons ','växtsäsonger ','groeiseizoenen ')+v.years:'')+' · ')+SITE_CREDIT+'</p>'
+  let h=v?siteTable(v)+'<p class="muted" style="font-size:13px;margin:6px 0 0">'+esc(tr('Looked up ','Hämtat ','Opgezocht op ')+v.at+(v.years?' · '+tr('growing seasons ','växtsäsonger ','groeiseizoenen ')+v.years:'')+' · ')+siteCredit(v)+'</p>'
     :'<p class="muted" style="margin:0">'+esc(has?tr('Not looked up yet.','Inte hämtat ännu.','Nog niet opgezocht.'):tr('Save a site point first (Edit name and site).','Spara en platspunkt först (Redigera namn och plats).','Sla eerst een locatie op (Naam en locatie bewerken).'))+'</p>';
   h+='<p class="muted" style="font-size:13px;margin:6px 0 0">'+esc(tr('The site point itself stays private to the project. These derived values are what may be compared with other growers later, never the point.','Själva platspunkten stannar inom projektet. De här härledda värdena är vad som senare kan jämföras med andra odlare, aldrig punkten.','De locatie zelf blijft binnen het project. Deze afgeleide waarden kunnen later met andere kwekers worden vergeleken, nooit de locatie zelf.'))+'</p>';
   if(siteBusy.pid===p.id)h+='<p class="admwarn" style="margin:6px 0 0">'+esc(siteBusy.msg)+'</p>';

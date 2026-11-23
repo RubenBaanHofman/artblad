@@ -72,7 +72,11 @@ async function siteLookup(lat,lng,onStep){
   const step=t=>{if(onStep)onStep(t)},wait=ms=>step(tr('Waiting for Open-Meteo’s free limit (about ','Väntar på Open-Meteos fria gräns (ungefär ','Wachten op de gratis limiet van Open-Meteo (ongeveer ')+Math.max(1,Math.ceil(ms/6e4))+' min)…');
   const out={at:today(),miss:[]},Y1=siteLastYear(),Y0=Y1-SITE_Y+1,S0=Y1-SITE_Y_SHORT+1;
   step(tr('Winter climate (20 winters)…','Vinterklimat (20 vintrar)…','Winterklimaat (20 winters)…'));
-  try{const c=await climLookup(lat,lng,true,wait);out.winterLow=c.t;out.coldest=c.lo;out.usda=usdaOfT(c.t);if(c.elev!=null)out.elev=c.elev}catch(e){out.miss.push('winter')}
+  // 2.9.0: a weather station when there is one near (row 78); the model value is kept beside it for comparison (row 79).
+  try{const c=await climBest(lat,lng,true,wait);out.winterLow=c.t;out.coldest=c.lo;out.usda=usdaOfT(c.t);if(c.elev!=null)out.elev=c.elev;
+    out.winterSrc=c.kind==='station'?{kind:'station',prov:c.prov,stn:c.stn,n:c.n,loW:c.loW,src:c.src}:{kind:'model',n:c.n,why:c.why||''};
+    if(c.kind==='station'){step(tr('Model value for comparison…','Modellvärde för jämförelse…','Modelwaarde ter vergelijking…'));
+      try{const m=await climLookup(lat,lng,true,wait);out.winterLowModel=m.t;out.coldestModel=m.lo;if(m.elev!=null)out.elev=m.elev}catch(e){}}}catch(e){out.miss.push('winter')}
   const ys=[];for(let y=Y0;y<=Y1;y++){step(tr('Growing season ','Växtsäsong ','Groeiseizoen ')+y+'…');try{ys.push(await yearVals(lat,lng,y,true,wait))}catch(e){if(e&&e.limit==='day')break}}
   if(ys.length>=5){out.gdd=Math.round(avg(ys.map(x=>x.gdd)));out.ffd=Math.round(avg(ys.map(x=>x.ffd)));out.summerT=Math.round(avg(ys.map(x=>x.summerT))*10)/10;
     const ls=ys.filter(x=>x.last).map(x=>dayNo(x.last)),fs=ys.filter(x=>x.first).map(x=>dayNo(x.first));
@@ -91,13 +95,18 @@ async function siteLookup(lat,lng,onStep){
   try{const [s,p]=await Promise.allSettled([sguSoil(lat,lng),sguPerm(lat,lng)]);if(s.status==='fulfilled'&&s.value){out.soil=s.value;out.soilCls=soilClass(s.value).soil}if(p.status==='fulfilled'&&p.value)out.perm=p.value;if(!out.soil)out.miss.push('soil')}catch(e){out.miss.push('soil')}
   return out;
 }
+const siteCredit=v=>(v&&v.winterSrc&&v.winterSrc.kind==='station'?stCredit(v.winterSrc.prov)+' · ':'')+SITE_CREDIT;
 const SITE_CREDIT='<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (ERA5-Land, ERA5, CC BY 4.0) · SGU (CC0) · <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a> ('+'public domain)';
 const mdTxt=md=>{if(!md)return '';const m=+md.slice(0,2),d=+md.slice(3,5);return d+' '+(state.lang==='sv'?MONTHS_SV:state.lang==='nl'?MONTHS_NL:MONTHS_EN)[m-1].slice(0,3)};
 const intTxt=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
 // The values as rows of a small table (also used on the history page of a planting).
 function siteRows(v){
   if(!v)return [];const r=[],add=(a,b)=>r.push([a,b]);
-  if(v.winterLow!=null)add(tr('Typical winter low','Typisk vinterlägsta','Typisch winterminimum'),fmtC(v.winterLow)+' (USDA '+v.usda+')'+(v.coldest!=null?', '+tr('coldest ','kallast ','koudst ')+fmtC(v.coldest):''));
+  if(v.winterLow!=null)add(tr('Typical winter low','Typisk vinterlägsta','Typisch winterminimum'),fmtC(v.winterLow)+' (USDA '+v.usda+')'+(v.coldest!=null?', '+tr('coldest ','kallast ','koudst ')+fmtC(v.coldest)+(v.winterSrc&&v.winterSrc.loW?' ('+v.winterSrc.loW+')':''):''));
+  // 2.9.0 (row 79): where the winter low comes from, and the model value beside a measured one.
+  {const s=v.winterSrc;if(s&&s.kind==='station')add(tr('Winter low measured at','Vinterlägsta uppmätt vid','Winterminimum gemeten bij'),stLabel(Object.assign({prov:s.prov},s.stn))+' · '+s.n+' '+tr('winters','vintrar','winters'));
+    else if(v.winterLow!=null)add(tr('Winter low source','Källa för vinterlägsta','Bron winterminimum'),climSrcTxt({kind:'model'})+(s&&s.why==='nokey'?' · '+tr('Norwegian stations need FROST_CLIENT_ID in config.js','norska stationer kräver FROST_CLIENT_ID i config.js','Noorse stations vereisen FROST_CLIENT_ID in config.js'):s&&s.why==='nostation'?' · '+tr('no station with 10 full winters within 50 km','ingen station med 10 hela vintrar inom 50 km','geen station met 10 volledige winters binnen 50 km'):s&&s.why==='stfail'?' · '+tr('station service did not answer: look up again later','stationstjänsten svarade inte: hämta igen senare','stationsdienst antwoordde niet: later opnieuw opzoeken'):''));
+    if(v.winterLowModel!=null)add(tr('Model estimate for comparison','Modelluppskattning för jämförelse','Modelschatting ter vergelijking'),fmtC(v.winterLowModel)+(v.coldestModel!=null?', '+tr('coldest ','kallast ','koudst ')+fmtC(v.coldestModel):'')+' (Open-Meteo, ERA5-Land)')}
   if(v.elev!=null)add(tr('Elevation','Höjd över havet','Hoogte'),intTxt(v.elev)+' m');
   if(v.coastKm!=null)add(tr('Distance to the sea','Avstånd till havet','Afstand tot de zee'),numTxt(v.coastKm)+' km');
   if(v.ffd!=null)add(tr('Frost-free period','Frostfri period','Vorstvrije periode'),v.ffd+' '+tr('days','dagar','dagen')+(v.lastFrost||v.firstFrost?' ('+[v.lastFrost?tr('last frost ≈ ','sista frost ≈ ','laatste vorst ≈ ')+mdTxt(v.lastFrost):'',v.firstFrost?tr('first ≈ ','första ≈ ','eerste ≈ ')+mdTxt(v.firstFrost):''].filter(Boolean).join(', ')+')':''));

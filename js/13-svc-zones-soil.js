@@ -78,9 +78,9 @@ async function pickFromMap(){
   const v=String(($('#pkGeo')||{}).value||'').split(',').map(x=>parseFloat(x));
   if(v.length!==2||!v.every(isFinite)){toast(tr('Give a map position: lat, long','Ange en kartposition: lat, long','Geef een kaartpositie: lat, long'),'err');return}
   const [lat,lng]=v;PKGEO.busy=true;PKGEO.out='<p class="muted">'+esc(tr('Looking up winter climate, soil type and permeability…','Hämtar vinterklimat, jordart och genomsläpplighet…','Winterklimaat, grondsoort en doorlatendheid opzoeken…'))+'</p>';pkGeoShow();
-  const [c,s,p]=await Promise.allSettled([climLookup(lat,lng),sguSoil(lat,lng),sguPerm(lat,lng)]);
+  const [c,s,p]=await Promise.allSettled([climBest(lat,lng),sguSoil(lat,lng),sguPerm(lat,lng)]);
   const lines=[],ok=x=>x.status==='fulfilled'&&x.value!=null;
-  if(ok(c)){pickState.temp=String(Math.round(c.value.t));lines.push('<li><b>'+esc(tr('Lowest winter temperature: ','Lägsta vintertemperatur: ','Laagste wintertemperatuur: '))+esc(fmtC(c.value.t))+'</b> '+esc(tr('(typical winter low, ≈ USDA ','(typisk vinterlägsta, ≈ USDA ','(typisch winterminimum, ≈ USDA ')+usdaOfT(c.value.t)+')')+' <small class="muted">'+CLIM_CREDIT+'</small></li>')}
+  if(ok(c)){pickState.temp=String(Math.round(c.value.t));lines.push('<li><b>'+esc(tr('Lowest winter temperature: ','Lägsta vintertemperatur: ','Laagste wintertemperatuur: '))+esc(fmtC(c.value.t))+'</b> '+esc(tr('(typical winter low, ≈ USDA ','(typisk vinterlägsta, ≈ USDA ','(typisch winterminimum, ≈ USDA ')+usdaOfT(c.value.t)+')')+' <small class="muted">'+esc(climSrcTxt(c.value))+' · '+climCredit(c.value)+'</small></li>')}
   else lines.push('<li class="muted">'+esc(tr('Winter climate: ','Vinterklimat: ','Winterklimaat: ')+omErrMsg(c.reason))+'</li>');
   const sc=ok(s)?soilClass(s.value):null;
   if(ok(s)){if(sc.soil.length)pickState.soil=new Set(sc.soil);
