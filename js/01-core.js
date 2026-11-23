@@ -2,7 +2,7 @@
 // Part 1 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 // The version shown on Home. Also change ?v= on every script tag in index.html (dev/check_version.py checks this).
-const APP_VERSION='2.9.0';
+const APP_VERSION='2.10.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
@@ -222,6 +222,8 @@ const SERVICE_DEFAULTS={
   smhiObs:{name:'Weather stations Sweden (SMHI)',url:'https://opendata-download-metobs.smhi.se/api/version/1.0',test:'/parameter/19/station/140480.json',for:['Measured winter lows in Sweden','Uppmätta vinterlägsta i Sverige']},
   frost:{name:'Weather stations Norway (MET Norway Frost)',url:'https://frost.met.no',test:'/sources/v0.jsonld?ids=SN18700',for:['Measured winter lows in Norway','Uppmätta vinterlägsta i Norge']},
   fmi:{name:'Weather stations Finland (FMI)',url:'https://opendata.fmi.fi/wfs',test:'?service=WFS&version=2.0.0&request=describeStoredQueries&storedquery_id=fmi::observations::weather::daily::simple',for:['Measured winter lows in Finland','Uppmätta vinterlägsta i Finland']},
+  // 2.10.0: the Netherlands (KNMI Data Platform, EDR API). Needs a free API key: KNMI_API_KEY in config.js.
+  knmi:{name:'Weather stations Netherlands (KNMI)',url:'https://api.dataplatform.knmi.nl/edr/v1',test:'/collections/daily-in-situ-meteorological-observations-validated',for:['Measured winter lows in the Netherlands','Uppmätta vinterlägsta i Nederländerna']},
   sguSoil:{name:'Soil map (SGU)',url:'https://maps3.sgu.se/geoserver/jord/ows',layer:'jord:SE.GOV.SGU.JORD.GRUNDLAGER.25K',test:'?SERVICE=WMS&REQUEST=GetCapabilities',for:['Soil type in Pick a plant','Jordart i Välj en växt']},
   sguPerm:{name:'Soil permeability (SGU)',url:'https://api.sgu.se/oppnadata/genomslapplighet/ogc/features/v1',test:'/collections?f=json',for:['Moisture guess in Pick a plant','Fuktuppskattning i Välj en växt']}
 };

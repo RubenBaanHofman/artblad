@@ -85,7 +85,9 @@ async function uploadPlPhoto(file){
 /* ---------- history page of one planting (row 18) ---------- */
 let openPl='';
 const phState={open:'',busy:false};
-function plTitle(p){const x=bySid.get(p.sid);return (x?dispName(x):p.latin||p.sid)+(p.cultivar?' '+cvQ(cvNorm(p.cultivar)):'')}
+function plTitle(p){const x=bySid.get(p.sid);return (x?dispName(x):p.latin||p.sid)+(p.cultivar?' '+cvQ(cvNorm(p.cultivar)):'')+plLabelTxt(p)}
+// 2.10.0 (row 76): an optional short label of a record ("by the shed", "tree 2"), shown next to the species name everywhere.
+const plLabelTxt=p=>p&&p.label?' · “'+String(p.label)+'”':'';
 function phTimeline(p){
   const it=[],ed=canEdit(p.id),del=(arr,i)=>ed?'<button type="button" class="btn sm danger w-only" data-act="ph-del" data-arr="'+arr+'" data-i="'+i+'" aria-label="'+esc(tr('Remove','Ta bort','Verwijderen'))+'">×</button>':'';
   if(p.date)it.push({d:p.date,o:0,h:'<b>'+esc(p.status==='planned'?tr('Planned','Planerad','Gepland'):tr('Planted','Planterad','Geplant'))+'</b>'+(p.count?' · '+esc(p.count)+' '+esc(tr('plants','plantor','planten')):'')+(p.source?' · '+esc(tr('from ','från ','van '))+esc(p.source):'')});
@@ -156,7 +158,7 @@ async function phNoteSave(id){
   const n=($('#phNn').value||'').trim(),f=($('#phNp').files||[])[0];if(!n&&!f){toast(tr('Write a note or choose a photo.','Skriv en anteckning eller välj ett foto.','Schrijf een notitie of kies een foto.'),'err');return}
   const l={id:recId(),date:today(),at:Date.now(),note:n};
   if(f){toast(tr('Uploading the photo…','Laddar upp fotot…','Foto uploaden…'));try{l.photo=await uploadPlPhoto(f)}catch(e){toast(errMsg(e),'err');return}}
-  phState.open='';await plPatch(id,d=>{d.log=(d.log||[]).concat([l])},tr('Note saved','Anteckningen sparad','Notitie opgeslagen'));
+  phState.open='';if(await plPatch(id,d=>{d.log=(d.log||[]).concat([l])},tr('Note saved','Anteckningen sparad','Notitie opgeslagen')))wAskMaybe(id);
 }
 async function phSpotSave(id){const m=microRead('phM');phState.open='';await plPatch(id,d=>{if(Object.keys(m).length)d.micro=m;else delete d.micro},tr('Spot saved','Platsen sparad','Plek opgeslagen'))}
 async function phDel(id,arr,i){if(['winters','summers','harvests','log'].indexOf(arr)<0)return;await plPatch(id,d=>{const a=(d[arr]||[]).slice();a.splice(i,1);d[arr]=a},tr('Removed','Borttagen','Verwijderd'))}
@@ -193,7 +195,7 @@ async function scSave(){
     const d=plDoc(r.q),pt=plPoint(r.q),key=pt?ptKey(pt.lat,pt.lng):'';
     if(scState.k==='w'){
       const w=scWinter(),rec={w,t:'',o:r.o,date:today()};
-      if(pt){if(!look.has(key))look.set(key,winterBest(pt.lat,pt.lng,winterStart(w)).then(v=>v,e=>{bad=omErrMsg(e);return null}));const v=await look.get(key);if(v){rec.t=v.t;rec.tSrc=v.src;if(v.stn)rec.tStn=v.stn}}
+      {const k2=(r.q.project||'')+'|'+key;if(!look.has(k2))look.set(k2,winterFor(r.q,winterStart(w)).then(v=>v,e=>{if(!(e&&e.why==='nopos'))bad=omErrMsg(e);return null}));const v=await look.get(k2);if(v){rec.t=v.t;rec.tSrc=v.src;if(v.stn)rec.tStn=v.stn}}
       d.winters=(d.winters||[]).concat([rec]);if(r.o==='died'&&d.status!=='dead'){d.status='dead';d.checks=(d.checks||[]).concat([{date:today(),status:'dead',note:tr('Winter check','Vinterkoll','Wintercontrole')}])}
     }else{
       const y=summerYear(),rec={id:recId(),y,o:r.o,date:today()};if(r.wood)rec.wood=r.wood;
@@ -213,6 +215,7 @@ function pjSiteValsHTML(p,ed){
     :'<p class="muted" style="margin:0">'+esc(has?tr('Not looked up yet.','Inte hämtat ännu.','Nog niet opgezocht.'):tr('Save a site point first (Edit name and site).','Spara en platspunkt först (Redigera namn och plats).','Sla eerst een locatie op (Naam en locatie bewerken).'))+'</p>';
   h+='<p class="muted" style="font-size:13px;margin:6px 0 0">'+esc(tr('The site point itself stays private to the project. These derived values are what may be compared with other growers later, never the point.','Själva platspunkten stannar inom projektet. De här härledda värdena är vad som senare kan jämföras med andra odlare, aldrig punkten.','De locatie zelf blijft binnen het project. Deze afgeleide waarden kunnen later met andere kwekers worden vergeleken, nooit de locatie zelf.'))+'</p>';
   if(siteBusy.pid===p.id)h+='<p class="admwarn" style="margin:6px 0 0">'+esc(siteBusy.msg)+'</p>';
+  h+=ownLowsHTML(p,ed);
   if(ed&&has)h+='<div class="acts" style="margin-top:8px"><button type="button" class="btn sm" data-act="pj-site-look"'+(siteBusy.pid?' disabled':'')+'>'+esc(v?tr('Look up again','Hämta igen','Opnieuw opzoeken'):tr('Look up site values (1–2 min)','Hämta platsvärden (1–2 min)','Locatiewaarden opzoeken (1–2 min)'))+'</button></div>';
   return h;
 }
@@ -239,7 +242,7 @@ async function pjPlaceCondSave(id){
 function pickFromSite(p,x){
   if(!p)return;pickState.site=null;
   if(p.szone){const z=String(p.szone).match(/\d/);if(z)pickState.zone=z[0]}
-  const v=p.site;if(v&&v.winterLow!=null)pickState.temp=String(Math.round(v.winterLow));
+  const v=p.site,mx=ownMix(p);if(mx)pickState.temp=String(Math.round(mx.t));else if(v&&v.winterLow!=null)pickState.temp=String(Math.round(v.winterLow));
   if(v&&(v.gdd!=null||v.ffd!=null))pickState.site={gdd:v.gdd,ffd:v.ffd,name:pjName(p.id)+(x?' · '+x.name:'')};
   if(v&&v.soilCls&&v.soilCls.length)pickState.soil=new Set(v.soilCls);
   if(x){const m=x.micro||{};if(m.sun)pickState.light={full:'sun',part:'part',shade:'shade'}[m.sun]||'';if(m.moist)pickState.moist={dry:2,normal:3,wet:4}[m.moist]||0;if(x.soil&&x.soil.length)pickState.soil=new Set(x.soil);
@@ -285,7 +288,7 @@ async function qcSave(){
   const l={id:recId(),date:today(),at:Date.now(),note:n};if(QC.pos){l.lat=Number(QC.pos.lat.toFixed(6));l.lng=Number(QC.pos.lng.toFixed(6));l.acc=QC.pos.acc}
   if(f){toast(tr('Uploading the photo…','Laddar upp fotot…','Foto uploaden…'));try{l.photo=await uploadPlPhoto(f)}catch(e){toast(errMsg(e),'err');return}}
   const ok=await plPatch(id,d=>{d.log=(d.log||[]).concat([l]);if(setPos&&QC.pos){d.lat=l.lat;d.lng=l.lng}},tr('Saved to ','Sparat till ','Opgeslagen bij ')+plTitle((state.plantings||[]).find(x=>x.id===id)||{}));
-  if(ok){const a=$('#qcNote');if(a)a.value='';const b=$('#qcPhoto');if(b)b.value='';updateCapture()}
+  if(ok){const a=$('#qcNote');if(a)a.value='';const b=$('#qcPhoto');if(b)b.value='';updateCapture();wAskMaybe(id)}
 }
 
 /* ---------- the monthly to-do from what is actually planted (row 25) ---------- */
@@ -328,6 +331,9 @@ function recClick(act,a){
   if(act==='sc-save'){scSave();return true}
   if(act==='sc-go'){scGo(a.dataset.k);return true}
   if(act==='pj-site-look'){pjSiteLook();return true}
+  if(act==='pj-own-save'){ownLowSave();return true}
+  if(act==='pj-own-del'){ownLowDel(Number(a.dataset.i));return true}
+  if(act==='wask'){wAskAnswer(a.dataset.id,a.dataset.w,a.dataset.o);return true}
   if(act==='pj-place-cond'){pjPlState.edit=pjPlState.edit===id?'':id;updateProjects();return true}
   if(act==='pj-place-cond-save'){pjPlaceCondSave(id);return true}
   if(act==='pj-place-pick'){const p=pjActive(),x=p&&(p.places||[]).find(y=>y.id===id);if(p&&x)pickFromSite(p,x);return true}
@@ -342,4 +348,78 @@ function recChange(t){
   if(t.id==='phHu'){const a=$('#phHa');if(a){a.disabled=t.value==='ok';if(a.disabled)a.value=''}return true}
   if(t.id==='plPlaceId'){const q=pjById(($('#plProj')||{}).value),x=q&&(q.places||[]).find(y=>y.id===t.value);if(x&&x.micro&&Object.keys(x.micro).length){microFill('plM',x.micro,true);const d=$('#plMicro')&&$('#plMicro').closest('details');if(d)d.open=true}return true}
   return false;
+}
+
+/* ---------- 2.10.0: a winter's lowest temperature for one record (rows 78, 79) ----------
+   Own measurement of the record's project for that winter first, else the nearest station, else the model. */
+function ownLowOf(pid,y){const q=pid&&pjById(pid);const o=q&&(q.ownLows||[]).find(x=>winterStart(x.w)===y&&isFinite(x.t));return o?{t:Number(o.t),partial:false,src:'own'}:null}
+async function winterFor(p,y){
+  if(y==null)throw new Error('no winter');const own=ownLowOf(p.project,y);if(own)return own;
+  const pt=plPoint(p);if(!pt)throw Object.assign(new Error('no position'),{why:'nopos'});return await winterBest(pt.lat,pt.lng,y);
+}
+
+/* ---------- 2.10.0 (row 79): the project's own measured winter lows ----------
+   Kept in the project (ownLows: [{w, t, note, date, by}]). A measured winter replaces the station value of that winter in the
+   typical winter low shown for the project, in Pick a plant from the project, and in that winter's looked-up records. */
+function ownMix(p){
+  const own=(p&&p.ownLows||[]).filter(o=>winterStart(o.w)!=null&&isFinite(o.t));if(!own.length)return null;
+  const st=(p.site&&p.site.winterSrc&&p.site.winterSrc.w)||{},m={},Y1=stLastWinter()+1,Y0=Y1-ST_NW;
+  Object.keys(st).forEach(y=>{if(+y>=Y0&&+y<=Y1)m[y]=Number(st[y])});
+  own.forEach(o=>{const y=winterStart(o.w);if(y>=Y0&&y<=Y1)m[y]=Number(o.t)});
+  const v=Object.values(m);if(!v.length)return null;
+  return{t:Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10,lo:Math.min.apply(null,v),n:v.length,nOwn:own.filter(o=>{const y=winterStart(o.w);return y>=Y0&&y<=Y1}).length};
+}
+function ownLowsHTML(p,ed){
+  const own=(p.ownLows||[]).slice().map((o,i)=>Object.assign({i},o)).sort((a,b)=>String(b.w).localeCompare(String(a.w))),mx=ownMix(p);
+  let h='<h3 class="hsub" style="margin:12px 0 4px">'+esc(tr('Winter lows measured here','Vinterlägsta uppmätta här','Hier gemeten winterminima'))+'</h3>';
+  h+='<p class="muted" style="font-size:13px;margin:0 0 6px">'+esc(tr('The coldest temperature you measured in the garden in a winter (a min/max thermometer at about 1.5 m, in the shade). It replaces the station value for that winter in this project.','Den kallaste temperaturen ni mätte i trädgården en vinter (min/max-termometer på ungefär 1,5 m, i skugga). Den ersätter stationsvärdet för den vintern i projektet.','De koudste temperatuur die je in een winter in de tuin hebt gemeten (min/max-thermometer op ongeveer 1,5 m, in de schaduw). Die vervangt de stationswaarde van die winter in dit project.'))+'</p>';
+  if(own.length)h+='<div class="ownlows">'+own.map(o=>'<div class="ent"><span><b>'+esc(o.w)+'</b>: '+esc(fmtC(Number(o.t)))+(o.note?' · '+esc(o.note):'')+' <small class="muted">'+esc(o.date||'')+'</small></span>'+(ed?'<span class="acts w-only"><button type="button" class="btn sm danger" data-act="pj-own-del" data-i="'+o.i+'" aria-label="'+esc(tr('Remove','Ta bort','Verwijderen'))+'">×</button></span>':'')+'</div>').join('')+'</div>';
+  if(mx)h+='<p style="margin:6px 0 0"><b>'+esc(tr('Typical winter low with your measurements: ','Typisk vinterlägsta med era mätningar: ','Typisch winterminimum met jullie metingen: ')+fmtC(mx.t))+'</b> (USDA '+esc(usdaOfT(mx.t))+') <small class="muted">'+esc(mx.nOwn+' '+tr('of','av','van')+' '+mx.n+' '+tr('winters measured here, the rest at the station','vintrar uppmätta här, resten vid stationen','winters hier gemeten, de rest bij het station'))+'</small></p>';
+  if(ed)h+='<form class="obsform" onsubmit="return false" style="margin-top:6px"><label class="f"><span class="fl">'+esc(tr('Winter','Vinter','Winter'))+'</span><input id="ownW" type="text" maxlength="9" placeholder="2025/26" value="'+esc(scWinter())+'"></label>'+
+    '<label class="f"><span class="fl">'+esc(tr('Lowest °C','Lägsta °C','Laagste °C'))+'</span><input id="ownT" type="number" step="0.1" inputmode="decimal"></label>'+
+    '<label class="f wide"><span class="fl">'+esc(tr('Note (optional)','Anteckning (valfri)','Notitie (optioneel)'))+'</span><input id="ownN" type="text" maxlength="120"></label>'+
+    '<div class="acts" style="grid-column:1/-1"><button type="button" class="btn sm primary" data-act="pj-own-save">'+esc(tr('Save measured low','Spara uppmätt lägsta','Gemeten minimum opslaan'))+'</button></div></form>';
+  return h;
+}
+async function ownLowSave(){
+  const p=pjActive();if(!p)return;const w0=($('#ownW')||{}).value||'',tv=($('#ownT')||{}).value,y=winterStart(w0);
+  if(y==null){toast(tr('Write the winter like 2025/26.','Skriv vintern som 2025/26.','Schrijf de winter als 2025/26.'),'err');return}
+  const t=Number(tv);if(tv===''||!isFinite(t)||t<-70||t>15){toast(tr('Give the lowest temperature in °C.','Ange lägsta temperaturen i °C.','Geef de laagste temperatuur in °C.'),'err');return}
+  const w=y+'/'+String(y+1).slice(2),rec={w,t:Math.round(t*10)/10,note:String(($('#ownN')||{}).value||'').trim(),date:today(),by:meUid()||''};
+  const list=(p.ownLows||[]).filter(o=>winterStart(o.w)!==y).concat([rec]);
+  await pjSaveDoc(p,{ownLows:list},tr('Measured low saved','Uppmätt lägsta sparad','Gemeten minimum opgeslagen'));
+  // That winter's looked-up records in the project now use the measured value (values typed in by hand stay as they are).
+  const out=[];(state.plantings||[]).filter(q=>q.project===p.id&&canEdit(q.id)).forEach(q=>{let ch=false;
+    const ws=(q.winters||[]).map(x=>{if(x.tSrc&&x.tSrc!=='own'&&winterStart(x.w)===y){ch=true;const z=Object.assign({},x,{t:rec.t,tSrc:'own'});delete z.tStn;return z}return x});
+    if(ch){const d=plDoc(q);d.winters=ws;out.push({id:q.id,data:d})}});
+  if(out.length){try{await Data.saveRows('plantings',out);toast(tr('Measured low saved; updated in ','Uppmätt lägsta sparad; uppdaterad i ','Gemeten minimum opgeslagen; bijgewerkt in ')+out.length+' '+(out.length===1?tr('record','post','record'):tr('records','poster','records')))}catch(e){toast(errMsg(e),'err')}}
+}
+async function ownLowDel(i){const p=pjActive();if(!p||!isFinite(i))return;const l=(p.ownLows||[]).slice();l.splice(i,1);await pjSaveDoc(p,{ownLows:l},tr('Removed','Borttagen','Verwijderd'))}
+
+/* ---------- 2.10.0 (row 77): "Survived the winter?" after a note or photo ----------
+   Asked from March to September for a plant that was in the ground before the winter (planted before 1 October), has no record
+   for that winter yet and is not dead or removed. Once per plant and winter on this device; "Not now" also counts as asked. */
+function wAskDue(p){
+  if(!p||isEnc(p)||['dead','removed','planned'].indexOf(p.status)>=0||!canEdit(p.id))return '';
+  const now=window.__now?new Date(window.__now):new Date(),mo=now.getMonth();if(mo<2||mo>8)return '';
+  const y=now.getFullYear()-1,w=y+'/'+String(y+1).slice(2);if(!p.date||p.date>=y+'-10-01')return '';
+  if((p.winters||[]).some(x=>winterStart(x.w)===y))return '';
+  let asked=[];try{asked=JSON.parse(store.get('ab.wask')||'[]')}catch(e){}if(asked.indexOf(p.id+':'+w)>=0)return '';
+  return w;
+}
+function wAskMaybe(id){
+  const p=(state.plantings||[]).find(x=>x.id===id),w=wAskDue(p);if(!w)return;
+  let el=$('#wAsk');if(!el){el=document.createElement('div');el.id='wAsk';el.className='wask';el.setAttribute('role','dialog');document.body.appendChild(el)}
+  const b=(o,t,c)=>'<button type="button" class="btn sm'+(c?' '+c:'')+'" data-act="wask" data-id="'+esc(id)+'" data-w="'+esc(w)+'" data-o="'+o+'">'+esc(t)+'</button>';
+  el.innerHTML='<p style="margin:0 0 8px"><b>'+esc(plTitle(p))+'</b><br>'+esc(tr('Did it survive winter ','Klarade den vintern ','Heeft hij winter ')+w+tr('?','?',' overleefd?'))+'</p>'+
+    '<div class="acts">'+b('survived',tr('Survived','Överlevde','Overleefd'),'primary')+b('damaged',tr('Damaged','Skadad','Beschadigd'))+b('',tr('Not now','Inte nu','Niet nu'))+'</div>';
+  el.hidden=false;
+}
+async function wAskAnswer(id,w,o){
+  const el=$('#wAsk');if(el)el.hidden=true;
+  let asked=[];try{asked=JSON.parse(store.get('ab.wask')||'[]')}catch(e){}asked.push(id+':'+w);store.set('ab.wask',JSON.stringify(asked.slice(-500)));
+  if(!o)return;const p=(state.plantings||[]).find(x=>x.id===id);if(!p)return;
+  const rec={w,t:'',o,date:today()};
+  try{const v=await winterFor(p,winterStart(w));rec.t=v.t;rec.tSrc=v.src;if(v.stn)rec.tStn=v.stn}catch(e){}
+  await plPatch(id,d=>{d.winters=(d.winters||[]).concat([rec])},tr('Winter saved','Vintern sparad','Winter opgeslagen')+(rec.t!==''?': '+fmtC(rec.t):''));
 }

@@ -12,11 +12,11 @@
    Open-Meteo stays as the fallback (no station near, a station service down or switched off) and as the comparison value,
    and every value says where it comes from (row 79). A winter is Oct–Apr; a winter counts for the typical low only when at
    least 80 of its 90 days of December–February have a value. */
-const ST_MAXKM=50,ST_MINW=10,ST_NW=20,ST_DJF=80,ST_PROVS=['smhiObs','frost','fmi'];
+const ST_MAXKM=50,ST_MINW=10,ST_NW=20,ST_DJF=80,ST_PROVS=['smhiObs','frost','fmi','knmi'];
 // Rough boxes (lat0, lat1, lng0, lng1) of each country with a margin, so a point near a border can use a station across it.
-const ST_BOX={smhiObs:[54.9,69.4,10.3,24.5],frost:[57.6,71.4,4.0,31.5],fmi:[59.4,70.3,19.0,31.8]};
-const ST_ORG={smhiObs:'SMHI',frost:'MET Norway',fmi:'FMI'};
-const ST_LINK={smhiObs:'https://www.smhi.se/data/meteorologi/ladda-ner-meteorologiska-observationer',frost:'https://frost.met.no/',fmi:'https://en.ilmatieteenlaitos.fi/open-data'};
+const ST_BOX={smhiObs:[54.9,69.4,10.3,24.5],frost:[57.6,71.4,4.0,31.5],fmi:[59.4,70.3,19.0,31.8],knmi:[50.6,53.8,3.1,7.4]};
+const ST_ORG={smhiObs:'SMHI',frost:'MET Norway',fmi:'FMI',knmi:'KNMI'};
+const ST_LINK={smhiObs:'https://www.smhi.se/data/meteorologi/ladda-ner-meteorologiska-observationer',frost:'https://frost.met.no/',fmi:'https://en.ilmatieteenlaitos.fi/open-data',knmi:'https://dataplatform.knmi.nl/'};
 const stCredit=prov=>ST_ORG[prov]?'<a href="'+ST_LINK[prov]+'" target="_blank" rel="noopener">'+ST_ORG[prov]+'</a> (CC BY 4.0; '+tr('winter lows worked out by Artblad from the daily minimums','vinterlägsta beräknade av Artblad ur dygnsminimum','winterminima door Artblad berekend uit de dagminima')+')':'';
 const frostKey=()=>String((SERVICES.frost&&SERVICES.frost.clientId)||cfg.FROST_CLIENT_ID||'').trim();
 // The winter that starts in the autumn of the returned year is the last one that has ended (winters end 30 April).
@@ -133,7 +133,48 @@ async function fmiDays(id,y0,y1){
   return out;
 }
 
-const ST_NEAR={smhiObs:smhiNear,frost:frostNear,fmi:fmiNear},ST_DAYS={smhiObs:smhiDays,frost:frostDays,fmi:fmiDays};
+/* ---------- the Netherlands: KNMI Data Platform, EDR API (2.10.0; free API key, cfg.KNMI_API_KEY, sent as Authorization) ----------
+   Collection of validated daily station observations; the minimum-temperature parameter is found by name in the collection's
+   own description (TN in KNMI's daily data), with its unit (values in 0.1 °C are divided by 10). Answers are CoverageJSON. */
+const KNMI_COLL='daily-in-situ-meteorological-observations-validated';
+const knmiKey=()=>String((SERVICES.knmi&&SERVICES.knmi.apiKey)||cfg.KNMI_API_KEY||'').trim();
+const knmiOpts=()=>({headers:{Authorization:knmiKey()}});
+let KNMI_PAR=null;
+async function knmiPar(){
+  if(KNMI_PAR)return KNMI_PAR;const c=stJGet('ab.st.knmipar');if(c&&Date.now()-c.at<30*864e5)return KNMI_PAR=c.v;
+  const r=await stFetch('knmi',svcUrl('knmi')+'/collections/'+KNMI_COLL,knmiOpts());if(!r.ok)throw stHttp('knmi',r);
+  const j=await r.json(),pn=j.parameter_names||{},ks=Object.keys(pn),txt=k=>JSON.stringify(pn[k]||'').toLowerCase();
+  const k=ks.find(x=>/^tn$/i.test(x))||ks.find(x=>/minimum/.test(txt(x))&&/temperature/.test(txt(x))&&!/10 ?cm|grass|ground|gras|bodem/.test(txt(x)));
+  if(!k)throw Object.assign(new Error('no minimum temperature in KNMI collection'),{why:'http',prov:'knmi'});
+  const u=pn[k]&&pn[k].unit,sym=String((u&&(u.symbol&&(u.symbol.value||u.symbol)||u.label&&(u.label.en||u.label)))||'');
+  const v={k,div:/0\.1/.test(sym)?10:1};stJSet('ab.st.knmipar',{at:Date.now(),v});return KNMI_PAR=v;
+}
+async function knmiNear(lat,lng){
+  if(!knmiKey())throw Object.assign(new Error('no API key'),{why:'nokey',prov:'knmi'});
+  let l=null;const c=stJGet('ab.st.knmi');if(c&&Date.now()-c.at<30*864e5)l=c.l;
+  if(!l){const r=await stFetch('knmi',svcUrl('knmi')+'/collections/'+KNMI_COLL+'/locations',knmiOpts());if(!r.ok)throw stHttp('knmi',r);
+    const j=await r.json();l=(j.features||[]).filter(f=>f.geometry&&Array.isArray(f.geometry.coordinates)).map(f=>{const g=f.geometry.coordinates,pr=f.properties||{};
+      return [String(f.id||pr.id||''),String(pr.name||pr.station_name||f.id||''),+g[1],+g[0],g[2]!=null&&isFinite(g[2])?+g[2]:null]}).filter(s=>s[0]&&isFinite(s[2])&&isFinite(s[3]));
+    stJSet('ab.st.knmi',{at:Date.now(),l})}
+  return l.map(s=>({prov:'knmi',id:s[0],name:s[1],lat:s[2],lng:s[3],elev:s[4]!=null?Math.round(s[4]):null,km:stKm(lat,lng,s[2],s[3])})).filter(s=>s.km<=ST_MAXKM);
+}
+// CoverageJSON (one Coverage, or a CoverageCollection) → [['YYYY-MM-DD', °C]].
+function knmiCov(j,par){
+  const out=[],covs=j&&j.type==='CoverageCollection'?(j.coverages||[]):[j];
+  covs.forEach(cv=>{const t=((((cv||{}).domain||{}).axes||{}).t||{}).values||[],rg=((cv||{}).ranges||{})[par.k];const v=rg&&rg.values||[];
+    t.forEach((d,i)=>{const x=v[i];if(x!=null&&isFinite(x))out.push([String(d).slice(0,10),Math.round(x/par.div*10)/10])})});
+  return out;
+}
+async function knmiDays(id,y0,y1){
+  const par=await knmiPar(),out=[];
+  for(let a=y0;a<=y1;a+=5){const b=Math.min(y1,a+4);
+    const u=svcUrl('knmi')+'/collections/'+KNMI_COLL+'/locations/'+encodeURIComponent(id)+'?datetime='+a+'-10-01T00:00:00Z/'+(b+1)+'-04-30T23:59:59Z&parameter-name='+encodeURIComponent(par.k);
+    const r=await stFetch('knmi',u,knmiOpts());if(r.status===404||r.status===400)continue;if(!r.ok)throw stHttp('knmi',r);
+    out.push(...knmiCov(await r.json(),par))}
+  return out;
+}
+
+const ST_NEAR={smhiObs:smhiNear,frost:frostNear,fmi:fmiNear,knmi:knmiNear},ST_DAYS={smhiObs:smhiDays,frost:frostDays,fmi:fmiDays,knmi:knmiDays};
 // Stations within ST_MAXKM of a point, nearest first, from every service whose country box holds the point.
 async function stCands(lat,lng,Y0,Y1){
   const errs=[],all=[];
@@ -163,7 +204,8 @@ async function stClim(lat,lng){
     let w;try{w=await stWinRange(s,Y0,Y1)}catch(e){errs.push(e);failed++;continue}
     const ys=Object.keys(w).map(Number).filter(y=>w[y]&&w[y][1]>=ST_DJF).sort((a,b)=>a-b);if(ys.length<ST_MINW)continue;
     const m=ys.map(y=>w[y][0]),mean=m.reduce((a,b)=>a+b,0)/m.length,lo=Math.min.apply(null,m),loY=ys[m.indexOf(lo)];
-    v={t:Math.round(mean*10)/10,lo,loW:wLbl(loY),n:ys.length,kind:'station',prov:s.prov,stn:{id:s.id,name:s.name,km:Math.round(s.km*10)/10,elev:s.elev},
+    const wm={};ys.forEach(y=>{wm[y]=w[y][0]});
+    v={t:Math.round(mean*10)/10,lo,loW:wLbl(loY),n:ys.length,w:wm,kind:'station',prov:s.prov,stn:{id:s.id,name:s.name,km:Math.round(s.km*10)/10,elev:s.elev},
       src:stLabel(s)+' · '+ys.length+' '+tr('winters','vintrar','winters')+' '+wLbl(ys[0])+'–'+wLbl(ys[ys.length-1])+', 1 Oct–30 Apr',at:today()};break}
   // A station that could not be read is not the same as no station: nothing is kept then, and the caller falls back for now.
   if(!v&&failed)throw errs[errs.length-1];
@@ -172,7 +214,7 @@ async function stClim(lat,lng){
 }
 // The best typical winter low: a station when there is one, else the model (marked kind 'model').
 async function climBest(lat,lng,wait,onWait){
-  let why='';try{const s=await stClim(lat,lng);if(s)return s;why='nostation'}catch(e){why=e&&e.why==='nokey'?'nokey':'stfail'}
+  let why='';try{const s=await stClim(lat,lng);if(s)return s;why='nostation'}catch(e){why=e&&e.why==='nokey'?(e.prov==='knmi'?'nokeyknmi':'nokey'):'stfail'}
   const m=await climLookup(lat,lng,wait,onWait);return Object.assign({},m,{kind:'model',why});
 }
 // The lowest temperature of one winter (Oct y – Apr y+1) at a point: the nearest station that has that winter, else the model.
@@ -190,4 +232,4 @@ function climSrcTxt(c){
   return tr('model estimate (Open-Meteo, ERA5-Land, ~9 km grid; often too mild on cold nights in the north)','modelluppskattning (Open-Meteo, ERA5-Land, ~9 km rutnät; ofta för mild under kalla nätter i norr)','modelschatting (Open-Meteo, ERA5-Land, ~9 km raster; vaak te mild in koude nachten in het noorden)');
 }
 const climCredit=c=>c&&c.kind==='station'?stCredit(c.prov):CLIM_CREDIT;
-const tSrcTxt=w=>w.tSrc==='open-meteo'?tr('model estimate: Open-Meteo, ERA5-Land, CC BY 4.0','modelluppskattning: Open-Meteo, ERA5-Land, CC BY 4.0','modelschatting: Open-Meteo, ERA5-Land, CC BY 4.0'):ST_ORG[w.tSrc]?tr('measured: ','uppmätt: ','gemeten: ')+(w.tStn||ST_ORG[w.tSrc])+', CC BY 4.0':'';
+const tSrcTxt=w=>w.tSrc==='own'?tr('measured in this project','uppmätt i det här projektet','gemeten in dit project'):w.tSrc==='open-meteo'?tr('model estimate: Open-Meteo, ERA5-Land, CC BY 4.0','modelluppskattning: Open-Meteo, ERA5-Land, CC BY 4.0','modelschatting: Open-Meteo, ERA5-Land, CC BY 4.0'):ST_ORG[w.tSrc]?tr('measured: ','uppmätt: ','gemeten: ')+(w.tStn||ST_ORG[w.tSrc])+', CC BY 4.0':'';

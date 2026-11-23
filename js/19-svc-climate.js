@@ -107,7 +107,7 @@ function encInfo(p){
 }
 function plRow(p,showSpecies){
   const x=bySid.get(p.sid),last=(p.checks||[]).slice(-1)[0];
-  return '<div class="ent plrow"><span style="min-width:0">'+(showSpecies?'<button type="button" class="lnk" data-open="'+esc(p.sid+(p.cultivar?'--'+cvKey(p.cultivar):''))+'"><b>'+esc(x?dispName(x):p.latin||p.sid)+(p.cultivar?' '+cvQ(cvNorm(p.cultivar)):'')+'</b></button> · ':(p.cultivar&&!(cur()||{}).isCv?cvPill(p)+' · ':''))+
+  return '<div class="ent plrow"><span style="min-width:0">'+(showSpecies?'<button type="button" class="lnk" data-open="'+esc(p.sid+(p.cultivar?'--'+cvKey(p.cultivar):''))+'"><b>'+esc(x?dispName(x):p.latin||p.sid)+(p.cultivar?' '+cvQ(cvNorm(p.cultivar)):'')+'</b></button>'+(p.label?' <span class="pllabel">'+esc(plLabelTxt(p).slice(3))+'</span>':'')+' · ':(p.cultivar&&!(cur()||{}).isCv?cvPill(p)+' · ':'')+(p.label?'<span class="pllabel">'+esc(plLabelTxt(p).slice(3))+'</span> · ':''))+
     (isEnc(p)?'<span class="pill enc">'+esc(tr('Encounter','Fynd','Vondst'))+'</span> ':'')+'<b>'+esc(plPlaceName(p)||tr('No place given','Ingen plats angiven'))+'</b>'+(p.project&&plState.proj!==p.project?' '+pjPill(p.project):'')+(p.count&&!isEnc(p)?' · '+esc(p.count)+' '+tr('plants','plantor'):'')+' · '+esc(p.date||'')+' '+pstatPill(p.status)+
     (p.source?'<br><small class="muted">'+tr('Source','Källa')+': '+esc(p.source)+'</small>':'')+(p.notes?'<br>'+esc(p.notes):'')+encInfo(p)+
     (last?'<br><small class="muted">'+tr('Last check','Senaste kontroll')+' '+esc(last.date)+(last.note?': '+esc(last.note):'')+'</small>':'')+
@@ -132,7 +132,7 @@ function plFormOpen(p,sid,cv,kind){
   $('#plSp').innerHTML=species.slice().sort(byName).map(x=>'<option value="'+esc(x.sid)+'">'+esc(dispName(x))+(commonName(x)?' ('+esc(x.latin)+')':'')+'</option>').join('');
   $('#plSp').value=p?p.sid:(sid||selected||'');$('#plSp').disabled=!!p;
   plCvFill(p?cvKey(p.cultivar):(cv!=null?cv:((sid||selected)===selected?selCv:'')));
-  $('#plPlace').value=p?p.place||'':'';
+  $('#plPlace').value=p?p.place||'':'';{const lb=$('#plLabel');if(lb)lb.value=p?p.label||'':''}
   // Since 2.7.0 every planting record belongs to a project (Ruben, 17 Nov). Encounters (plants seen elsewhere) stay shared.
   // No project yet, or a new one wanted: "New project…" with a name field; the project is made when the record is saved.
   {const s=$('#plProj');if(s){const enc=plState.kind==='encounter',show=PROJ_ON&&!enc,w=s.closest('.f');if(w)w.hidden=!show;
@@ -178,6 +178,7 @@ async function plSave(){
   if(old&&old.pos)doc.pos=old.pos;
   // Encounters are often in someone else's garden: their position is kept to about 1 km (D38; the climate grid is ~9 km).
   if(enc&&isFinite(doc.lat)&&doc.lat!=null){doc.lat=Math.round(doc.lat*100)/100;doc.lng=Math.round(doc.lng*100)/100}
+  if(!enc){const lb=String(($('#plLabel')||{}).value||'').trim();if(lb)doc.label=lb.slice(0,40)}
   if(old&&old.fromV1)doc.fromV1=true;
   if(cv)doc.cultivar=cv;
   if(old&&old.status!==st)doc.checks.push({date:today(),status:st,note:''});

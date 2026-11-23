@@ -31,7 +31,7 @@ async function updatePlMap(list){
   pts.forEach(({p,q})=>{const s=bySid.get(p.sid),en=isEnc(p);
     if(q.acc>3)L.circle([q.lat,q.lng],{radius:q.acc,weight:1,color:'#2a6f9e',fillOpacity:.06,interactive:false}).addTo(plLayer);
     const mk=L.circleMarker([q.lat,q.lng],en?{radius:6,weight:2,dashArray:'3 3',color:'#2f6f8f',fillColor:'#2f6f8f',fillOpacity:.3}:{radius:7,weight:2,color:p.status==='dead'?'#9a3a2a':p.status==='struggling'?'#b07a12':'#2f5d3a',fillOpacity:.6});
-    mk.bindPopup('<b>'+esc(s?dispName(s):p.latin||p.sid)+'</b><br>'+(en?esc(tr('Encounter','Fynd','Vondst'))+' · ':'')+esc(plPlaceName(p)||'')+' · '+esc(p.status||'')+(q.acc>3?'<br>± '+Math.round(q.acc)+' m':'')+(q.plan?'<br>'+esc(tr('position from the garden plan','position från trädgårdsplanen','positie uit het tuinplan')):'')+(en?'':'<br><a href="#p-'+esc(p.id)+'">'+esc(tr('History','Historik','Geschiedenis'))+'</a>'));mk.addTo(plLayer);b.push([q.lat,q.lng])});
+    mk.bindPopup('<b>'+esc(s?dispName(s):p.latin||p.sid)+'</b>'+esc(plLabelTxt(p))+'<br>'+(en?esc(tr('Encounter','Fynd','Vondst'))+' · ':'')+esc(plPlaceName(p)||'')+' · '+esc(p.status||'')+(q.acc>3?'<br>± '+Math.round(q.acc)+' m':'')+(q.plan?'<br>'+esc(tr('position from the garden plan','position från trädgårdsplanen','positie uit het tuinplan')):'')+(en?'':'<br><a href="#p-'+esc(p.id)+'">'+esc(tr('History','Historik','Geschiedenis'))+'</a>'));mk.addTo(plLayer);b.push([q.lat,q.lng])});
   if(placing&&!b.length&&cen)b.push([cen.lat,cen.lng]);
   setTimeout(()=>{plMap.invalidateSize();if(!b.length){plMap.setView([62,16],4);return}if(b.length===1)plMap.setView(b[0],placing?18:16);else plMap.fitBounds(b,{padding:[24,24],maxZoom:17})},50);
 }

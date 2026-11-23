@@ -31,11 +31,11 @@ async function plWinterSave(id){
   const rec={w,t:tv===''?'':Number(tv),o,date:today()};let msg='',bad=false;
   // No temperature given: look up the lowest temperature of that winter at the record's map position.
   const pt=plPoint(p);
-  if(tv===''&&pt){
+  if(tv===''&&(pt||ownLowOf(p.project,winterStart(w)))){
     const y=winterStart(w);
     if(y==null){msg=tr('Saved without temperature: write the winter like 2025/26 to look it up.','Sparad utan temperatur: skriv vintern som 2025/26 för att hämta den.','Opgeslagen zonder temperatuur: schrijf de winter als 2025/26 om hem op te zoeken.');bad=true}
     else{toast(tr('Looking up that winter’s lowest temperature…','Hämtar vinterns lägsta temperatur…','Laagste temperatuur van die winter opzoeken…'));
-      try{const r=await winterBest(pt.lat,pt.lng,y);rec.t=r.t;rec.tSrc=r.src;if(r.stn)rec.tStn=r.stn;msg=tr('Winter saved: lowest ','Vintern sparad: lägsta ','Winter opgeslagen: laagste ')+(r.src==='open-meteo'?'≈ ':'')+fmtC(r.t)+(r.partial?tr(' (so far)',' (hittills)',' (tot nu toe)'):'')+' · '+(r.stn?tr('measured at ','uppmätt vid ','gemeten bij ')+r.stn:tr('model estimate','modelluppskattning','modelschatting'))}
+      try{const r=await winterFor(p,y);rec.t=r.t;rec.tSrc=r.src;if(r.stn)rec.tStn=r.stn;msg=tr('Winter saved: lowest ','Vintern sparad: lägsta ','Winter opgeslagen: laagste ')+(r.src==='open-meteo'?'≈ ':'')+fmtC(r.t)+(r.partial?tr(' (so far)',' (hittills)',' (tot nu toe)'):'')+' · '+(r.src==='own'?tr('measured in this project','uppmätt i det här projektet','gemeten in dit project'):r.stn?tr('measured at ','uppmätt vid ','gemeten bij ')+r.stn:tr('model estimate','modelluppskattning','modelschatting'))}
       catch(e){msg=tr('Winter saved without temperature. ','Vintern sparad utan temperatur. ','Winter opgeslagen zonder temperatuur. ')+omErrMsg(e);bad=true}}
   }
   const doc=Object.assign({},p);delete doc.id;doc.winters=(p.winters||[]).concat([rec]);
