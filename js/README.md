@@ -48,6 +48,7 @@ Until 2.4.7 all logic was one file, `app.js`. Since 2.5.0 the same code is split
 | `19e-mapplan.js` | Garden plan on the map (2.11.0, plan A): several named plans (table plans, database update v11), drawing beds, zones, plants, notes and measure lines in real-world coordinates, snapping, editing, undo, backgrounds and grid | 419 |
 | `19f-mapplan2.js` | Garden plan on the map, plan B (2.12.0): planting lines with spacing and strips, structures, supports, paths, water, illustrated view, Log as planted, typed lengths, repeat, phone view | 233 |
 | `19g-mapplan3.js` | Garden plan on the map, plan C (2.13.0): aerial photo (PDOK live in NL, Esri World Imagery live elsewhere with ESRI_API_KEY), elevation request (Markhöjdmodell / AHN via the backup job), hill-shade, contours, slope and aspect, sun position and shadows | 148 |
+| `19h-mapplan4.js` | Garden plan on the map, plan D (2.14.0): tape measure (place by two distances), print to scale (SVG, A4/A3, scale bar, north arrow, plant list), picture to share (PNG, privacy defaults), CSV lists, GeoJSON/KML export and import, archive preview | 357 |
 | `20-lists.js` | Shared lists, who and when, trash, display name, manual | 106 |
 | `21-ui.js` | Home, navigation, events, sign-in, roles and realtime | 377 |
 | `22-init.js` | Loading screen, start-up and the offline service worker (runs last) | 120 |

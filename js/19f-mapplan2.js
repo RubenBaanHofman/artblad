@@ -8,7 +8,8 @@
    Count = rows × (⌊length ÷ inrow⌋ + 1). A plan is never assumed planted: "Log as planted" makes one planting record
    (count, position, project place) and links it to the shape (shape.plantingId; record.plan {id, shape}). */
 const mpLineW=s=>Math.max(.05,((Number(s.rows)||1)-1)*(Number(s.gap)||.3)+(Number(s.rowsp)||.4));
-const mpPerRow=s=>Math.floor(mpLen(mpPts(s),false)/(Number(s.inrow)||.3)+1e-6)+1;
+// 2.14.0: a tolerance of 2 % of a spacing, so a 20 m line at 10 cm holds 201 plants despite coordinate rounding.
+const mpPerRow=s=>Math.floor(mpLen(mpPts(s),false)/(Number(s.inrow)||.3)+.02)+1;
 const mpLineCount=s=>(Number(s.rows)||1)*mpPerRow(s);
 function mpSpCm(sid,k){const x=bySid.get(sid),v=x&&Number((x.m||{})[k]);return isFinite(v)&&v>0?v/100:null}
 function mpLineDefaults(s){
