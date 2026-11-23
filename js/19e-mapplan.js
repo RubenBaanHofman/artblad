@@ -179,7 +179,7 @@ function mpGridStep(){if(!MP.map)return 1;const mpp=mpMpp();return mpp<.02?.1:mp
 function mpMpp(){const m=MP.map,c=m.getSize().divideBy(2),a=m.containerPointToLatLng(c),b=m.containerPointToLatLng(c.add([100,0]));return mpDist([a.lng,a.lat],[b.lng,b.lat])/100}
 function mpBack(){
   const m=MP.map;if(!m)return;const z=m.getZoom(),el=m.getContainer();
-  const ops=mpBackOps(z),op=Math.max(ops.map,ops.aer);
+  const ops=mpBackOps(z),op=1-(1-ops.map)*(1-ops.aer);
   if(MP.tiles)MP.tiles.setOpacity(ops.map);if(MP.aer)MP.aer.setOpacity(ops.aer);el.classList.toggle('mpneutral',op<.999);
   const c=MP.grid;if(!c)return;const sz=m.getSize();if(c.width!==sz.x||c.height!==sz.y){c.width=sz.x;c.height=sz.y}
   const g=c.getContext('2d');g.clearRect(0,0,sz.x,sz.y);const show=1-op;if(show<=.02||!MP.o)return;

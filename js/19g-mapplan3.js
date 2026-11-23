@@ -36,7 +36,7 @@ async function mpKeepAerial(id,doc,patch){
 function mpTerrainHTML(q){
   const a=q.aerial||{},cty=mpCountry(MP.o),ed=mpCanEdit();let h='<h3 class="hsub">'+esc(tr('Aerial photo and terrain','Flygbild och terräng','Luchtfoto en terrein'))+'</h3>';
   if(cty==='NL')h+='<p class="mpsmall muted">'+esc(tr('Aerial photo: live from PDOK (Beeldmateriaal.nl, 8 cm).','Flygbild: direkt från PDOK (Beeldmateriaal.nl, 8 cm).','Luchtfoto: live van PDOK (Beeldmateriaal.nl, 8 cm).'))+'</p>';
-  else if(esriKey()&&svcOn('esriImagery'))h+='<p class="mpsmall muted">'+esc(tr('Aerial photo: live from Esri World Imagery (often 0.3–0.5 m; date varies).','Flygbild: direkt från Esri World Imagery (ofta 0,3–0,5 m; datum varierar).','Luchtfoto: live van Esri World Imagery (vaak 0,3–0,5 m; datum wisselt).'))+'</p>';
+  else if(esriKey()&&svcOn('esriImagery'))h+='<p class="mpsmall muted">'+esc(tr('Aerial photo: live from Esri World Imagery (often 0.3–1 m; date varies).','Flygbild: direkt från Esri World Imagery (ofta 0,3–1 m; datum varierar).','Luchtfoto: live van Esri World Imagery (vaak 0,3–1 m; datum wisselt).'))+'</p>';
   else h+='<p class="mpsmall muted">'+esc(tr('No aerial photo: add ESRI_API_KEY to config.js (see the manual), or use your own photo in the 2.8 plan.','Ingen flygbild: lägg till ESRI_API_KEY i config.js (se manualen), eller använd ditt eget foto i 2.8-planen.','Geen luchtfoto: voeg ESRI_API_KEY toe aan config.js (zie de handleiding), of gebruik je eigen foto in het 2.8-plan.'))+'</p>';
   if(!cty)h+='<p class="mpsmall muted">'+esc(tr('No open elevation source for this country yet.','Ingen öppen höjdkälla för det här landet än.','Nog geen open hoogtebron voor dit land.'))+'</p>';
   const st={requested:tr('Requested ','Beställd ','Aangevraagd ')+fmtDate(a.at)+tr(': fetched within the hour.',': hämtas inom en timme.',': wordt binnen het uur opgehaald.'),
@@ -124,8 +124,8 @@ function mpAerialLayer(){
   if(!MP.map)return;const q=mpPlan(),a=q&&q.aerial,cty=mpCountry(MP.o);
   const want=cty==='NL'&&svcOn('pdokAerial')?'nl':a&&a.status==='ready'&&a.photo?'se:'+a.photo.path:esriKey()&&svcOn('esriImagery')?'esri':'';
   if(MP.aerFor===want)return;MP.aerFor=want;if(MP.aer){MP.aer.remove();MP.aer=null}MP.aerGsd=null;
-  if(want==='nl'){MP.aer=L.tileLayer(svcUrl('pdokAerial'),{maxNativeZoom:SERVICES.pdokAerial.maxZoom||19,maxZoom:24,attribution:SERVICES.pdokAerial.attr||''});MP.aer.on('tileerror',()=>svcNote('pdokAerial',false,'tile error'));MP.aer.on('load',()=>svcNote('pdokAerial',true));MP.aerGsd=.08}
-  else if(want==='esri'){MP.aer=L.tileLayer(svcUrl('esriImagery')+'?token='+encodeURIComponent(esriKey()),{maxNativeZoom:SERVICES.esriImagery.maxZoom||19,maxZoom:24,attribution:SERVICES.esriImagery.attr||''});MP.aer.on('tileerror',()=>svcNote('esriImagery',false,'tile error'));MP.aer.on('load',()=>svcNote('esriImagery',true));MP.aerGsd=.3}
+  if(want==='nl'){MP.aer=L.tileLayer(svcUrl('pdokAerial'),{maxNativeZoom:SERVICES.pdokAerial.maxZoom||19,maxZoom:24,zIndex:2,attribution:SERVICES.pdokAerial.attr||''});MP.aer.on('tileerror',()=>svcNote('pdokAerial',false,'tile error'));MP.aer.on('load',()=>svcNote('pdokAerial',true));MP.aerGsd=.08}
+  else if(want==='esri'){MP.aer=L.tileLayer(svcUrl('esriImagery')+'?token='+encodeURIComponent(esriKey()),{maxNativeZoom:SERVICES.esriImagery.maxZoom||19,maxZoom:24,zIndex:2,attribution:SERVICES.esriImagery.attr||''});MP.aer.on('tileerror',()=>svcNote('esriImagery',false,'tile error'));MP.aer.on('load',()=>svcNote('esriImagery',true));MP.aerGsd=.5}
   else if(want){const p=a.photo,b=p.box||a.box;MP.aer=L.imageOverlay(mpPubUrl(p.path),[[b.s,b.w],[b.n,b.e]],{interactive:false,attribution:'Lantmäteriet (CC0)'});MP.aerGsd=p.gsd||.25}
   if(MP.aer){MP.aer.addTo(MP.map);if(MP.aer.bringToBack)MP.aer.bringToBack();if(MP.tiles&&MP.tiles.bringToBack)MP.tiles.bringToBack()}
 }
@@ -133,7 +133,11 @@ function mpAerialLayer(){
 // neutral grid once one photo pixel is more than 3 screen pixels (gone at 6); the map fades between zoom 20 and 21.
 function mpBackOps(z){
   const f=MP.fade/100;let map=0,aer=0;const px=MP.aerGsd?MP.aerGsd/mpMpp():0,aerRes=MP.aerGsd?Math.max(0,Math.min(1,(6-px)/3)):0;
-  if(MP.bg==='map')map=1;else if(MP.bg==='aerial')aer=MP.aer?1:0;else if(MP.bg==='auto'){if(MP.aer)aer=aerRes;else map=Math.max(0,Math.min(1,21-z))}
+  if(MP.bg==='map')map=1;else if(MP.bg==='aerial')aer=MP.aer?1:0;else if(MP.bg==='auto'){
+    // 2.13.1 (Ruben): Auto goes photo → map → grid. The photo lies on top of the map and fades by its own detail;
+    // the map under it fades at zoom 20–21. A photo coarser than the map (Esri) thus gives way to the map first;
+    // a photo finer than the map (PDOK 8 cm) stays until the map has already gone, then fades to the grid.
+    map=Math.max(0,Math.min(1,21-z));if(MP.aer)aer=aerRes}
   return{map:map*f,aer:aer*f};
 }
 function mpChange2(t){
