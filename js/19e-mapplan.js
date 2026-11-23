@@ -78,7 +78,7 @@ function mpTop(){
   if(ed&&q&&q.status!=='archived')h+='<button type="button" class="btn sm" data-act="mp-lock">'+esc(q.lock?tr('Unlock','Lås upp','Ontgrendelen'):tr('Lock','Lås','Vergrendelen'))+'</button><button type="button" class="btn sm" data-act="mp-archive">'+esc(tr('Archive','Arkivera','Archiveren'))+'</button>';
   if(ed&&q)h+='<button type="button" class="btn sm danger" data-act="mp-trash">'+esc(tr('Delete','Radera','Verwijderen'))+'</button>';
   if(ed&&gpPlan(p)&&!plans.some(x=>x.from==='batch5'))h+='<button type="button" class="btn sm" data-act="mp-convert">'+esc(tr('Bring in the 2.8 plan','Hämta in 2.8-planen','Het 2.8-plan overnemen'))+'</button>';
-  h+='<span class="mpbg seg" role="group" aria-label="Background">'+[['auto',tr('Auto','Auto','Auto')],['map',tr('Map','Karta','Kaart')],['neutral',tr('Neutral','Neutral','Neutraal')]].map(b=>'<button type="button" data-act="mp-bg" data-k="'+b[0]+'" aria-pressed="'+(MP.bg===b[0])+'">'+esc(b[1])+'</button>').join('')+'</span>'+
+  h+='<span class="mpbg seg" role="group" aria-label="Background">'+[['auto',tr('Auto','Auto','Auto')],['aerial',tr('Aerial','Flygbild','Luchtfoto')],['map',tr('Map','Karta','Kaart')],['neutral',tr('Neutral','Neutral','Neutraal')]].map(b=>'<button type="button" data-act="mp-bg" data-k="'+b[0]+'" aria-pressed="'+(MP.bg===b[0])+'">'+esc(b[1])+'</button>').join('')+'</span>'+
     '<span class="seg" role="group" aria-label="View">'+[['ill',tr('Illustrated','Illustrerad','Geïllustreerd')],['tech',tr('Technical','Teknisk','Technisch')]].map(b=>'<button type="button" data-act="mp-view" data-k="'+b[0]+'" aria-pressed="'+(MP.view===b[0])+'">'+esc(b[1])+'</button>').join('')+'</span>'+
     '<label class="mpfade"><span class="fl">'+esc(tr('Background','Bakgrund','Achtergrond'))+'</span><input id="mpFade" type="range" min="0" max="100" step="10" value="'+MP.fade+'"></label>'+
     '<span class="mpundo"><button type="button" class="btn sm" data-act="mp-undo"'+(MP.undo.length&&mpCanEdit()?'':' disabled')+' title="Ctrl+Z">↶</button><button type="button" class="btn sm" data-act="mp-redo"'+(MP.redo.length&&mpCanEdit()?'':' disabled')+' title="Ctrl+Y">↷</button></span>';
@@ -117,7 +117,7 @@ function mpSide(){
     }
     if(s.kind==='note')h+='<label class="f"><span class="fl">'+esc(tr('Text','Text','Tekst'))+'</span><textarea data-mp="text" rows="3" maxlength="400"'+ro+'>'+esc(s.text||'')+'</textarea></label>';
     h+=mpSideKind(s,ro);
-    if(poly)h+='<p class="mpstat"><b>'+esc(mpM2(mpArea(pts)))+'</b> · '+esc(tr('perimeter ','omkrets ','omtrek ')+mpM(mpLen(pts,true)))+'</p>';
+    if(poly)h+='<p class="mpstat"><b>'+esc(mpM2(mpArea(pts)))+'</b> · '+esc(tr('perimeter ','omkrets ','omtrek ')+mpM(mpLen(pts,true)))+'</p>'+mpShapeTerrain(s);
     if(line)h+='<p class="mpstat"><b>'+esc(mpM(mpLen(pts,false)))+'</b></p>';
     if(poly||line){const n=poly?pts.length:pts.length-1;
       h+='<details class="mpsides"'+(n<=8?' open':'')+'><summary>'+esc(tr('Sides (type an exact length)','Sidor (skriv en exakt längd)','Zijden (typ een exacte lengte)'))+'</summary>'+
@@ -132,6 +132,7 @@ function mpSide(){
     '<div class="mprow"><label class="f"><span class="fl">'+esc(tr('Year','År','Jaar'))+'</span><input data-mpp="year" type="number" min="1990" max="2100" value="'+esc(q.year||'')+'"'+ro+'></label>'+
     '<label class="f"><span class="fl">'+esc(tr('Season','Säsong','Seizoen'))+'</span><select data-mpp="season"'+ro+'>'+mpSeasonOpts(q.season)+'</select></label></div>';
   h+='<h3 class="hsub">'+esc(tr('Summary','Sammanfattning','Overzicht'))+'</h3>'+mpSummaryHTML(q.status==='archived'&&q.summary?q.summary:mpSummary(MP.shapes));
+  h+=mpTerrainHTML(q);
   h+='<h3 class="hsub">'+esc(tr('Show','Visa','Tonen'))+'</h3><div class="mplayers">'+MP_KINDS.map(k=>'<label class="chk"><input type="checkbox" data-mphide="'+k+'"'+(MP.hide[k]?'':' checked')+'> <i class="mpsw" style="background:'+MPK[k].c+'"></i> '+esc(mpK(k))+'</label>').join('')+
     '<label class="chk"><input type="checkbox" data-mphide="others"'+(MP.hide.others?'':' checked')+'> '+esc(tr('Other plans of the project','Projektets andra planer','Andere plannen van het project'))+'</label>'+
     '<label class="chk"><input type="checkbox" data-mphide="records"'+(MP.hide.records?'':' checked')+'> '+esc(tr('Planting records with a position','Planteringar med position','Aanplantingen met een positie'))+'</label></div>';
@@ -178,8 +179,8 @@ function mpGridStep(){if(!MP.map)return 1;const mpp=mpMpp();return mpp<.02?.1:mp
 function mpMpp(){const m=MP.map,c=m.getSize().divideBy(2),a=m.containerPointToLatLng(c),b=m.containerPointToLatLng(c.add([100,0]));return mpDist([a.lng,a.lat],[b.lng,b.lat])/100}
 function mpBack(){
   const m=MP.map;if(!m)return;const z=m.getZoom(),el=m.getContainer();
-  let op=MP.bg==='neutral'?0:MP.bg==='map'?1:Math.max(0,Math.min(1,(21-z)/1));op*=MP.fade/100;
-  if(MP.tiles)MP.tiles.setOpacity(op);el.classList.toggle('mpneutral',op<.999);
+  const ops=mpBackOps(z),op=Math.max(ops.map,ops.aer);
+  if(MP.tiles)MP.tiles.setOpacity(ops.map);if(MP.aer)MP.aer.setOpacity(ops.aer);el.classList.toggle('mpneutral',op<.999);
   const c=MP.grid;if(!c)return;const sz=m.getSize();if(c.width!==sz.x||c.height!==sz.y){c.width=sz.x;c.height=sz.y}
   const g=c.getContext('2d');g.clearRect(0,0,sz.x,sz.y);const show=1-op;if(show<=.02||!MP.o)return;
   const st=mpGridStep(),nw=m.containerPointToLatLng([0,0]),se=m.containerPointToLatLng([sz.x,sz.y]),a=mpXY([nw.lng,nw.lat]),b=mpXY([se.lng,se.lat]);
@@ -190,7 +191,7 @@ function mpBack(){
   g.fillStyle='rgba(40,50,40,'+(.7*show)+')';g.font='11px sans-serif';g.fillText(tr('grid ','rutnät ','raster ')+(st<1?'10 cm':st+' m'),8,sz.y-8);
 }
 function mpDraw(){
-  const m=MP.map;if(!m||!MP.lay)return;MP.lay.clearLayers();mpDefs();const q=mpPlan();if(!q){mpDraftDraw();return}MP.ovl=mpOverlapSet();
+  const m=MP.map;if(!m||!MP.lay)return;MP.lay.clearLayers();mpDefs();const q=mpPlan();mpAerialLayer();mpDemLoad(q);mpBack();if(!q){mpDraftDraw();return}MP.ovl=mpOverlapSet();
   const vis=s=>!MP.hide[s.kind];
   if(!MP.hide.others)mpPlans(MP.pid).filter(x=>x.id!==MP.id&&x.status!=='archived').forEach(o=>(o.shapes||[]).filter(vis).forEach(s=>mpShapeLayer(s,false,true)));
   const linked=new Set(MP.shapes.map(x=>x.plantingId).filter(Boolean));
@@ -331,7 +332,7 @@ function mpChanged(){mpDraw();mpSide();mpTop();clearTimeout(MP.saveT);MP.saveT=s
 async function mpSaveNow(){
   MP.saveT=null;const q=mpPlan();if(!q)return;const doc=plDoc(q);doc.shapes=JSON.parse(JSON.stringify(MP.shapes));doc.project=q.project;
   const s=JSON.stringify(doc.shapes);if(s===MP.base)return;MP.saving=true;
-  try{
+  try{await mpKeepAerial(q.id,doc);
     if(SB){const r=await SB.from('plans').upsert(projRow('plans',q.id,doc));if(r.error)throw r.error;const i=(state.plans||[]).findIndex(x=>x.id===q.id);if(i>=0)state.plans[i]=Object.assign({},state.plans[i],{shapes:doc.shapes})}
     else await Data.saveRow('plans',q.id,doc);
     MP.base=s;
@@ -339,7 +340,7 @@ async function mpSaveNow(){
   finally{MP.saving=false}
 }
 async function mpSaveMeta(patch,msg){const q=mpPlan();if(!q)return;if(MP.saveT){clearTimeout(MP.saveT);await mpSaveNow()}const doc=Object.assign(plDoc(q),{shapes:JSON.parse(JSON.stringify(MP.shapes))},patch);doc.project=q.project;
-  Object.keys(doc).forEach(k=>{if(doc[k]===undefined)delete doc[k]});try{await Data.saveRow('plans',q.id,doc);MP.base=JSON.stringify(doc.shapes);if(msg)toast(msg)}catch(e){toast(errMsg(e),'err')}}
+  Object.keys(doc).forEach(k=>{if(doc[k]===undefined)delete doc[k]});await mpKeepAerial(q.id,doc,patch);try{await Data.saveRow('plans',q.id,doc);MP.base=JSON.stringify(doc.shapes);if(msg)toast(msg)}catch(e){toast(errMsg(e),'err')}}
 /* ---------- plans: new, copy, lock, archive, delete, the 2.8 plan ---------- */
 async function mpCreate(name,year,season,shapes,extra){
   const p=pjActive();if(!p)return;
@@ -373,6 +374,7 @@ function mpClick(act,a){
   if(act==='mp-view'){MP.view=a.dataset.k;store.set('ab.mpview',MP.view);mpTop();mpDraw();return true}
   if(mpClick2(act,a))return true;
   if(act==='mp-bg'){MP.bg=a.dataset.k;store.set('ab.mpbg',MP.bg);mpTop();mpBack();return true}
+  if(act==='mp-aerial'){mpAerialRequest();return true}
   if(act==='mp-undo'){mpUndo();return true}
   if(act==='mp-redo'){mpRedo();return true}
   if(act==='mp-new'){MP.form=MP.form==='new'?'':'new';mpTop();return true}
@@ -388,6 +390,7 @@ function mpClick(act,a){
 }
 function mpChange(t){
   if(!t||!t.closest||!t.closest('#v-mplan'))return false;
+  if(mpChange2(t))return true;
   if(t.id==='mpPlanSel'){if(MP.saveT){clearTimeout(MP.saveT);mpSaveNow()}MP.id=t.value;MP.sel='';MP.undo=[];MP.redo=[];MP.base='';MP.fitFor='';mpCancel();updateMPlan();return true}
   if(t.id==='mpFade'){MP.fade=Number(t.value);store.set('ab.mpfade',String(MP.fade));mpBack();return true}
   if(t.dataset.mphide){MP.hide[t.dataset.mphide]=!t.checked;mpDraw();return true}

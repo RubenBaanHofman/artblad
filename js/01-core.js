@@ -2,7 +2,7 @@
 // Part 1 of 22; all parts share one scope and load in order from index.html (see js/README.md).
 'use strict';
 // The version shown on Home. Also change ?v= on every script tag in index.html (dev/check_version.py checks this).
-const APP_VERSION='2.12.0';
+const APP_VERSION='2.13.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
@@ -224,6 +224,11 @@ const SERVICE_DEFAULTS={
   fmi:{name:'Weather stations Finland (FMI)',url:'https://opendata.fmi.fi/wfs',test:'?service=WFS&version=2.0.0&request=describeStoredQueries&storedquery_id=fmi::observations::weather::daily::simple',for:['Measured winter lows in Finland','Uppmätta vinterlägsta i Finland']},
   // 2.10.0: the Netherlands (KNMI Data Platform, EDR API). Needs a free API key: KNMI_API_KEY in config.js.
   knmi:{name:'Weather stations Netherlands (KNMI)',url:'https://api.dataplatform.knmi.nl/edr/v1',test:'/collections/daily-in-situ-meteorological-observations-validated',for:['Measured winter lows in the Netherlands','Uppmätta vinterlägsta i Nederländerna']},
+  // 2.13.0: the Dutch national aerial photo (8 cm), live tiles from PDOK (Kadaster, Beeldmateriaal.nl, CC BY 4.0).
+  pdokAerial:{name:'Aerial photo Netherlands (PDOK)',url:'https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg',maxZoom:19,attr:'Luchtfoto © Beeldmateriaal.nl / Kadaster (CC BY 4.0)',test:'6/32/21',for:['Aerial photo in garden plans in the Netherlands','Flygbild i trädgårdsplaner i Nederländerna']},
+  // 2.13.0: aerial photo outside the Netherlands: Esri World Imagery through ArcGIS Location Platform (free tier 2M tiles a
+  // month, pay-as-you-go off). Needs ESRI_API_KEY in config.js; without it there is no aerial photo there.
+  esriImagery:{name:'Aerial photo (Esri World Imagery)',url:'https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',maxZoom:19,attr:'Powered by <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a> · Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',test:'6/18/35',for:['Aerial photo in garden plans (Sweden, Norway, Finland and elsewhere)','Flygbild i trädgårdsplaner (Sverige, Norge, Finland och annat)']},
   sguSoil:{name:'Soil map (SGU)',url:'https://maps3.sgu.se/geoserver/jord/ows',layer:'jord:SE.GOV.SGU.JORD.GRUNDLAGER.25K',test:'?SERVICE=WMS&REQUEST=GetCapabilities',for:['Soil type in Pick a plant','Jordart i Välj en växt']},
   sguPerm:{name:'Soil permeability (SGU)',url:'https://api.sgu.se/oppnadata/genomslapplighet/ogc/features/v1',test:'/collections?f=json',for:['Moisture guess in Pick a plant','Fuktuppskattning i Välj en växt']}
 };

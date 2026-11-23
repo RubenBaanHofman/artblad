@@ -83,13 +83,15 @@ function mpStyle(s,sel,other){
     if(s.kind==='water')Object.assign(st,{color:'#2f7fbf',fillColor:'url(#mpWater)',fillOpacity:1})}
   if(sel)st.weight=3.5;return st;
 }
-const mpSun={x:.38,y:.92}; // shadows fall to the north-north-east (sun in the south-south-west)
+// 2.13.0: shadows for the chosen date and time (sun position from 19g); length = height ÷ tan(sun altitude).
 function mpShadows(list){
+  const v=mpSunVec();if(!v)return;const sh={stroke:false,fillColor:'#1d2a1d',fillOpacity:.17,interactive:false};
   list.forEach(s=>{
-    if(s.kind==='plant'){const c=mpXY(mpPts(s)[0]),r=(mpSpread(s)||.5)/2,l=Math.min(mpPlantH(s)*.45,r*1.2);const ll=mpLL(c.x+mpSun.x*l,c.y+mpSun.y*l);
-      L.circle(mpLat(ll),{radius:r*.95,stroke:false,fillColor:'#1d2a1d',fillOpacity:.18,interactive:false}).addTo(MP.lay)}
-    if(s.kind==='structure'){const h=Number(s.height)||2.5,l=h*.6,p=mpPts(s).map(c=>{const v=mpXY(c);return mpLat(mpLL(v.x+mpSun.x*l,v.y+mpSun.y*l))});
-      L.polygon(p,{stroke:false,fillColor:'#1d2a1d',fillOpacity:.16,interactive:false}).addTo(MP.lay)}
+    if(s.kind==='plant'){const c=mpXY(mpPts(s)[0]),r=(mpSpread(s)||.5)/2,h=mpPlantH(s),d=Math.max(0,h-r*.8);
+      L.circle(mpLat(mpLL(c.x+v.x*d,c.y+v.y*d)),Object.assign({radius:r*.95},sh)).addTo(MP.lay)}
+    if(s.kind==='structure'||s.kind==='support'){const h=Number(s.height)||(s.kind==='structure'?2.5:1.8),P=mpPts(s).map(mpXY),T=P.map(p=>({x:p.x+v.x*h,y:p.y+v.y*h})),ll=p=>mpLat(mpLL(p.x,p.y));
+      if(s.kind==='structure')L.polygon(T.map(ll),sh).addTo(MP.lay);
+      for(let i=0;i<P.length-(s.kind==='structure'?0:1);i++){const j=(i+1)%P.length;L.polygon([P[i],P[j],T[j],T[i]].map(ll),sh).addTo(MP.lay)}}
   });
 }
 function mpShapeLayer(s,sel,other){

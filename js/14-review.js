@@ -131,11 +131,12 @@ async function chkRun(){
     const s=SERVICES[id];
     await T('svc:'+id,s.name,async()=>{
       if(s.off)return tr('switched off in config.js','avstängd i config.js','uitgeschakeld in config.js');
+      if(id==='esriImagery'&&!esriKey())return tr('not set up: add ESRI_API_KEY to config.js (no aerial photo outside the Netherlands)','inte inställd: lägg till ESRI_API_KEY i config.js (ingen flygbild utanför Nederländerna)','niet ingesteld: voeg ESRI_API_KEY toe aan config.js (geen luchtfoto buiten Nederland)');
       if(id==='knmi'&&!knmiKey())return tr('not set up: add KNMI_API_KEY to config.js (the Netherlands then uses the model)','inte inställd: lägg till KNMI_API_KEY i config.js (Nederländerna använder då modellen)','niet ingesteld: voeg KNMI_API_KEY toe aan config.js (Nederland gebruikt dan het model)');
       if(id==='frost'&&!frostKey())return tr('not set up: add FROST_CLIENT_ID to config.js (Norway then uses the model)','inte inställd: lägg till FROST_CLIENT_ID i config.js (Norge använder då modellen)','niet ingesteld: voeg FROST_CLIENT_ID toe aan config.js (Noorwegen gebruikt dan het model)');
-      const url=id==='tiles'?s.url.replace('{s}','a').replace('{z}/{x}/{y}',s.test):s.url+(s.test||'');
+      const url=id==='tiles'||/\{z\}/.test(s.url)?s.url.replace('{s}','a').replace(/\{z\}\/\{[xy]\}\/\{[xy]\}/,s.test)+(id==='esriImagery'&&esriKey()?'?token='+encodeURIComponent(esriKey()):''):s.url+(s.test||'');
       const c=new AbortController(),t=setTimeout(()=>c.abort(),15000);
-      try{const r=await svcFetch(id,url,id==='tiles'?{signal:c.signal,mode:'no-cors'}:id==='frost'?Object.assign(frostOpts(),{signal:c.signal}):id==='knmi'?Object.assign(knmiOpts(),{signal:c.signal}):{signal:c.signal});if(r.type!=='opaque'&&!r.ok&&r.status!==429)throw new Error('HTTP '+r.status);return (r.status===429?tr('reachable, limit reached for now','nåbar, gränsen nådd just nu','bereikbaar, limiet nu bereikt'):'')+(s.custom?' · '+tr('own address from config.js','egen adress från config.js','eigen adres uit config.js'):'')}
+      try{const r=await svcFetch(id,url,id==='tiles'||id==='pdokAerial'||id==='esriImagery'?{signal:c.signal,mode:'no-cors'}:id==='frost'?Object.assign(frostOpts(),{signal:c.signal}):id==='knmi'?Object.assign(knmiOpts(),{signal:c.signal}):{signal:c.signal});if(r.type!=='opaque'&&!r.ok&&r.status!==429)throw new Error('HTTP '+r.status);return (r.status===429?tr('reachable, limit reached for now','nåbar, gränsen nådd just nu','bereikbaar, limiet nu bereikt'):'')+(s.custom?' · '+tr('own address from config.js','egen adress från config.js','eigen adres uit config.js'):'')}
       finally{clearTimeout(t)}});
   }
   CHK.res=out;CHK.at=Date.now();CHK.busy=false;updateAdmin();
